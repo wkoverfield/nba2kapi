@@ -14,6 +14,11 @@ if (!API_KEY) {
 
 const endpoints = [
   {
+    name: "GET /api/health (public)",
+    url: `${API_BASE}/api/health`,
+    requiresAuth: false,
+  },
+  {
     name: "GET /api/stats (public)",
     url: `${API_BASE}/api/stats`,
     requiresAuth: false,
@@ -31,6 +36,11 @@ const endpoints = [
   {
     name: "GET /api/players/:id",
     url: `${API_BASE}/api/players/j9733j4termyc8t88mx7bppk0n7vg467`,
+    requiresAuth: true,
+  },
+  {
+    name: "GET /api/players/slug/:slug",
+    url: `${API_BASE}/api/players/slug/lebron-james-los-angeles-lakers`,
     requiresAuth: true,
   },
   {
