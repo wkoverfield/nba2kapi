@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
-import { Github, Heart, Star } from "lucide-react";
+import { Github, Heart, Star, MessageSquare } from "lucide-react";
 
 export function Footer() {
   return (
@@ -91,6 +91,15 @@ export function Footer() {
                   <Heart className="h-3.5 w-3.5" />
                   Buy Me a Coffee
                 </a>
+              </li>
+              <li>
+                <Link
+                  href="/feedback"
+                  className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5"
+                >
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  Feedback
+                </Link>
               </li>
               <li>
                 <a
