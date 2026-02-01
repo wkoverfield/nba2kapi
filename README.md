@@ -465,6 +465,10 @@ MIT License - see LICENSE file for details
 - GitHub Issues: [Report bugs or request features](https://github.com/woverfield/nba2kapi/issues)
 - Documentation: [View full docs](https://api.nba2kapi.com/docs)
 
+## Analytics
+
+**Baseline (Nov 2025 - Feb 2026):** 48 API keys created, 1,842 requests made.
+
 ## Disclaimer
 
 This project is not affiliated with, endorsed by, or connected to 2K Sports, the NBA, or any of their subsidiaries. All data is publicly available from 2kratings.com. This is a fan-made project for educational and community purposes.
