@@ -13,6 +13,11 @@ import { HonoWithConvex, HttpRouterWithHono } from "convex-helpers/server/hono";
 import { ActionCtx } from "./_generated/server";
 import { api } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
+import {
+  detectUnknownParams,
+  formatUnknownParamsError,
+  VALID_PARAMS_BY_ENDPOINT,
+} from "./_validation";
 
 const app: HonoWithConvex<ActionCtx> = new Hono();
 
@@ -92,16 +97,18 @@ async function authMiddleware(c: any, next: any) {
   c.header("X-RateLimit-Remaining", rateLimit.remaining.toString());
   c.header("X-RateLimit-Reset", rateLimit.reset);
 
-  // Capture status code by wrapping response method
-  let responseStatus = 200;
+  // Capture status code using Hono context storage
+  c.set("capturedStatusCode", 200);
   const originalJson = c.json.bind(c);
-  
+
   c.json = function(body: any, status?: number | ResponseInit) {
+    let code = 200;
     if (typeof status === "number") {
-      responseStatus = status;
+      code = status;
     } else if (status && typeof status === "object" && "status" in status) {
-      responseStatus = status.status as number;
+      code = status.status as number;
     }
+    c.set("capturedStatusCode", code);
     return originalJson(body, status);
   };
 
@@ -109,6 +116,7 @@ async function authMiddleware(c: any, next: any) {
 
   // Log request after response
   const responseTime = Date.now() - startTime;
+  const responseStatus = c.get("capturedStatusCode") || 200;
   
   // Log request - await mutation to ensure it completes
   try {
@@ -150,8 +158,59 @@ function errorResponse(message: string, code = "UNKNOWN_ERROR", details?: any) {
 }
 
 // ============================================================================
-// ROUTES: HEALTH & STATUS
+// STRICT QUERY VALIDATION
 // ============================================================================
+
+/**
+ * Creates a middleware that rejects unknown query parameters with helpful errors.
+ * Use this BEFORE zValidator to catch invalid params before Zod validation runs.
+ */
+function rejectUnknownParams(endpoint: string) {
+  const validParams = VALID_PARAMS_BY_ENDPOINT[endpoint] || new Set<string>();
+
+  return async (c: any, next: any) => {
+    const url = new URL(c.req.url);
+    const actualParams: Record<string, string> = {};
+
+    url.searchParams.forEach((value, key) => {
+      actualParams[key] = value;
+    });
+
+    // Check for unknown parameters
+    const unknownErrors = detectUnknownParams(actualParams, validParams);
+
+    if (unknownErrors.length > 0) {
+      const errorDetails = formatUnknownParamsError(unknownErrors, endpoint);
+      return c.json(errorResponse(
+        errorDetails.message,
+        errorDetails.code,
+        errorDetails.details
+      ), 400);
+    }
+
+    return next();
+  };
+}
+
+// ============================================================================
+// ROUTES: ROOT & HEALTH
+// ============================================================================
+
+// GET / - Root endpoint - welcome message with helpful links
+app.get("/", (c) => {
+  return c.json({
+    service: "NBA2KAPI",
+    version: "1.0.0",
+    message: "Welcome to the NBA 2K Ratings API",
+    links: {
+      documentation: "https://nba2kapi.com/docs",
+      getApiKey: "https://nba2kapi.com/dashboard",
+      health: "/api/health",
+      stats: "/api/stats"
+    },
+    note: "To get an API key, visit https://nba2kapi.com"
+  });
+});
 
 // GET /api/health - Health check endpoint (no auth required)
 app.get("/api/health", (c) => {
@@ -357,6 +416,7 @@ app.get("/api/admin/scrape/:jobId",
 // GET /api/players - List players with filtering and pagination
 app.get("/api/players",
   authMiddleware,
+  rejectUnknownParams("/api/players"),
   zValidator("query", z.object({
     teamType: z.enum(["curr", "class", "allt"]).default("curr"),
     team: z.string().optional(),
@@ -424,6 +484,7 @@ app.get("/api/players",
 // NOTE: This route MUST come before /api/players/:id to avoid matching "search" as an ID
 app.get("/api/players/search",
   authMiddleware,
+  rejectUnknownParams("/api/players/search"),
   zValidator("query", z.object({
     q: z.string().min(1, "Search query is required").max(100, "Search query too long"),
     teamType: z.enum(["curr", "class", "allt"]).optional(),
@@ -462,7 +523,10 @@ app.get("/api/players/search",
 );
 
 // GET /api/players/:id - Get player by ID
-app.get("/api/players/:id", authMiddleware, async (c) => {
+app.get("/api/players/:id",
+  authMiddleware,
+  rejectUnknownParams("/api/players/:id"),
+  async (c) => {
   try {
     const playerId = c.req.param("id");
 
@@ -501,6 +565,7 @@ app.get("/api/players/:id", authMiddleware, async (c) => {
 // GET /api/players/slug/:slug - Get player by slug (more user-friendly)
 app.get("/api/players/slug/:slug",
   authMiddleware,
+  rejectUnknownParams("/api/players/slug/:slug"),
   zValidator("query", z.object({
     teamType: z.enum(["curr", "class", "allt"]).optional(),
     team: z.string().optional(),
@@ -549,6 +614,7 @@ app.get("/api/players/slug/:slug",
 // GET /api/teams - List all teams
 app.get("/api/teams",
   authMiddleware,
+  rejectUnknownParams("/api/teams"),
   zValidator("query", z.object({
     teamType: z.enum(["curr", "class", "allt"]).default("curr"),
   })),
@@ -577,6 +643,7 @@ app.get("/api/teams",
 // GET /api/teams/:teamName/roster - Get team roster
 app.get("/api/teams/:teamName/roster",
   authMiddleware,
+  rejectUnknownParams("/api/teams/:teamName/roster"),
   zValidator("query", z.object({
     teamType: z.enum(["curr", "class", "allt"]).optional(),
   })),

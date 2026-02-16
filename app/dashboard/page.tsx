@@ -32,9 +32,14 @@ import {
   AlertCircle,
   BookOpen,
   Code2,
+  Copy,
   Github,
+  Loader2,
+  Play,
+  Rocket,
   TrendingUp,
   SlidersHorizontal,
+  Terminal,
   Users,
   ExternalLink,
 } from "lucide-react";
@@ -46,8 +51,41 @@ export default function DashboardPage() {
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [showRegistration, setShowRegistration] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [onboardingCopied, setOnboardingCopied] = useState(false);
+  const [onboardingDemoResult, setOnboardingDemoResult] = useState<any>(null);
+  const [onboardingDemoLoading, setOnboardingDemoLoading] = useState(false);
 
   const regenerateApiKey = useMutation(api.apiKeys.regenerateApiKey);
+
+  const API_BASE = process.env.NEXT_PUBLIC_CONVEX_URL?.replace(".cloud", ".site") || "https://api.nba2kapi.com";
+
+  const getOnboardingCurlCommand = (key: string) =>
+    `curl -H "X-API-Key: ${key}" ${API_BASE}/api/players?minRating=95`;
+
+  const copyOnboardingCommand = async () => {
+    if (!apiKey) return;
+    await navigator.clipboard.writeText(getOnboardingCurlCommand(apiKey));
+    setOnboardingCopied(true);
+    setTimeout(() => setOnboardingCopied(false), 2000);
+  };
+
+  const runOnboardingDemo = async () => {
+    if (!apiKey) return;
+    setOnboardingDemoLoading(true);
+    setOnboardingDemoResult(null);
+
+    try {
+      const response = await fetch(`${API_BASE}/api/players?minRating=95&limit=3`, {
+        headers: { "X-API-Key": apiKey }
+      });
+      const data = await response.json();
+      setOnboardingDemoResult(data);
+    } catch (err) {
+      setOnboardingDemoResult({ success: false, error: { message: "Failed to make request" } });
+    } finally {
+      setOnboardingDemoLoading(false);
+    }
+  };
 
   // Get stats using the API key
   const stats = useQuery(
@@ -222,6 +260,118 @@ export default function DashboardPage() {
             Try the playground to explore data visually, then use the API to integrate into your application
           </p>
         </div>
+
+        {/* First-time User Onboarding */}
+        {stats.totalRequests === 0 && (
+          <Card className="mb-6 border-2 border-primary bg-gradient-to-br from-primary/5 to-primary/10">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 font-rajdhani text-2xl">
+                <Rocket className="h-6 w-6 text-primary" />
+                Welcome! Make your first API call
+              </CardTitle>
+              <CardDescription>
+                Your API key is ready. Try it out with one of these options:
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                {/* Terminal Option */}
+                <Card className="bg-white/50 dark:bg-white/5">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Terminal className="h-5 w-5 text-primary" />
+                      <h4 className="font-semibold">Terminal</h4>
+                    </div>
+                    <div className="rounded-lg bg-slate-950 p-2 overflow-x-auto">
+                      <code className="text-xs text-green-400 whitespace-pre-wrap break-all">
+                        {getOnboardingCurlCommand(apiKey)}
+                      </code>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={copyOnboardingCommand}
+                      className="w-full"
+                    >
+                      <Copy className="h-3 w-3 mr-1" />
+                      {onboardingCopied ? "Copied!" : "Copy Command"}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Playground Option */}
+                <Card className="bg-white/50 dark:bg-white/5">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <SlidersHorizontal className="h-5 w-5 text-primary" />
+                      <h4 className="font-semibold">Playground</h4>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Explore players interactively with filters and search
+                    </p>
+                    <Button variant="outline" size="sm" asChild className="w-full">
+                      <Link href="/playground">
+                        Open Playground
+                        <ExternalLink className="ml-2 h-3 w-3" />
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Run Now Option */}
+                <Card className="bg-white/50 dark:bg-white/5">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Play className="h-5 w-5 text-primary" />
+                      <h4 className="font-semibold">Run Now</h4>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Make a test API call right here to see it work
+                    </p>
+                    <Button
+                      size="sm"
+                      onClick={runOnboardingDemo}
+                      disabled={onboardingDemoLoading}
+                      className="w-full"
+                    >
+                      {onboardingDemoLoading ? (
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      ) : (
+                        <Play className="h-3 w-3 mr-1" />
+                      )}
+                      Try It
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Demo Result */}
+              {onboardingDemoResult && (
+                <div className="mt-4 rounded-lg bg-slate-100 dark:bg-slate-900 p-4">
+                  {onboardingDemoResult.success ? (
+                    <>
+                      <Badge variant="default" className="mb-2">
+                        Success! Found {onboardingDemoResult.data?.length || 0} elite players (95+ rating)
+                      </Badge>
+                      <pre className="text-xs overflow-auto max-h-40 mt-2">
+                        {JSON.stringify(onboardingDemoResult.data?.slice(0, 3).map((p: any) => ({
+                          name: p.name,
+                          team: p.team,
+                          overall: p.overall,
+                          position: p.position
+                        })), null, 2)}
+                      </pre>
+                    </>
+                  ) : (
+                    <Badge variant="destructive">
+                      Error: {onboardingDemoResult.error?.message || "Request failed"}
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <div className="space-y-6">
           {/* API Key Section */}

@@ -50,7 +50,7 @@ This project provides:
 
 ### 1. API Usage
 
-Get your free API key at [https://api.nba2kapi.com](https://api.nba2kapi.com)
+Get your free API key at [https://nba2kapi.com](https://nba2kapi.com)
 
 ```bash
 # Search for players
@@ -463,7 +463,7 @@ MIT License - see LICENSE file for details
 ## Support
 
 - GitHub Issues: [Report bugs or request features](https://github.com/woverfield/nba2kapi/issues)
-- Documentation: [View full docs](https://api.nba2kapi.com/docs)
+- Documentation: [View full docs](https://nba2kapi.com/docs)
 
 ## Analytics
 

@@ -68,8 +68,8 @@ export function parseEndpointToDeepLink(endpoint: string): DeepLink {
       };
     }
 
-    // Search endpoint: /api/search?q=...
-    if (pathname === "/api/search") {
+    // Search endpoint: /api/players/search?q=...
+    if (pathname === "/api/players/search") {
       const query = params.get("q");
       if (query) {
         return {
