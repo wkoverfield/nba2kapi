@@ -170,19 +170,21 @@ export async function scrapePlayerDetails(page, basicPlayer) {
         else if (title.includes('Bronze')) badges.bronze = value;
       });
 
-      // Extract individual badge details
+      // Extract individual badge details with image URLs
       const badgeList = [];
       const badgeCards = document.querySelectorAll('.badge-card');
 
       for (const card of badgeCards) {
         const nameEl = card.querySelector('h4.text-white');
         const categoryEl = card.querySelector('.badge-pill');
-        const imgEl = card.querySelector('img[data-src*="badge.png"], img[src*="badge.png"]');
+        const imgEl = card.querySelector('img[data-src*="badge"], img[src*="badge"]');
+        const descEl = card.querySelector('.badge-description, p.description, [class*="desc"]');
 
         if (nameEl && imgEl) {
           const name = nameEl.textContent.trim();
           const category = categoryEl ? categoryEl.textContent.trim() : '';
           const imgSrc = imgEl.getAttribute('data-src') || imgEl.src || '';
+          const description = descEl ? descEl.textContent.trim() : '';
 
           // Extract tier from image filename
           let tier = '';
@@ -193,7 +195,15 @@ export async function scrapePlayerDetails(page, basicPlayer) {
           else if (imgSrc.includes('-bronze-badge.png')) tier = 'Bronze';
 
           if (name && tier) {
-            badgeList.push({ name, tier, category });
+            const badgeData = { name, tier, category };
+            // Include image URL if it's a full URL (not relative)
+            if (imgSrc.startsWith('http')) {
+              badgeData.imageUrl = imgSrc;
+            }
+            if (description) {
+              badgeData.description = description;
+            }
+            badgeList.push(badgeData);
           }
         }
       }
@@ -203,6 +213,152 @@ export async function scrapePlayerDetails(page, basicPlayer) {
       }
 
       details.badges = badges;
+
+      // ========================================
+      // NEW: Extract Hot Zones (shooting zones)
+      // ========================================
+      const hotZones = {};
+
+      // Hot zones are typically displayed as a court diagram with colored zones
+      // Look for elements with hot zone indicators (red=hot, blue=cold, gray=neutral)
+      const zoneElements = document.querySelectorAll('[class*="hot-zone"], [class*="zone"], .court-zone, [data-zone]');
+
+      for (const zone of zoneElements) {
+        const className = zone.className || '';
+        const dataZone = zone.getAttribute('data-zone') || '';
+        const title = zone.getAttribute('title') || zone.getAttribute('data-original-title') || '';
+
+        // Determine zone location from class name or data attribute
+        let location = dataZone.toLowerCase();
+        if (!location) {
+          // Try to infer from class name
+          if (className.includes('corner') && className.includes('left')) location = 'leftCornerThree';
+          else if (className.includes('corner') && className.includes('right')) location = 'rightCornerThree';
+          else if (className.includes('wing') && className.includes('left')) location = 'leftWingThree';
+          else if (className.includes('wing') && className.includes('right')) location = 'rightWingThree';
+          else if (className.includes('top') && className.includes('three')) location = 'topKeyThree';
+          else if (className.includes('elbow') && className.includes('left')) location = 'leftElbow';
+          else if (className.includes('elbow') && className.includes('right')) location = 'rightElbow';
+          else if (className.includes('top') && className.includes('key')) location = 'topKey';
+          else if (className.includes('baseline') && className.includes('left')) location = 'leftBaseline';
+          else if (className.includes('baseline') && className.includes('right')) location = 'rightBaseline';
+          else if (className.includes('paint') || className.includes('restricted')) location = 'paint';
+          else if (className.includes('under') || className.includes('basket')) location = 'underBasket';
+        }
+
+        // Determine zone status (hot/cold/neutral)
+        let status = 'neutral';
+        if (className.includes('hot') || className.includes('red') || title.toLowerCase().includes('hot')) {
+          status = 'hot';
+        } else if (className.includes('cold') || className.includes('blue') || title.toLowerCase().includes('cold')) {
+          status = 'cold';
+        }
+
+        if (location) {
+          hotZones[location] = status;
+        }
+      }
+
+      // Alternative: Look for hot zone table or list
+      const hotZoneRows = document.querySelectorAll('.hot-zones tr, [class*="shooting-zone"]');
+      for (const row of hotZoneRows) {
+        const cells = row.querySelectorAll('td, span');
+        if (cells.length >= 2) {
+          const zoneName = cells[0]?.textContent?.trim();
+          const zoneStatus = cells[1]?.textContent?.trim()?.toLowerCase();
+
+          // Map zone names to our standard keys
+          const zoneMap = {
+            'left corner 3': 'leftCornerThree',
+            'right corner 3': 'rightCornerThree',
+            'left wing 3': 'leftWingThree',
+            'right wing 3': 'rightWingThree',
+            'top of the key 3': 'topKeyThree',
+            'left elbow': 'leftElbow',
+            'right elbow': 'rightElbow',
+            'top of the key': 'topKey',
+            'left baseline': 'leftBaseline',
+            'right baseline': 'rightBaseline',
+            'paint': 'paint',
+            'under basket': 'underBasket',
+          };
+
+          const key = zoneMap[zoneName?.toLowerCase()] || zoneName?.toLowerCase().replace(/\s+/g, '');
+          if (key && zoneStatus) {
+            hotZones[key] = zoneStatus.includes('hot') ? 'hot' : zoneStatus.includes('cold') ? 'cold' : 'neutral';
+          }
+        }
+      }
+
+      if (Object.keys(hotZones).length > 0) {
+        details.hotZones = hotZones;
+      }
+
+      // ========================================
+      // NEW: Extract Cross-Version Rating History
+      // ========================================
+      const ratingHistory = [];
+
+      // Look for rating history table or list showing previous 2K ratings
+      const historyTables = document.querySelectorAll('.rating-history, [class*="version-history"], table');
+      for (const table of historyTables) {
+        const rows = table.querySelectorAll('tr');
+        for (const row of rows) {
+          const cells = row.querySelectorAll('td, th');
+          for (let i = 0; i < cells.length; i++) {
+            const cellText = cells[i]?.textContent?.trim();
+
+            // Look for 2K version patterns like "2K26", "2K25", etc.
+            const versionMatch = cellText?.match(/2K(\d{2})/);
+            if (versionMatch) {
+              // Next cell or same row might have the rating
+              const ratingCell = cells[i + 1] || cells[i];
+              const ratingText = ratingCell?.textContent?.trim();
+              const ratingMatch = ratingText?.match(/(\d{2})/);
+
+              if (ratingMatch) {
+                const rating = parseInt(ratingMatch[1]);
+                if (rating >= 40 && rating <= 99) {
+                  ratingHistory.push({
+                    gameVersion: `2K${versionMatch[1]}`,
+                    overall: rating,
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Alternative: Look for links or spans with version info
+      const versionLinks = document.querySelectorAll('a[href*="2k2"], a[href*="2k-"], span[class*="version"]');
+      for (const link of versionLinks) {
+        const text = link.textContent?.trim();
+        const versionMatch = text?.match(/2K(\d{2})/);
+        const ratingMatch = text?.match(/\((\d{2})\)/) || link.parentElement?.textContent?.match(/(\d{2})\s*OVR/);
+
+        if (versionMatch && ratingMatch) {
+          ratingHistory.push({
+            gameVersion: `2K${versionMatch[1]}`,
+            overall: parseInt(ratingMatch[1]),
+          });
+        }
+      }
+
+      // Deduplicate and sort by version (newest first)
+      const seenVersions = new Set();
+      details.ratingHistory = ratingHistory
+        .filter(r => {
+          if (seenVersions.has(r.gameVersion)) return false;
+          seenVersions.add(r.gameVersion);
+          return true;
+        })
+        .sort((a, b) => b.gameVersion.localeCompare(a.gameVersion));
+
+      // Calculate deltas between versions
+      for (let i = 0; i < details.ratingHistory.length - 1; i++) {
+        details.ratingHistory[i].delta = details.ratingHistory[i].overall - details.ratingHistory[i + 1].overall;
+      }
 
       return details;
     });
@@ -218,6 +374,8 @@ export async function scrapePlayerDetails(page, basicPlayer) {
       playerImage: playerDetails.playerImage,
       attributes: playerDetails.attributes,
       badges: playerDetails.badges,
+      hotZones: playerDetails.hotZones,
+      ratingHistory: playerDetails.ratingHistory,
       lastUpdated: new Date().toISOString()
     };
 

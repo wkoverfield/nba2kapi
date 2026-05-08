@@ -57,6 +57,38 @@ export default defineSchema({
       })
     ),
 
+    // Hot Zones - shooting zones on the court
+    hotZones: v.optional(
+      v.object({
+        leftCornerThree: v.optional(v.string()), // "hot", "cold", "neutral"
+        leftWingThree: v.optional(v.string()),
+        topKeyThree: v.optional(v.string()),
+        rightWingThree: v.optional(v.string()),
+        rightCornerThree: v.optional(v.string()),
+        leftElbow: v.optional(v.string()),
+        topKey: v.optional(v.string()),
+        rightElbow: v.optional(v.string()),
+        leftBaseline: v.optional(v.string()),
+        paint: v.optional(v.string()),
+        rightBaseline: v.optional(v.string()),
+        underBasket: v.optional(v.string()),
+      })
+    ),
+
+    // Cross-version historical ratings (from 2kratings.com)
+    ratingHistory: v.optional(
+      v.array(
+        v.object({
+          gameVersion: v.string(), // "2K26", "2K25", "2K24", etc.
+          overall: v.number(),
+          delta: v.optional(v.number()), // +/- from previous version
+        })
+      )
+    ),
+
+    // Current game version
+    gameVersion: v.optional(v.string()), // "2K26"
+
     // Timestamps
     lastUpdated: v.string(), // ISO timestamp
     createdAt: v.string(), // ISO timestamp
@@ -158,4 +190,111 @@ export default defineSchema({
   })
     .index("by_upvotes", ["upvotes"])
     .index("by_status", ["status"]),
+
+  /**
+   * Player Rating History - tracks within-game rating changes over time
+   * Uses delta-based tracking to save storage (only stores what changed)
+   */
+  playerRatingHistory: defineTable({
+    playerId: v.id("players"),
+    scrapeJobId: v.optional(v.string()),
+    scrapedAt: v.string(), // ISO timestamp
+    gameVersion: v.string(), // "2K26"
+
+    // Overall rating change
+    previousOverall: v.optional(v.number()),
+    newOverall: v.number(),
+    overallDelta: v.optional(v.number()), // +3, -2, etc.
+
+    // Changed attributes only (sparse - saves storage)
+    attributeChanges: v.optional(
+      v.record(
+        v.string(),
+        v.object({
+          prev: v.number(),
+          new: v.number(),
+        })
+      )
+    ),
+
+    // Badge changes
+    badgeChanges: v.optional(
+      v.object({
+        added: v.optional(v.array(v.object({ name: v.string(), tier: v.string() }))),
+        removed: v.optional(v.array(v.object({ name: v.string(), tier: v.string() }))),
+        upgraded: v.optional(
+          v.array(v.object({ name: v.string(), fromTier: v.string(), toTier: v.string() }))
+        ),
+        downgraded: v.optional(
+          v.array(v.object({ name: v.string(), fromTier: v.string(), toTier: v.string() }))
+        ),
+      })
+    ),
+
+    // Type of history entry
+    changeType: v.union(
+      v.literal("initial"), // First scrape
+      v.literal("update"), // Ratings changed
+      v.literal("snapshot") // Periodic full snapshot
+    ),
+
+    // Full state for snapshots/initial entries
+    fullAttributes: v.optional(v.record(v.string(), v.number())),
+    fullBadges: v.optional(v.any()),
+    hotZones: v.optional(v.any()),
+  })
+    .index("by_playerId", ["playerId"])
+    .index("by_playerId_and_scrapedAt", ["playerId", "scrapedAt"])
+    .index("by_scrapedAt", ["scrapedAt"])
+    .index("by_gameVersion", ["gameVersion"]),
+
+  /**
+   * Player Snapshots - full point-in-time snapshots (weekly)
+   * Used for efficient historical reconstruction
+   */
+  playerSnapshots: defineTable({
+    playerId: v.id("players"),
+    snapshotDate: v.string(), // YYYY-MM-DD
+    gameVersion: v.string(),
+    overall: v.number(),
+    attributes: v.record(v.string(), v.number()),
+    badges: v.optional(v.any()),
+    hotZones: v.optional(v.any()),
+    createdAt: v.string(),
+  })
+    .index("by_playerId", ["playerId"])
+    .index("by_playerId_and_snapshotDate", ["playerId", "snapshotDate"])
+    .index("by_snapshotDate", ["snapshotDate"]),
+
+  /**
+   * Badges - normalized badge reference table
+   * One entry per unique badge (not duplicated per player)
+   */
+  badges: defineTable({
+    name: v.string(),
+    slug: v.string(), // URL-friendly name
+    category: v.string(), // "Playmaking", "Outside Scoring", etc.
+    description: v.optional(v.string()),
+    imageUrl: v.optional(v.string()), // External URL from 2kratings.com
+    gameVersion: v.optional(v.string()), // Badges change between 2K versions
+    lastUpdated: v.string(),
+    createdAt: v.string(),
+  })
+    .index("by_name", ["name"])
+    .index("by_slug", ["slug"])
+    .index("by_category", ["category"])
+    .index("by_gameVersion", ["gameVersion"]),
+
+  /**
+   * Player Badges - junction table linking players to badges
+   * Enables efficient queries: "players with badge X" and "badges for player Y"
+   */
+  playerBadges: defineTable({
+    playerId: v.id("players"),
+    badgeId: v.id("badges"),
+    tier: v.string(), // "Legendary", "Hall of Fame", "Gold", "Silver", "Bronze"
+  })
+    .index("by_playerId", ["playerId"])
+    .index("by_badgeId", ["badgeId"])
+    .index("by_playerId_and_badgeId", ["playerId", "badgeId"]),
 });

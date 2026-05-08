@@ -30,4 +30,15 @@ crons.daily(
   internal.maintenance.cleanupOldLogs
 );
 
+/**
+ * Create weekly player snapshots
+ * Runs every Sunday at midnight UTC
+ * Enables efficient point-in-time historical queries
+ */
+crons.weekly(
+  "create weekly snapshots",
+  { dayOfWeek: "sunday", hourUTC: 0, minuteUTC: 0 },
+  internal.playerHistory.createWeeklySnapshots
+);
+
 export default crons;

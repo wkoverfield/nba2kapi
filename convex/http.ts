@@ -607,6 +607,137 @@ app.get("/api/players/slug/:slug",
   }
 );
 
+// GET /api/players/:id/history - Get player rating history over time
+app.get("/api/players/:id/history",
+  authMiddleware,
+  zValidator("query", z.object({
+    gameVersion: z.string().optional(),
+    limit: z.coerce.number().min(1).max(100).default(50),
+  })),
+  async (c) => {
+    try {
+      const playerId = c.req.param("id");
+      const { gameVersion, limit } = c.req.valid("query");
+
+      if (!playerId.startsWith("j") || playerId.length < 10) {
+        return c.json(errorResponse(
+          "Invalid player ID format",
+          "INVALID_ID"
+        ), 400);
+      }
+
+      const historyArgs: any = {
+        playerId: playerId as any,
+        limit,
+      };
+      if (gameVersion) historyArgs.gameVersion = gameVersion;
+
+      const history = await c.env.runQuery(api.playerHistory.getPlayerHistory, historyArgs);
+
+      c.header("Cache-Control", "public, max-age=300");
+
+      return c.json(successResponse(history, {
+        count: history.length,
+        playerId,
+      }));
+    } catch (error: any) {
+      console.error("Error fetching player history:", error);
+      return c.json(errorResponse(
+        "Failed to fetch player history",
+        "QUERY_ERROR"
+      ), 500);
+    }
+  }
+);
+
+// GET /api/players/:id/attribute/:attr - Get specific attribute history
+app.get("/api/players/:id/attribute/:attr",
+  authMiddleware,
+  zValidator("query", z.object({
+    limit: z.coerce.number().min(1).max(100).default(50),
+  })),
+  async (c) => {
+    try {
+      const playerId = c.req.param("id");
+      const attribute = c.req.param("attr");
+      const { limit } = c.req.valid("query");
+
+      if (!playerId.startsWith("j") || playerId.length < 10) {
+        return c.json(errorResponse(
+          "Invalid player ID format",
+          "INVALID_ID"
+        ), 400);
+      }
+
+      const history = await c.env.runQuery(api.playerHistory.getAttributeHistory, {
+        playerId: playerId as any,
+        attribute,
+        limit,
+      });
+
+      c.header("Cache-Control", "public, max-age=300");
+
+      return c.json(successResponse(history, {
+        attribute,
+        playerId,
+        dataPoints: history.length,
+      }));
+    } catch (error: any) {
+      console.error("Error fetching attribute history:", error);
+      return c.json(errorResponse(
+        "Failed to fetch attribute history",
+        "QUERY_ERROR"
+      ), 500);
+    }
+  }
+);
+
+// GET /api/players/:id/versions - Get cross-version ratings (2K26, 2K25, etc.)
+app.get("/api/players/:id/versions",
+  authMiddleware,
+  async (c) => {
+    try {
+      const playerId = c.req.param("id");
+
+      if (!playerId.startsWith("j") || playerId.length < 10) {
+        return c.json(errorResponse(
+          "Invalid player ID format",
+          "INVALID_ID"
+        ), 400);
+      }
+
+      const player = await c.env.runQuery(api.players.getPlayerById, {
+        id: playerId as any,
+      });
+
+      if (!player) {
+        return c.json(errorResponse(
+          "Player not found",
+          "PLAYER_NOT_FOUND",
+          { playerId }
+        ), 404);
+      }
+
+      c.header("Cache-Control", "public, max-age=3600");
+
+      return c.json(successResponse({
+        playerId,
+        name: player.name,
+        slug: player.slug,
+        currentVersion: player.gameVersion || "2K26",
+        currentOverall: player.overall,
+        ratingHistory: player.ratingHistory || [],
+      }));
+    } catch (error: any) {
+      console.error("Error fetching player versions:", error);
+      return c.json(errorResponse(
+        "Failed to fetch player versions",
+        "QUERY_ERROR"
+      ), 500);
+    }
+  }
+);
+
 // ============================================================================
 // ROUTES: TEAMS
 // ============================================================================
@@ -689,6 +820,173 @@ app.get("/api/teams/:teamName/roster",
       console.error("Error fetching roster:", error);
       return c.json(errorResponse(
         "Failed to fetch roster",
+        "QUERY_ERROR"
+      ), 500);
+    }
+  }
+);
+
+// ============================================================================
+// ROUTES: TRENDING
+// ============================================================================
+
+// GET /api/trending - Get players with biggest recent rating changes
+app.get("/api/trending",
+  authMiddleware,
+  zValidator("query", z.object({
+    teamType: z.enum(["curr", "class", "allt"]).optional(),
+    days: z.coerce.number().min(1).max(90).default(7),
+    limit: z.coerce.number().min(1).max(50).default(20),
+  })),
+  async (c) => {
+    try {
+      const { teamType, days, limit } = c.req.valid("query");
+
+      const trendingArgs: any = { days, limit };
+      if (teamType) trendingArgs.teamType = teamType;
+
+      const trending = await c.env.runQuery(api.playerHistory.getTopRatingChanges, trendingArgs);
+
+      c.header("Cache-Control", "public, max-age=300");
+
+      return c.json(successResponse(trending, {
+        count: trending.length,
+        days,
+        teamType: teamType || "all",
+      }));
+    } catch (error: any) {
+      console.error("Error fetching trending players:", error);
+      return c.json(errorResponse(
+        "Failed to fetch trending players",
+        "QUERY_ERROR"
+      ), 500);
+    }
+  }
+);
+
+// ============================================================================
+// ROUTES: BADGES
+// ============================================================================
+
+// GET /api/badges - List all badges
+app.get("/api/badges",
+  authMiddleware,
+  zValidator("query", z.object({
+    category: z.string().optional(),
+    gameVersion: z.string().optional(),
+  })),
+  async (c) => {
+    try {
+      const { category, gameVersion } = c.req.valid("query");
+
+      const badgeArgs: any = {};
+      if (category) badgeArgs.category = category;
+      if (gameVersion) badgeArgs.gameVersion = gameVersion;
+
+      const badges = await c.env.runQuery(api.badges.getAllBadges, badgeArgs);
+
+      c.header("Cache-Control", "public, max-age=3600");
+
+      return c.json(successResponse(badges, {
+        count: badges.length,
+      }));
+    } catch (error: any) {
+      console.error("Error fetching badges:", error);
+      return c.json(errorResponse(
+        "Failed to fetch badges",
+        "QUERY_ERROR"
+      ), 500);
+    }
+  }
+);
+
+// GET /api/badges/categories - Get badge categories with counts
+app.get("/api/badges/categories",
+  authMiddleware,
+  async (c) => {
+    try {
+      const categories = await c.env.runQuery(api.badges.getBadgeCategories, {});
+
+      c.header("Cache-Control", "public, max-age=3600");
+
+      return c.json(successResponse(categories, {
+        count: categories.length,
+      }));
+    } catch (error: any) {
+      console.error("Error fetching badge categories:", error);
+      return c.json(errorResponse(
+        "Failed to fetch badge categories",
+        "QUERY_ERROR"
+      ), 500);
+    }
+  }
+);
+
+// GET /api/badges/:slug - Get badge by slug
+app.get("/api/badges/:slug",
+  authMiddleware,
+  async (c) => {
+    try {
+      const slug = c.req.param("slug");
+
+      // Check if this is actually a path like "categories" that should be handled elsewhere
+      if (slug === "categories") {
+        // This shouldn't happen due to route ordering, but just in case
+        const categories = await c.env.runQuery(api.badges.getBadgeCategories, {});
+        return c.json(successResponse(categories));
+      }
+
+      const badge = await c.env.runQuery(api.badges.getBadgeBySlug, { slug });
+
+      if (!badge) {
+        return c.json(errorResponse(
+          "Badge not found",
+          "BADGE_NOT_FOUND",
+          { slug }
+        ), 404);
+      }
+
+      c.header("Cache-Control", "public, max-age=3600");
+
+      return c.json(successResponse(badge));
+    } catch (error: any) {
+      console.error("Error fetching badge:", error);
+      return c.json(errorResponse(
+        "Failed to fetch badge",
+        "QUERY_ERROR"
+      ), 500);
+    }
+  }
+);
+
+// GET /api/badges/:slug/players - Get players with a specific badge
+app.get("/api/badges/:slug/players",
+  authMiddleware,
+  zValidator("query", z.object({
+    tier: z.string().optional(),
+    limit: z.coerce.number().min(1).max(100).default(50),
+  })),
+  async (c) => {
+    try {
+      const slug = c.req.param("slug");
+      const { tier, limit } = c.req.valid("query");
+
+      const playersArgs: any = { badgeSlug: slug, limit };
+      if (tier) playersArgs.tier = tier;
+
+      const players = await c.env.runQuery(api.badges.getPlayersWithBadge, playersArgs);
+
+      c.header("Cache-Control", "public, max-age=1800");
+
+      return c.json(successResponse(players, {
+        badge: slug,
+        tier: tier || "all",
+        count: players.length,
+      }));
+    } catch (error: any) {
+      console.error("Error fetching players with badge:", error);
+      return c.json(errorResponse(
+        "Failed to fetch players with badge",
         "QUERY_ERROR"
       ), 500);
     }
