@@ -18,6 +18,7 @@ import { ApiKeyDisplay } from "@/components/api-key-display";
 import { AlertCircle, CheckCircle2, Copy, Play, Loader2 } from "lucide-react";
 import { useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
+import { CONVEX_SITE_URL } from "@/lib/constants";
 
 interface RegistrationDialogProps {
   open: boolean;
@@ -42,7 +43,7 @@ export function RegistrationDialog({
 
   const createApiKey = useMutation(api.apiKeys.createApiKey);
 
-  const API_BASE = process.env.NEXT_PUBLIC_CONVEX_URL?.replace(".cloud", ".site") || "https://api.nba2kapi.com";
+  const API_BASE = CONVEX_SITE_URL;
 
   const getCurlCommand = (key: string) =>
     `curl -H "X-API-Key: ${key}" ${API_BASE}/api/players/slug/lebron-james`;

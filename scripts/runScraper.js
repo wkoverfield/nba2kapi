@@ -9,7 +9,9 @@ import { scrapeTeamLinks, scrapeTeamRoster } from '../scraper/teamScraper.js';
 import { scrapePlayerDetails } from '../scraper/playerScraper.js';
 import { initBrowser } from '../scraper/utils.js';
 
-const CONVEX_URL = process.env.CONVEX_URL || "https://polished-bee-946.convex.cloud";
+// IMPORTANT: Scraper uses ConvexHttpClient which requires .convex.cloud domain
+// (NOT .convex.site which is for HTTP actions)
+const CONVEX_URL = process.env.CONVEX_URL || "https://canny-kingfisher-472.convex.cloud";
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
 
 /**

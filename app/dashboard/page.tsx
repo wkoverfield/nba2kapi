@@ -44,7 +44,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
-import { API_KEY_STORAGE_KEY } from "@/lib/constants";
+import { API_KEY_STORAGE_KEY, CONVEX_SITE_URL } from "@/lib/constants";
 import { parseEndpointToDeepLink } from "@/lib/deep-link-parser";
 
 export default function DashboardPage() {
@@ -57,7 +57,7 @@ export default function DashboardPage() {
 
   const regenerateApiKey = useMutation(api.apiKeys.regenerateApiKey);
 
-  const API_BASE = process.env.NEXT_PUBLIC_CONVEX_URL?.replace(".cloud", ".site") || "https://api.nba2kapi.com";
+  const API_BASE = CONVEX_SITE_URL;
 
   const getOnboardingCurlCommand = (key: string) =>
     `curl -H "X-API-Key: ${key}" ${API_BASE}/api/players?minRating=95`;

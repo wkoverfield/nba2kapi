@@ -3,7 +3,8 @@
  * Measures response times for all API endpoints
  */
 
-const API_BASE = process.env.API_BASE_URL || "https://polished-bee-946.convex.site";
+// IMPORTANT: Performance tests use HTTP Actions which require .convex.site domain
+const API_BASE = process.env.NEXT_PUBLIC_CONVEX_SITE_URL || "https://polished-bee-946.convex.site";
 const API_KEY = process.env.TEST_API_KEY;
 
 if (!API_KEY) {
