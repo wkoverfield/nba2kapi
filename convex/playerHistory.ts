@@ -248,8 +248,11 @@ export const adminUpsertPlayerWithHistory = mutation({
     createdAt: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    if (args.adminKey !== process.env.ADMIN_API_KEY) {
-      throw new Error("Unauthorized: Invalid admin key");
+    const envKey = process.env.ADMIN_API_KEY;
+    console.log(`Admin key check: provided=${args.adminKey?.substring(0, 5)}..., env=${envKey?.substring(0, 5)}...`);
+
+    if (args.adminKey !== envKey) {
+      throw new Error(`Unauthorized: Invalid admin key. Provided starts with: ${args.adminKey?.substring(0, 5)}, Expected starts with: ${envKey?.substring(0, 5)}`);
     }
 
     const { adminKey, ...playerData } = args;
