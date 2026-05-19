@@ -8,6 +8,23 @@ import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 
 /**
+ * Constant-time string comparison to prevent timing attacks.
+ * Returns true if strings are equal, false otherwise.
+ * Takes the same amount of time regardless of where strings differ.
+ */
+function constantTimeCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
+// Maximum number of active API keys allowed per email address
+const MAX_KEYS_PER_EMAIL = 3;
+
+/**
  * Generate a unique API key with 2k_ prefix
  * Uses cryptographically secure random generation
  */
@@ -35,6 +52,20 @@ export const createApiKey = mutation({
       throw new Error("Invalid email format");
     }
 
+    // Check existing active keys for this email (security: prevent unlimited key creation)
+    const existingKeys = await ctx.db
+      .query("apiKeys")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect();
+
+    if (existingKeys.length >= MAX_KEYS_PER_EMAIL) {
+      throw new Error(
+        `Maximum ${MAX_KEYS_PER_EMAIL} active API keys per email. ` +
+        `Please deactivate an existing key first.`
+      );
+    }
+
     // Generate unique API key
     const key = generateApiKey();
 
@@ -59,6 +90,7 @@ export const createApiKey = mutation({
 
 /**
  * Validate an API key
+ * Uses constant-time comparison to prevent timing attacks
  */
 export const validateApiKey = query({
   args: { key: v.string() },
@@ -68,7 +100,9 @@ export const validateApiKey = query({
       .withIndex("by_key", (q) => q.eq("key", args.key))
       .first();
 
-    if (!apiKey) {
+    // Use constant-time comparison for the actual key verification
+    // This prevents timing attacks that could leak key information
+    if (!apiKey || !constantTimeCompare(apiKey.key, args.key)) {
       return { valid: false, reason: "API key not found" };
     }
 

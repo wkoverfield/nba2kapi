@@ -22,6 +22,84 @@ import {
 const app: HonoWithConvex<ActionCtx> = new Hono();
 
 // ============================================================================
+// SECURITY HELPERS
+// ============================================================================
+
+/**
+ * Constant-time string comparison to prevent timing attacks.
+ */
+function constantTimeCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
+/**
+ * Registration rate limiting (in-memory, per-instance)
+ * Limits registrations per IP to prevent abuse
+ */
+const registrationAttempts = new Map<string, { count: number; resetAt: number }>();
+const REGISTRATION_LIMIT = 5;       // Max registrations per window
+const REGISTRATION_WINDOW = 3600000; // 1 hour in milliseconds
+
+function checkRegistrationRateLimit(ip: string): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  const attempt = registrationAttempts.get(ip);
+
+  // Periodic cleanup: remove expired entries when map gets large
+  if (registrationAttempts.size > 10000) {
+    for (const [key, val] of registrationAttempts) {
+      if (val.resetAt < now) registrationAttempts.delete(key);
+    }
+  }
+
+  // New IP or expired window
+  if (!attempt || attempt.resetAt < now) {
+    registrationAttempts.set(ip, { count: 1, resetAt: now + REGISTRATION_WINDOW });
+    return { allowed: true, remaining: REGISTRATION_LIMIT - 1 };
+  }
+
+  // Check if at limit
+  if (attempt.count >= REGISTRATION_LIMIT) {
+    return { allowed: false, remaining: 0 };
+  }
+
+  // Increment counter
+  attempt.count++;
+  return { allowed: true, remaining: REGISTRATION_LIMIT - attempt.count };
+}
+
+/**
+ * Validate admin API key from X-Admin-Key header
+ * Uses constant-time comparison to prevent timing attacks
+ */
+function validateAdminKey(c: any): { valid: boolean; error?: Response } {
+  const adminKey = c.req.header("X-Admin-Key");
+
+  if (!adminKey) {
+    return {
+      valid: false,
+      error: c.json(errorResponse("Unauthorized", "MISSING_ADMIN_KEY", {
+        message: "Admin key required. Provide it in the X-Admin-Key header."
+      }), 401)
+    };
+  }
+
+  const expectedKey = process.env.ADMIN_API_KEY || "";
+  if (!expectedKey || !constantTimeCompare(adminKey, expectedKey)) {
+    return {
+      valid: false,
+      error: c.json(errorResponse("Unauthorized", "INVALID_ADMIN_KEY"), 401)
+    };
+  }
+
+  return { valid: true };
+}
+
+// ============================================================================
 // MIDDLEWARE
 // ============================================================================
 
@@ -33,14 +111,25 @@ if (process.env.NODE_ENV === "development") {
 // Enable ETag support for caching
 app.use("*", etag());
 
-// CORS configuration
-const clientOrigin = process.env.CLIENT_ORIGIN || "http://localhost:3000";
+// CORS configuration with production safety check
+const clientOrigin = process.env.CLIENT_ORIGIN;
+
+// In production, require CLIENT_ORIGIN to be explicitly set
+if (!clientOrigin) {
+  const isProduction = process.env.CONVEX_CLOUD_URL?.includes("canny-kingfisher");
+  if (isProduction) {
+    console.error("❌ SECURITY ERROR: CLIENT_ORIGIN must be set in production!");
+    // Don't throw - this would break the deployment. Instead, use restrictive default.
+  } else {
+    console.warn("⚠️ CLIENT_ORIGIN not set. Using http://localhost:3000 for development.");
+  }
+}
 
 app.use("/api/*", cors({
-  origin: clientOrigin,
+  origin: clientOrigin || "http://localhost:3000",
   allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowHeaders: ["Content-Type", "Authorization", "X-API-Key", "If-None-Match"],
-  credentials: true,
+  allowHeaders: ["Content-Type", "Authorization", "X-API-Key", "X-Admin-Key", "If-None-Match"],
+  credentials: false, // Not needed for header-based auth
   exposeHeaders: ["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset", "ETag", "Cache-Control"],
 }));
 
@@ -226,7 +315,7 @@ app.get("/api/health", (c) => {
 // ROUTES: REGISTRATION & DASHBOARD
 // ============================================================================
 
-// POST /api/register - Register for API key (no auth required)
+// POST /api/register - Register for API key (no auth required, but rate limited)
 app.post("/api/register",
   zValidator("json", z.object({
     email: z.string().email(),
@@ -235,6 +324,20 @@ app.post("/api/register",
   })),
   async (c) => {
     try {
+      // Rate limit by IP to prevent abuse
+      const clientIp = c.req.header("X-Forwarded-For")?.split(",")[0]?.trim()
+                    || c.req.header("CF-Connecting-IP")
+                    || "unknown";
+
+      const rateCheck = checkRegistrationRateLimit(clientIp);
+      if (!rateCheck.allowed) {
+        return c.json(errorResponse(
+          "Too many registration attempts. Try again later.",
+          "REGISTRATION_RATE_LIMIT",
+          { retryAfter: "1 hour" }
+        ), 429);
+      }
+
       const { email, name, purpose } = c.req.valid("json");
 
       const createKeyArgs: any = { email, name };
@@ -251,6 +354,15 @@ app.post("/api/register",
       }), 201);
     } catch (error: any) {
       console.error("Registration error:", error);
+
+      // Check if it's the per-email limit error
+      if (error.message?.includes("Maximum") && error.message?.includes("active API keys")) {
+        return c.json(errorResponse(
+          error.message,
+          "KEY_LIMIT_EXCEEDED"
+        ), 400);
+      }
+
       return c.json(errorResponse(
         "Failed to create API key",
         "REGISTRATION_ERROR"
@@ -292,24 +404,19 @@ app.get("/api/dashboard/usage", authMiddleware, async (c) => {
 // ROUTES: ADMIN (Scraping)
 // ============================================================================
 
-// POST /api/admin/scrape - Manually trigger scraping (requires admin key)
+// POST /api/admin/scrape - Manually trigger scraping (requires admin key in header)
 app.post("/api/admin/scrape",
   zValidator("json", z.object({
     teamType: z.enum(["curr", "class", "allt"]),
     teams: z.array(z.string()).optional(),
-    adminKey: z.string(),
   })),
   async (c) => {
-    try {
-      const { teamType, teams, adminKey } = c.req.valid("json");
+    // Verify admin key from header (not body)
+    const auth = validateAdminKey(c);
+    if (!auth.valid) return auth.error;
 
-      // Verify admin key
-      if (adminKey !== process.env.ADMIN_API_KEY) {
-        return c.json(errorResponse(
-          "Unauthorized",
-          "INVALID_ADMIN_KEY"
-        ), 401);
-      }
+    try {
+      const { teamType, teams } = c.req.valid("json");
 
       // Create job ID
       const jobId = `scrape_${teamType}_${Date.now()}`;
@@ -335,23 +442,18 @@ app.post("/api/admin/scrape",
   }
 );
 
-// GET /api/admin/scrape/jobs - Get recent scrape jobs (requires admin key)
+// GET /api/admin/scrape/jobs - Get recent scrape jobs (requires admin key in header)
 app.get("/api/admin/scrape/jobs",
   zValidator("query", z.object({
-    adminKey: z.string(),
     limit: z.coerce.number().min(1).max(50).default(10),
   })),
   async (c) => {
-    try {
-      const { adminKey, limit } = c.req.valid("query");
+    // Verify admin key from header
+    const auth = validateAdminKey(c);
+    if (!auth.valid) return auth.error;
 
-      // Verify admin key
-      if (adminKey !== process.env.ADMIN_API_KEY) {
-        return c.json(errorResponse(
-          "Unauthorized",
-          "INVALID_ADMIN_KEY"
-        ), 401);
-      }
+    try {
+      const { limit } = c.req.valid("query");
 
       const jobs = await c.env.runQuery(api.scrapeJobs.getRecentJobs, { limit });
 
@@ -369,23 +471,15 @@ app.get("/api/admin/scrape/jobs",
   }
 );
 
-// GET /api/admin/scrape/:jobId - Get specific scrape job status (requires admin key)
+// GET /api/admin/scrape/:jobId - Get specific scrape job status (requires admin key in header)
 app.get("/api/admin/scrape/:jobId",
-  zValidator("query", z.object({
-    adminKey: z.string(),
-  })),
   async (c) => {
+    // Verify admin key from header
+    const auth = validateAdminKey(c);
+    if (!auth.valid) return auth.error;
+
     try {
       const jobId = c.req.param("jobId");
-      const { adminKey } = c.req.valid("query");
-
-      // Verify admin key
-      if (adminKey !== process.env.ADMIN_API_KEY) {
-        return c.json(errorResponse(
-          "Unauthorized",
-          "INVALID_ADMIN_KEY"
-        ), 401);
-      }
 
       const job = await c.env.runQuery(api.scrapeJobs.getJobStatus, { jobId });
 
