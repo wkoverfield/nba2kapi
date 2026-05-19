@@ -134,7 +134,7 @@ export const PLAYER_SELECTORS = {
  */
 export const SCRAPER_OPTIONS = {
   // Browser options - headless in CI, headed locally for bot detection avoidance
-  headless: process.env.CI === 'true' || process.env.HEADLESS === 'true'
+  headless: process.env.CI === 'true' || process.env.HEADLESS === 'true',
 
   // Navigation options
   waitUntil: 'domcontentloaded',
