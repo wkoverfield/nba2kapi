@@ -110,8 +110,15 @@ async function runScraper(options = {}) {
               playersScraped++;
 
             } catch (error) {
+              // Log full error details for debugging
               const errorMsg = `Error scraping player ${basicPlayer.name}: ${error.message}`;
               console.error(errorMsg);
+              if (error.data) {
+                console.error('Error data:', JSON.stringify(error.data, null, 2));
+              }
+              if (error.cause) {
+                console.error('Error cause:', error.cause);
+              }
               errors.push(errorMsg);
             }
           }
