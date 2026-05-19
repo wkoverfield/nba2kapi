@@ -11,13 +11,18 @@ import { Id } from "./_generated/dataModel";
  * Constant-time string comparison to prevent timing attacks.
  * Returns true if strings are equal, false otherwise.
  * Takes the same amount of time regardless of where strings differ.
+ * IMPORTANT: No early return on length mismatch - that would leak length info.
  */
 function constantTimeCompare(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  const maxLen = Math.max(a.length, b.length);
+  let result = a.length ^ b.length; // Length difference contributes to result
+
+  for (let i = 0; i < maxLen; i++) {
+    const aChar = i < a.length ? a.charCodeAt(i) : 0;
+    const bChar = i < b.length ? b.charCodeAt(i) : 0;
+    result |= aChar ^ bChar;
   }
+
   return result === 0;
 }
 
@@ -26,18 +31,35 @@ const MAX_KEYS_PER_EMAIL = 3;
 
 /**
  * Generate a unique API key with 2k_ prefix
- * Uses cryptographically secure random generation
+ * Uses cryptographically secure random generation with rejection sampling
+ * to avoid modulo bias (256 % 36 != 0 would cause uneven distribution)
  */
 function generateApiKey(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  const randomPart = Array.from(array, (byte) => chars[byte % chars.length]).join('');
-  return `2k_${randomPart}`;
+  const charLen = chars.length; // 36
+  const maxValid = Math.floor(256 / charLen) * charLen; // 252 - largest multiple of 36 <= 255
+
+  const result: string[] = [];
+
+  // Use rejection sampling to avoid modulo bias
+  while (result.length < 32) {
+    const array = new Uint8Array(32 - result.length);
+    crypto.getRandomValues(array);
+
+    for (const byte of array) {
+      // Reject values >= 252 to ensure uniform distribution
+      if (byte < maxValid && result.length < 32) {
+        result.push(chars[byte % charLen]);
+      }
+    }
+  }
+
+  return `2k_${result.join('')}`;
 }
 
 /**
  * Create a new API key
+ * Uses optimistic concurrency control to handle race conditions
  */
 export const createApiKey = mutation({
   args: {
@@ -52,7 +74,7 @@ export const createApiKey = mutation({
       throw new Error("Invalid email format");
     }
 
-    // Check existing active keys for this email (security: prevent unlimited key creation)
+    // Check existing active keys for this email (may be stale due to race conditions)
     const existingKeys = await ctx.db
       .query("apiKeys")
       .withIndex("by_email", (q) => q.eq("email", args.email))
@@ -79,6 +101,24 @@ export const createApiKey = mutation({
       isActive: true,
       createdAt: new Date().toISOString(),
     });
+
+    // Re-check after insert to handle race conditions (optimistic concurrency)
+    // If two requests came in simultaneously, both passed the initial check,
+    // but now we can see the true count after both inserts
+    const finalCount = await ctx.db
+      .query("apiKeys")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect();
+
+    if (finalCount.length > MAX_KEYS_PER_EMAIL) {
+      // Race condition occurred - rollback by deleting our insert
+      await ctx.db.delete(apiKeyId);
+      throw new Error(
+        `Maximum ${MAX_KEYS_PER_EMAIL} active API keys per email. ` +
+        `Please deactivate an existing key first.`
+      );
+    }
 
     return {
       apiKey: key,
@@ -333,5 +373,49 @@ export const getApiKeyStats = query({
         timestamp: log.timestamp,
       })),
     };
+  },
+});
+
+/**
+ * Check registration rate limit (database-backed for serverless compatibility)
+ * Limits API key registrations per IP address to prevent abuse
+ */
+export const checkRegistrationRateLimit = mutation({
+  args: { ip: v.string() },
+  handler: async (ctx, args) => {
+    const LIMIT = 5; // Max registrations per window
+    const WINDOW_MS = 3600000; // 1 hour in milliseconds
+    const now = Date.now();
+
+    // Look up existing record for this IP
+    const existing = await ctx.db
+      .query("registrationAttempts")
+      .withIndex("by_ip", (q) => q.eq("ip", args.ip))
+      .first();
+
+    // No record or expired window - start fresh
+    if (!existing || (now - existing.windowStart) > WINDOW_MS) {
+      if (existing) {
+        // Reset existing record
+        await ctx.db.patch(existing._id, { count: 1, windowStart: now });
+      } else {
+        // Create new record
+        await ctx.db.insert("registrationAttempts", {
+          ip: args.ip,
+          count: 1,
+          windowStart: now,
+        });
+      }
+      return { allowed: true, remaining: LIMIT - 1 };
+    }
+
+    // Within window - check if at limit
+    if (existing.count >= LIMIT) {
+      return { allowed: false, remaining: 0 };
+    }
+
+    // Increment counter
+    await ctx.db.patch(existing._id, { count: existing.count + 1 });
+    return { allowed: true, remaining: LIMIT - existing.count - 1 };
   },
 });

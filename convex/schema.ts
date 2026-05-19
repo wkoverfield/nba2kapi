@@ -299,4 +299,15 @@ export default defineSchema({
     .index("by_playerId", ["playerId"])
     .index("by_badgeId", ["badgeId"])
     .index("by_playerId_and_badgeId", ["playerId", "badgeId"]),
+
+  /**
+   * Registration Attempts - rate limiting for API key registration
+   * Database-backed to work correctly across serverless instances
+   */
+  registrationAttempts: defineTable({
+    ip: v.string(), // Client IP address
+    count: v.number(), // Number of attempts in current window
+    windowStart: v.number(), // Unix timestamp (ms) when window started
+  })
+    .index("by_ip", ["ip"]),
 });

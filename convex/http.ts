@@ -27,57 +27,38 @@ const app: HonoWithConvex<ActionCtx> = new Hono();
 
 /**
  * Constant-time string comparison to prevent timing attacks.
+ * IMPORTANT: No early return on length mismatch - that would leak length info.
  */
 function constantTimeCompare(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  const maxLen = Math.max(a.length, b.length);
+  let result = a.length ^ b.length; // Length difference contributes to result
+
+  for (let i = 0; i < maxLen; i++) {
+    const aChar = i < a.length ? a.charCodeAt(i) : 0;
+    const bChar = i < b.length ? b.charCodeAt(i) : 0;
+    result |= aChar ^ bChar;
   }
+
   return result === 0;
-}
-
-/**
- * Registration rate limiting (in-memory, per-instance)
- * Limits registrations per IP to prevent abuse
- */
-const registrationAttempts = new Map<string, { count: number; resetAt: number }>();
-const REGISTRATION_LIMIT = 5;       // Max registrations per window
-const REGISTRATION_WINDOW = 3600000; // 1 hour in milliseconds
-
-function checkRegistrationRateLimit(ip: string): { allowed: boolean; remaining: number } {
-  const now = Date.now();
-  const attempt = registrationAttempts.get(ip);
-
-  // Periodic cleanup: remove expired entries when map gets large
-  if (registrationAttempts.size > 10000) {
-    for (const [key, val] of registrationAttempts) {
-      if (val.resetAt < now) registrationAttempts.delete(key);
-    }
-  }
-
-  // New IP or expired window
-  if (!attempt || attempt.resetAt < now) {
-    registrationAttempts.set(ip, { count: 1, resetAt: now + REGISTRATION_WINDOW });
-    return { allowed: true, remaining: REGISTRATION_LIMIT - 1 };
-  }
-
-  // Check if at limit
-  if (attempt.count >= REGISTRATION_LIMIT) {
-    return { allowed: false, remaining: 0 };
-  }
-
-  // Increment counter
-  attempt.count++;
-  return { allowed: true, remaining: REGISTRATION_LIMIT - attempt.count };
 }
 
 /**
  * Validate admin API key from X-Admin-Key header
  * Uses constant-time comparison to prevent timing attacks
+ * SECURITY: Fails if ADMIN_API_KEY is not properly configured
  */
 function validateAdminKey(c: any): { valid: boolean; error?: Response } {
   const adminKey = c.req.header("X-Admin-Key");
+  const expectedKey = process.env.ADMIN_API_KEY;
+
+  // CRITICAL: Fail if admin key not properly configured
+  if (!expectedKey || expectedKey.length < 32) {
+    console.error("❌ ADMIN_API_KEY not configured or too short (min 32 chars)!");
+    return {
+      valid: false,
+      error: c.json(errorResponse("Service misconfigured", "SERVER_ERROR"), 503)
+    };
+  }
 
   if (!adminKey) {
     return {
@@ -88,8 +69,7 @@ function validateAdminKey(c: any): { valid: boolean; error?: Response } {
     };
   }
 
-  const expectedKey = process.env.ADMIN_API_KEY || "";
-  if (!expectedKey || !constantTimeCompare(adminKey, expectedKey)) {
+  if (!constantTimeCompare(adminKey, expectedKey)) {
     return {
       valid: false,
       error: c.json(errorResponse("Unauthorized", "INVALID_ADMIN_KEY"), 401)
@@ -114,9 +94,12 @@ app.use("*", etag());
 // CORS configuration with production safety check
 const clientOrigin = process.env.CLIENT_ORIGIN;
 
+// Detect production using Convex deployment pattern (more reliable than hardcoded names)
+const isProduction = process.env.CONVEX_DEPLOYMENT?.startsWith("prod:") ||
+                     process.env.NODE_ENV === "production";
+
 // In production, require CLIENT_ORIGIN to be explicitly set
 if (!clientOrigin) {
-  const isProduction = process.env.CONVEX_CLOUD_URL?.includes("canny-kingfisher");
   if (isProduction) {
     console.error("❌ SECURITY ERROR: CLIENT_ORIGIN must be set in production!");
     // Don't throw - this would break the deployment. Instead, use restrictive default.
@@ -126,7 +109,8 @@ if (!clientOrigin) {
 }
 
 app.use("/api/*", cors({
-  origin: clientOrigin || "http://localhost:3000",
+  // In production without CLIENT_ORIGIN, use empty string (blocks all CORS requests)
+  origin: clientOrigin || (isProduction ? "" : "http://localhost:3000"),
   allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowHeaders: ["Content-Type", "Authorization", "X-API-Key", "X-Admin-Key", "If-None-Match"],
   credentials: false, // Not needed for header-based auth
@@ -324,17 +308,19 @@ app.post("/api/register",
   })),
   async (c) => {
     try {
-      // Rate limit by IP to prevent abuse
+      // Rate limit by IP to prevent abuse (database-backed for serverless compatibility)
       const clientIp = c.req.header("X-Forwarded-For")?.split(",")[0]?.trim()
                     || c.req.header("CF-Connecting-IP")
                     || "unknown";
 
-      const rateCheck = checkRegistrationRateLimit(clientIp);
+      const rateCheck = await c.env.runMutation(api.apiKeys.checkRegistrationRateLimit, {
+        ip: clientIp,
+      });
       if (!rateCheck.allowed) {
         return c.json(errorResponse(
           "Too many registration attempts. Try again later.",
           "REGISTRATION_RATE_LIMIT",
-          { retryAfter: "1 hour" }
+          { retryAfter: "1 hour", remaining: rateCheck.remaining }
         ), 429);
       }
 
