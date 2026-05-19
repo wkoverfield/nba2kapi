@@ -133,8 +133,8 @@ export const PLAYER_SELECTORS = {
  * Scraping options
  */
 export const SCRAPER_OPTIONS = {
-  // Browser options
-  headless: false, // Keep false to avoid bot detection
+  // Browser options - headless in CI, headed locally for bot detection avoidance
+  headless: process.env.CI === 'true' || process.env.HEADLESS === 'true'
 
   // Navigation options
   waitUntil: 'domcontentloaded',
