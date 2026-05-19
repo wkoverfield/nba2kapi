@@ -52,6 +52,8 @@ export default defineSchema({
             name: v.string(),
             tier: v.string(),
             category: v.optional(v.string()),
+            description: v.optional(v.string()),
+            imageUrl: v.optional(v.string()),
           })
         )),
       })
