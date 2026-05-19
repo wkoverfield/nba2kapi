@@ -40,6 +40,11 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install chromium
 
+      - name: Generate Convex client
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+        run: npx convex codegen
+
       - name: Run scraper (current teams)
         if: github.event_name == 'schedule' || github.event.inputs.team_type == 'curr'
         env:
