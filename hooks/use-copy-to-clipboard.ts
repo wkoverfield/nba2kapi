@@ -25,8 +25,7 @@ export function useCopyToClipboard(): UseCopyToClipboardReturn {
       }, 2000);
 
       return true;
-    } catch (error) {
-      console.warn("Copy failed", error);
+    } catch {
       setIsCopied(false);
       return false;
     }

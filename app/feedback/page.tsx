@@ -76,8 +76,8 @@ export default function FeedbackPage() {
       setDescription("");
       setAuthorName("");
       setType("feature");
-    } catch (error) {
-      console.error("Failed to submit feedback:", error);
+    } catch {
+      // Error logged server-side, generic message for users
     }
     setIsSubmitting(false);
   };
@@ -89,8 +89,8 @@ export default function FeedbackPage() {
       } else {
         await upvoteFeedback({ feedbackId, visitorId });
       }
-    } catch (error) {
-      console.error("Failed to vote:", error);
+    } catch {
+      // Error logged server-side, generic message for users
     }
   };
 

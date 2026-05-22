@@ -65,7 +65,7 @@ export function ShareLineupModal({
         }
       });
     } catch (error) {
-      console.error("Failed to generate image:", error);
+      // Error handled via toast
       toast.error("Failed to generate image");
     } finally {
       setIsGenerating(false);
@@ -97,7 +97,7 @@ export function ShareLineupModal({
         }
       });
     } catch (error) {
-      console.error("Failed to generate image:", error);
+      // Error handled via toast
       toast.error("Failed to generate image");
     } finally {
       setIsGenerating(false);
