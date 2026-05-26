@@ -6,7 +6,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
-import { etag } from "hono/etag";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { HonoWithConvex, HttpRouterWithHono } from "convex-helpers/server/hono";
@@ -88,8 +87,97 @@ if (process.env.NODE_ENV === "development") {
   app.use("*", logger());
 }
 
-// Enable ETag support for caching
-app.use("*", etag());
+// ============================================================================
+// ETAG / CONDITIONAL GET (custom — replaces hono/etag)
+// ============================================================================
+//
+// Why custom instead of hono/etag:
+// Cloudflare (which sits in front of api.nba2kapi.com) appends a transport
+// encoding suffix like `-gzip` to ETag values when it compresses responses,
+// and the mutated tag is what clients hold onto and send back as
+// If-None-Match. hono/etag does byte-equal comparison after stripping only
+// `W/`, so a client-echoed `W/"abc-gzip"` never matches a server-computed
+// `W/"abc"` and the conditional GET silently degrades to a full 200. The
+// browser-visible effect is that 304s never happen and every page view
+// re-downloads the full payload.
+//
+// This middleware:
+//   - computes ETag from the response body (SHA-1, same as hono/etag)
+//   - normalizes BOTH the incoming If-None-Match and the server tag before
+//     comparison: strips `W/`, surrounding quotes, and any
+//     `-(gzip|br|deflate|zstd)` suffix added by upstream proxies
+//   - supports `*` and comma-separated lists (RFC 7232)
+//   - preserves all original response headers on the 304 (critically: CORS
+//     headers; browsers enforce CORS on every response including 304)
+
+async function sha1Hex(text: string): Promise<string> {
+  const data = new TextEncoder().encode(text);
+  const buf = await crypto.subtle.digest("SHA-1", data);
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function normalizeEtag(tag: string): string {
+  let t = tag.trim();
+  if (t.startsWith("W/")) t = t.slice(2);
+  if (t.length >= 2 && t.startsWith('"') && t.endsWith('"')) {
+    t = t.slice(1, -1);
+  }
+  return t.replace(/-(gzip|br|deflate|zstd)$/i, "");
+}
+
+function ifNoneMatchSatisfied(
+  ifNoneMatch: string | null | undefined,
+  etag: string,
+): boolean {
+  if (!ifNoneMatch) return false;
+  const trimmed = ifNoneMatch.trim();
+  if (trimmed === "*") return true;
+  const normalizedEtag = normalizeEtag(etag);
+  return trimmed
+    .split(",")
+    .some((candidate) => normalizeEtag(candidate) === normalizedEtag);
+}
+
+async function smartEtagMiddleware(c: any, next: any) {
+  await next();
+
+  const method = c.req.method;
+  if (method !== "GET" && method !== "HEAD") return;
+
+  const res = c.res as Response | undefined;
+  if (!res || res.status !== 200) return;
+
+  let bodyText: string;
+  try {
+    bodyText = await res.clone().text();
+  } catch {
+    return; // streaming or non-text body — skip
+  }
+  if (!bodyText) return;
+
+  const etag = `W/"${await sha1Hex(bodyText)}"`;
+
+  if (ifNoneMatchSatisfied(c.req.header("If-None-Match"), etag)) {
+    // 304 must keep CORS / Cache-Control / X-RateLimit-* headers so the
+    // browser doesn't surface a CORS error in place of a successful revalidate.
+    const headers = new Headers(res.headers);
+    headers.set("ETag", etag);
+    headers.delete("Content-Length");
+    headers.delete("Content-Encoding");
+    headers.delete("Content-Type");
+    c.res = new Response(null, { status: 304, headers });
+    return;
+  }
+
+  // Attach ETag to the outgoing 200 and forward the body unchanged.
+  const headers = new Headers(res.headers);
+  headers.set("ETag", etag);
+  c.res = new Response(bodyText, { status: res.status, headers });
+}
+
+app.use("*", smartEtagMiddleware);
 
 // CORS configuration: allowlist of origins permitted to call the API from browsers.
 //
