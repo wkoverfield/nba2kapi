@@ -152,6 +152,26 @@ X-API-Key: your_api_key_here
 
 ### Endpoints
 
+#### GET /api/public/players
+
+Public, **unauthenticated** read-only player list. Same shape as `/api/players` but
+no API key required — intended for browser apps that can't safely embed a key
+(extracting an API key from client-side JS is trivial).
+
+- **Auth:** none
+- **Rate limit:** 60 requests/minute per IP (separate from API-key limits)
+- **CORS:** enabled for allowlisted browser origins
+- **Cache:** 1 hour (`Cache-Control: public, max-age=3600`), supports `ETag` / `If-None-Match` → 304
+- **Query params:** identical to `/api/players` (`teamType`, `team`, `minRating`, `maxRating`, `position`, `cursor`, `limit`)
+
+**Example:**
+```bash
+curl 'https://api.nba2kapi.com/api/public/players?teamType=curr&minRating=80&maxRating=99&limit=100'
+```
+
+If you need higher limits, per-key analytics, or write endpoints, get a free API
+key at https://nba2kapi.com and use the authenticated `/api/players` route instead.
+
 #### GET /api/players
 
 Get all players with optional filters.

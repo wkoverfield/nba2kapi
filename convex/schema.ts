@@ -310,4 +310,15 @@ export default defineSchema({
     windowStart: v.number(), // Unix timestamp (ms) when window started
   })
     .index("by_ip", ["ip"]),
+
+  /**
+   * Public API Rate Limits - per-IP rate limiting for unauthenticated /api/public/* routes
+   * Window: 60 seconds. Limit set in convex/apiKeys.ts (checkPublicApiRateLimit).
+   */
+  publicApiRateLimits: defineTable({
+    ip: v.string(), // Client IP address
+    count: v.number(), // Number of requests in current window
+    windowStart: v.number(), // Unix timestamp (ms) when window started
+  })
+    .index("by_ip", ["ip"]),
 });

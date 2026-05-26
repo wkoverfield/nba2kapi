@@ -91,31 +91,97 @@ if (process.env.NODE_ENV === "development") {
 // Enable ETag support for caching
 app.use("*", etag());
 
-// CORS configuration with production safety check
-const clientOrigin = process.env.CLIENT_ORIGIN;
+// CORS configuration: allowlist of origins permitted to call the API from browsers.
+//
+// Default allowlist always includes the production frontend and local dev. Additional
+// origins can be added via the CORS_ALLOWED_ORIGINS env var (comma-separated). The
+// legacy CLIENT_ORIGIN env var is still honored as a single additional entry so we
+// don't break existing prod config.
+//
+// `origin: (originHeader) => string | null` echoes the request Origin back as
+// Access-Control-Allow-Origin when it matches the allowlist, on both preflight
+// (OPTIONS) and actual responses. Returning null suppresses the header (browser
+// blocks the response). `credentials: false` so wildcard subdomains aren't needed.
+const DEFAULT_ALLOWED_ORIGINS = [
+  "https://nba2kapi.com",
+  "https://www.nba2kapi.com",
+  "https://blacktopblitz.com",
+  "https://www.blacktopblitz.com",
+  "http://localhost:3000",
+  "http://localhost:3001",
+];
 
-// Detect production using Convex deployment pattern (more reliable than hardcoded names)
-const isProduction = process.env.CONVEX_DEPLOYMENT?.startsWith("prod:") ||
-                     process.env.NODE_ENV === "production";
+const extraOrigins = (process.env.CORS_ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
 
-// In production, require CLIENT_ORIGIN to be explicitly set
-if (!clientOrigin) {
-  if (isProduction) {
-    console.error("❌ SECURITY ERROR: CLIENT_ORIGIN must be set in production!");
-    // Don't throw - this would break the deployment. Instead, use restrictive default.
-  } else {
-    console.warn("⚠️ CLIENT_ORIGIN not set. Using http://localhost:3000 for development.");
-  }
-}
+const legacyClientOrigin = process.env.CLIENT_ORIGIN?.trim();
+
+const ALLOWED_ORIGINS = new Set<string>([
+  ...DEFAULT_ALLOWED_ORIGINS,
+  ...extraOrigins,
+  ...(legacyClientOrigin ? [legacyClientOrigin] : []),
+]);
 
 app.use("/api/*", cors({
-  // In production without CLIENT_ORIGIN, use empty string (blocks all CORS requests)
-  origin: clientOrigin || (isProduction ? "" : "http://localhost:3000"),
+  origin: (originHeader) => {
+    if (!originHeader) return null; // non-browser request (curl, server-to-server)
+    return ALLOWED_ORIGINS.has(originHeader) ? originHeader : null;
+  },
   allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowHeaders: ["Content-Type", "Authorization", "X-API-Key", "X-Admin-Key", "If-None-Match"],
   credentials: false, // Not needed for header-based auth
   exposeHeaders: ["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset", "ETag", "Cache-Control"],
+  maxAge: 86400, // Cache preflight for 24h
 }));
+
+/**
+ * Extract the client's real IP from request headers.
+ * Cloudflare sets CF-Connecting-IP; standard proxies set X-Forwarded-For.
+ */
+function getClientIp(c: any): string {
+  return (
+    c.req.header("CF-Connecting-IP") ||
+    c.req.header("X-Forwarded-For")?.split(",")[0]?.trim() ||
+    c.req.header("X-Real-IP") ||
+    "unknown"
+  );
+}
+
+/**
+ * IP-based rate-limit middleware for unauthenticated public endpoints.
+ * Sets standard X-RateLimit-* headers and returns 429 when exceeded.
+ * 60 requests / minute / IP — see checkPublicApiRateLimit in apiKeys.ts.
+ */
+async function publicIpRateLimitMiddleware(c: any, next: any) {
+  const ip = getClientIp(c);
+  const result = await c.env.runMutation(api.apiKeys.checkPublicApiRateLimit, { ip });
+
+  c.header("X-RateLimit-Limit", result.limit.toString());
+  c.header("X-RateLimit-Remaining", result.remaining.toString());
+  c.header("X-RateLimit-Reset", result.resetAt);
+
+  if (!result.allowed) {
+    const retryAfter = Math.max(
+      1,
+      Math.ceil((new Date(result.resetAt).getTime() - Date.now()) / 1000),
+    );
+    c.header("Retry-After", retryAfter.toString());
+    return c.json(errorResponse(
+      "Rate limit exceeded for public API",
+      "RATE_LIMIT_EXCEEDED",
+      {
+        limit: result.limit,
+        reset: result.resetAt,
+        retryAfter,
+        message: `Public API limit is ${result.limit} requests/minute per IP. Try again in ${retryAfter}s, or get an API key at https://nba2kapi.com for higher limits.`,
+      },
+    ), 429);
+  }
+
+  await next();
+}
 
 // API Key authentication middleware (apply to protected routes)
 async function authMiddleware(c: any, next: any) {
@@ -211,10 +277,14 @@ async function authMiddleware(c: any, next: any) {
 // ============================================================================
 
 function successResponse<T>(data: T, meta?: any) {
+  // IMPORTANT: do not inject `new Date().toISOString()` into the response body.
+  // The Hono etag() middleware hashes the body; a fresh timestamp per request
+  // would invalidate the ETag every time and defeat If-None-Match / 304 handling.
+  // Clients that need server time should read the standard HTTP `Date` header.
   return {
     success: true,
     data,
-    ...(meta && { meta: { ...meta, timestamp: new Date().toISOString() } }),
+    ...(meta && { meta }),
   };
 }
 
@@ -309,9 +379,7 @@ app.post("/api/register",
   async (c) => {
     try {
       // Rate limit by IP to prevent abuse (database-backed for serverless compatibility)
-      const clientIp = c.req.header("X-Forwarded-For")?.split(",")[0]?.trim()
-                    || c.req.header("CF-Connecting-IP")
-                    || "unknown";
+      const clientIp = getClientIp(c);
 
       const rateCheck = await c.env.runMutation(api.apiKeys.checkRegistrationRateLimit, {
         ip: clientIp,
@@ -552,6 +620,68 @@ app.get("/api/players",
       }));
     } catch (error: any) {
       console.error("Error fetching players:", error);
+      return c.json(errorResponse(
+        "Failed to fetch players",
+        "QUERY_ERROR"
+      ), 500);
+    }
+  }
+);
+
+// GET /api/public/players - Public, unauthenticated read-only player list.
+// Same shape as /api/players (delegates to the same underlying query).
+// Auth: none. Rate limit: 60 req/min/IP. Intended for browser-shipped apps
+// (e.g. blacktopblitz.com) that can't safely embed an API key.
+app.get("/api/public/players",
+  publicIpRateLimitMiddleware,
+  rejectUnknownParams("/api/public/players"),
+  zValidator("query", z.object({
+    teamType: z.enum(["curr", "class", "allt"]).default("curr"),
+    team: z.string().optional(),
+    minRating: z.coerce.number().min(0).max(99).optional(),
+    maxRating: z.coerce.number().min(0).max(99).optional(),
+    position: z.string().optional(),
+    cursor: z.string().optional(),
+    limit: z.coerce.number().min(1).max(100).default(50),
+  })),
+  async (c) => {
+    try {
+      const params = c.req.valid("query");
+
+      let offset = 0;
+      if (params.cursor) {
+        const parsedOffset = parseInt(params.cursor, 10);
+        if (!isNaN(parsedOffset)) offset = parsedOffset;
+      }
+
+      const queryArgs: any = {
+        teamType: params.teamType,
+        sortBy: "overall-desc",
+        limit: params.limit,
+        offset,
+      };
+      if (params.team) queryArgs.teams = [params.team];
+      if (params.minRating !== undefined) queryArgs.minOverall = params.minRating;
+      if (params.maxRating !== undefined) queryArgs.maxOverall = params.maxRating;
+      if (params.position) queryArgs.positions = [params.position];
+
+      const result = await c.env.runQuery(api.players.getAllFiltered, queryArgs);
+      const nextCursor = result.hasMore ? (offset + params.limit).toString() : undefined;
+
+      // Cache aggressively at the edge — player data only changes on bi-weekly scrape.
+      c.header("Cache-Control", "public, max-age=3600, s-maxage=3600");
+
+      return c.json(successResponse(result.players, {
+        pagination: {
+          hasMore: result.hasMore,
+          nextCursor,
+          count: result.players.length,
+          limit: params.limit,
+          total: result.totalCount,
+        },
+      }));
+    } catch (error: any) {
+      console.error("Error fetching public players:", error);
       return c.json(errorResponse(
         "Failed to fetch players",
         "QUERY_ERROR"

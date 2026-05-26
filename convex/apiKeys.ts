@@ -419,3 +419,56 @@ export const checkRegistrationRateLimit = mutation({
     return { allowed: true, remaining: LIMIT - existing.count - 1 };
   },
 });
+
+/**
+ * Per-IP rate limit for unauthenticated public endpoints (e.g. /api/public/players).
+ * Window: 60 seconds. Limit: 60 requests/min/IP.
+ * Returns { allowed, remaining, limit, resetAt } so the caller can set standard
+ * X-RateLimit-* headers regardless of allow/deny.
+ */
+export const checkPublicApiRateLimit = mutation({
+  args: { ip: v.string() },
+  handler: async (ctx, args) => {
+    const LIMIT = 60; // 60 requests per minute per IP
+    const WINDOW_MS = 60_000; // 1 minute
+    const now = Date.now();
+
+    const existing = await ctx.db
+      .query("publicApiRateLimits")
+      .withIndex("by_ip", (q) => q.eq("ip", args.ip))
+      .first();
+
+    // No record or window expired - start fresh
+    if (!existing || (now - existing.windowStart) > WINDOW_MS) {
+      if (existing) {
+        await ctx.db.patch(existing._id, { count: 1, windowStart: now });
+      } else {
+        await ctx.db.insert("publicApiRateLimits", {
+          ip: args.ip,
+          count: 1,
+          windowStart: now,
+        });
+      }
+      return {
+        allowed: true,
+        remaining: LIMIT - 1,
+        limit: LIMIT,
+        resetAt: new Date(now + WINDOW_MS).toISOString(),
+      };
+    }
+
+    const resetAt = new Date(existing.windowStart + WINDOW_MS).toISOString();
+
+    if (existing.count >= LIMIT) {
+      return { allowed: false, remaining: 0, limit: LIMIT, resetAt };
+    }
+
+    await ctx.db.patch(existing._id, { count: existing.count + 1 });
+    return {
+      allowed: true,
+      remaining: LIMIT - existing.count - 1,
+      limit: LIMIT,
+      resetAt,
+    };
+  },
+});
