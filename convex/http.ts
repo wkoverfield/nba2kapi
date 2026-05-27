@@ -584,6 +584,27 @@ app.post("/api/admin/scrape",
   }
 );
 
+// GET /api/admin/stats - Aggregate usage stats (requires admin key in header).
+// Returns API key counts, request volume across rolling windows, top endpoints,
+// top users, public-endpoint IP traffic, and DB size. Intended for ad-hoc curl.
+app.get("/api/admin/stats", async (c) => {
+  const auth = validateAdminKey(c);
+  if (!auth.valid) return auth.error;
+
+  try {
+    const stats = await c.env.runQuery(api.admin.getAdminStats, {});
+    // No caching — stats should reflect current state on every call.
+    c.header("Cache-Control", "no-store");
+    return c.json(successResponse(stats));
+  } catch (error: any) {
+    console.error("Get admin stats error:", error);
+    return c.json(errorResponse(
+      "Failed to fetch admin stats",
+      "QUERY_ERROR"
+    ), 500);
+  }
+});
+
 // GET /api/admin/scrape/jobs - Get recent scrape jobs (requires admin key in header)
 app.get("/api/admin/scrape/jobs",
   zValidator("query", z.object({

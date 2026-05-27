@@ -77,6 +77,10 @@
     "vaul": "^1.1.2",
     "zod": "^4.1.12"
   },
+  "overrides": {
+    "ws": "^8.20.1",
+    "postcss": "^8.5.10"
+  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
