@@ -7,9 +7,41 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { LanguageTabs } from "@/components/language-tabs";
 import { PlayerCard } from "@/components/player-card";
 import { cn } from "@/lib/utils";
-import { Play, Pause, RotateCcw } from "lucide-react";
+import { Play, Pause, RotateCcw, Code2 } from "lucide-react";
+
+const API_BASE = "https://api.nba2kapi.com";
+const API_KEY_PLACEHOLDER = "YOUR_API_KEY";
+
+function buildSnippets(slug: string) {
+  const path = `/api/players/slug/${slug}`;
+  return {
+    curl: `curl '${API_BASE}${path}' \\\n  -H 'X-API-Key: ${API_KEY_PLACEHOLDER}'`,
+    javascript: `const res = await fetch(
+  '${API_BASE}${path}',
+  { headers: { 'X-API-Key': '${API_KEY_PLACEHOLDER}' } }
+);
+const { data } = await res.json();
+console.log(data); // player object`,
+    python: `import requests
+
+res = requests.get(
+    "${API_BASE}${path}",
+    headers={"X-API-Key": "${API_KEY_PLACEHOLDER}"},
+)
+data = res.json()["data"]  # player dict`,
+  };
+}
 
 // Featured players to cycle through
 const FEATURED_PLAYERS = [
@@ -62,10 +94,26 @@ export function InteractiveApiDemo() {
   const hasAnyData = availablePlayerIndices.length > 0;
   const currentPlayerLoaded = playerData !== undefined;
 
-  // Generate the request code
-  const requestCode = `fetch('https://api.nba2kdb.com/players/slug/${currentPlayer.slug}', {
-  headers: { 'X-API-Key': 'your_api_key' }
+  // Generate the request code shown in the animated demo. Matches the actual
+  // production URL — earlier versions had a typo'd domain (`nba2kdb.com`) and
+  // a missing `/api` prefix, so any visitor who pasted this would 404.
+  const requestCode = `fetch('${API_BASE}/api/players/slug/${currentPlayer.slug}', {
+  headers: { 'X-API-Key': '${API_KEY_PLACEHOLDER}' }
 })`;
+
+  // Snippets for the "Get code" dialog — same endpoint as the demo, in
+  // cURL / JavaScript / Python so visitors can copy-paste in their stack.
+  const snippets = React.useMemo(
+    () => buildSnippets(currentPlayer.slug),
+    [currentPlayer.slug],
+  );
+
+  // Pause the cycle while the dialog is open so the visible player (and the
+  // snippet inside the dialog) doesn't change mid-read.
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  React.useEffect(() => {
+    if (dialogOpen) setIsPaused(true);
+  }, [dialogOpen]);
 
   // Generate formatted response
   const responseJson = React.useMemo(() => {
@@ -272,11 +320,40 @@ export function InteractiveApiDemo() {
                 </span>
               </div>
               <div className="flex items-center gap-1">
+                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 gap-1 text-xs"
+                      title="Get this code in cURL, JavaScript, or Python"
+                    >
+                      <Code2 className="h-3 w-3" />
+                      <span className="hidden sm:inline">Get code</span>
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>
+                        Fetch {currentPlayer.name}
+                      </DialogTitle>
+                      <DialogDescription>
+                        Replace <code className="text-xs">{API_KEY_PLACEHOLDER}</code> with your key from the{" "}
+                        <Link href="/dashboard" className="underline hover:no-underline">
+                          dashboard
+                        </Link>
+                        .
+                      </DialogDescription>
+                    </DialogHeader>
+                    <LanguageTabs examples={snippets} defaultLanguage="curl" />
+                  </DialogContent>
+                </Dialog>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-7 w-7 p-0"
                   onClick={handleTogglePause}
+                  title={isPaused ? "Resume demo" : "Pause demo"}
                 >
                   {isPaused ? (
                     <Play className="h-3 w-3" />
@@ -289,6 +366,7 @@ export function InteractiveApiDemo() {
                   size="sm"
                   className="h-7 w-7 p-0"
                   onClick={handleRun}
+                  title="Restart demo"
                 >
                   <RotateCcw className="h-3 w-3" />
                 </Button>
