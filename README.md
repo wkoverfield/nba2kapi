@@ -152,6 +152,44 @@ X-API-Key: your_api_key_here
 
 ### Endpoints
 
+#### GET /api/players/bulk
+
+Authenticated **bulk export** — returns every matching player in one
+response, no pagination. Use this instead of paginating through
+`/api/players` when you want the whole dataset (or a wide filtered slice).
+Costs **1 request** against your rate limit instead of the N requests
+pagination would burn.
+
+- **Auth:** API key required (same as `/api/players`)
+- **Cache:** 1 hour, supports `ETag` / `If-None-Match` → 304 on revalidate
+- **Query params:** `teamType`, `team`, `minRating`, `maxRating`, `position` (all optional)
+- **Cap:** 10,000 records per response (current DB is ~1,900 — leaves plenty of headroom)
+
+**Example:**
+```bash
+# All current-NBA players in one shot
+curl 'https://api.nba2kapi.com/api/players/bulk?teamType=curr' \
+  -H 'X-API-Key: your_api_key_here' > players-curr.json
+
+# Just elite players across all team types
+curl 'https://api.nba2kapi.com/api/players/bulk?minRating=90' \
+  -H 'X-API-Key: your_api_key_here'
+```
+
+**Response shape** (same as `/api/players` but with a single `meta` block
+instead of pagination):
+```json
+{
+  "success": true,
+  "data": [ /* ...every matching player... */ ],
+  "meta": {
+    "count": 529,
+    "total": 529,
+    "filters": { "teamType": "curr", "team": null, "minRating": null, ... }
+  }
+}
+```
+
 #### GET /api/public/players
 
 Public, **unauthenticated** read-only player list. Same shape as `/api/players` but

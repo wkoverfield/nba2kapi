@@ -17,6 +17,7 @@ import { FilterBar } from "@/components/playground/filter-bar";
 import { FilterSheet } from "@/components/playground/filter-sheet";
 import { FilterPanel } from "@/components/playground/filter-panel";
 import { FlipCard } from "@/components/playground/flip-card";
+import { ExportActions } from "@/components/playground/export-actions";
 
 // Card dimensions for column calculation
 const CARD_WIDTH = 160;
@@ -270,18 +271,30 @@ function PlaygroundContent() {
 
       {/* Player Grid - Full Width */}
       <div className="mt-6 space-y-6">
-        {/* Results count and pagination info */}
+        {/* Results count, export actions, and pagination info */}
         {result !== undefined && totalCount > 0 && (
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground">
               Showing {offset + 1}-{Math.min(offset + itemsPerPage, totalCount)} of{" "}
               {totalCount.toLocaleString()} players
             </p>
-            {totalPages > 1 && (
-              <p>
-                Page {page} of {totalPages}
-              </p>
-            )}
+            <div className="flex items-center gap-3 sm:gap-4">
+              <ExportActions
+                search={debouncedSearch}
+                teamType={teamType}
+                teams={selectedTeams}
+                positions={selectedPositions}
+                minOverall={overallRange[0]}
+                maxOverall={overallRange[1]}
+                sortBy={sortBy}
+                totalCount={totalCount}
+              />
+              {totalPages > 1 && (
+                <p className="text-sm text-muted-foreground whitespace-nowrap">
+                  Page {page} of {totalPages}
+                </p>
+              )}
+            </div>
           </div>
         )}
 

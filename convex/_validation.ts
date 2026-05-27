@@ -158,6 +158,13 @@ export const VALID_PARAMS_BY_ENDPOINT: Record<string, Set<string>> = {
     "cursor",
     "limit",
   ]),
+  "/api/players/bulk": new Set([
+    "teamType",
+    "team",
+    "minRating",
+    "maxRating",
+    "position",
+  ]),
   "/api/players/search": new Set(["q", "teamType", "limit"]),
   "/api/players/:id": new Set([]),
   "/api/players/:id/history": new Set(["gameVersion", "limit"]),

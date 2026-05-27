@@ -737,6 +737,66 @@ app.get("/api/players",
   }
 );
 
+// GET /api/players/bulk - Authenticated bulk export. Returns ALL matching
+// players in a single response (no pagination). Costs 1 request against the
+// caller's rate limit instead of the N requests needed to paginate through
+// /api/players. Useful for warehouse loads, local mirrors, ML datasets, etc.
+// Heavily cached at the edge (1 hour) and revalidates via ETag/304.
+//
+// NOTE: This route MUST be registered before /api/players/:id so "bulk" isn't
+// parsed as a player ID.
+app.get("/api/players/bulk",
+  authMiddleware,
+  rejectUnknownParams("/api/players/bulk"),
+  zValidator("query", z.object({
+    teamType: z.enum(["curr", "class", "allt"]).optional(),
+    team: z.string().optional(),
+    minRating: z.coerce.number().min(0).max(99).optional(),
+    maxRating: z.coerce.number().min(0).max(99).optional(),
+    position: z.string().optional(),
+  })),
+  async (c) => {
+    try {
+      const params = c.req.valid("query");
+
+      // Cap at 10k to defend against future schema growth; current DB is ~1.9k
+      // players, so this returns everything matching the filters.
+      const queryArgs: any = {
+        sortBy: "overall-desc",
+        limit: 10000,
+        offset: 0,
+      };
+      if (params.teamType) queryArgs.teamType = params.teamType;
+      if (params.team) queryArgs.teams = [params.team];
+      if (params.minRating !== undefined) queryArgs.minOverall = params.minRating;
+      if (params.maxRating !== undefined) queryArgs.maxOverall = params.maxRating;
+      if (params.position) queryArgs.positions = [params.position];
+
+      const result = await c.env.runQuery(api.players.getAllFiltered, queryArgs);
+
+      c.header("Cache-Control", "public, max-age=3600, s-maxage=3600");
+
+      return c.json(successResponse(result.players, {
+        count: result.players.length,
+        total: result.totalCount,
+        filters: {
+          teamType: params.teamType ?? null,
+          team: params.team ?? null,
+          minRating: params.minRating ?? null,
+          maxRating: params.maxRating ?? null,
+          position: params.position ?? null,
+        },
+      }));
+    } catch (error: any) {
+      console.error("Error fetching bulk players:", error);
+      return c.json(errorResponse(
+        "Failed to fetch bulk players",
+        "QUERY_ERROR"
+      ), 500);
+    }
+  }
+);
+
 // GET /api/public/players - Public, unauthenticated read-only player list.
 // Same shape as /api/players (delegates to the same underlying query).
 // Auth: none. Rate limit: 60 req/min/IP. Intended for browser-shipped apps
