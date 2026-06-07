@@ -321,4 +321,19 @@ export default defineSchema({
     windowStart: v.number(), // Unix timestamp (ms) when window started
   })
     .index("by_ip", ["ip"]),
+
+  /**
+   * Site stats (pageview analytics for the marketing/app site).
+   * Cumulative counters keyed by "total" | "path:<p>" | "day:<YYYY-MM-DD>" | "uvday:<YYYY-MM-DD>".
+   */
+  pageviewCounters: defineTable({
+    key: v.string(),
+    count: v.number(),
+  }).index("by_key", ["key"]),
+
+  // Per-day unique-visitor dedup rows (pruned > 120 days by cron).
+  pageviewVisits: defineTable({
+    date: v.string(),
+    visitorId: v.string(),
+  }).index("by_date_and_visitor", ["date", "visitorId"]),
 });

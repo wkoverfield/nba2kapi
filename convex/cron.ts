@@ -41,4 +41,14 @@ crons.weekly(
   internal.playerHistory.createWeeklySnapshots
 );
 
+/**
+ * Prune per-day unique-visitor dedup rows older than 120 days
+ * Runs daily at 4:30 AM UTC
+ */
+crons.daily(
+  "prune pageview visits",
+  { hourUTC: 4, minuteUTC: 30 },
+  internal.siteStats.pruneVisits
+);
+
 export default crons;
