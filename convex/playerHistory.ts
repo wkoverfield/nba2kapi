@@ -127,6 +127,7 @@ async function upsertWithHistoryHelper(
     wingspan?: string;
     archetype?: string;
     build?: string;
+    college?: string;
     playerImage?: string;
     teamImg?: string;
     attributes?: Record<string, number>;
@@ -156,6 +157,16 @@ async function upsertWithHistoryHelper(
     const { hasChanges, overallDelta, attributeChanges, badgeChanges } =
       detectChanges(existing, playerData);
 
+    // Build the patch once, stripping undefined keys. Convex treats an
+    // explicit `undefined` in patch() as "delete this field", so if a scrape
+    // transiently fails to extract a best-effort field (e.g. `college`), a
+    // raw `{...playerData}` spread would CLEAR the previously-good value.
+    // Dropping undefined keys means a missing field is left untouched.
+    const patchData: Record<string, any> = { lastUpdated: now };
+    for (const [k, v] of Object.entries(playerData)) {
+      if (v !== undefined) patchData[k] = v;
+    }
+
     if (hasChanges) {
       // Record the change in history - only include optional fields if they have values
       const historyEntry: any = {
@@ -179,15 +190,16 @@ async function upsertWithHistoryHelper(
       await ctx.db.insert("playerRatingHistory", historyEntry);
 
       // Update the player
-      await ctx.db.patch(existing._id, {
-        ...playerData,
-        lastUpdated: now,
-      });
+      await ctx.db.patch(existing._id, patchData);
 
       return { _id: existing._id, action: "updated" as const, hasChanges: true };
     } else {
-      // No changes - just update timestamp
-      await ctx.db.patch(existing._id, { lastUpdated: now });
+      // No rating/attribute/badge changes worth a history entry, but still
+      // refresh the player doc from the latest scrape. detectChanges only gates
+      // HISTORY creation — it ignores metadata like `college`, cleaned-up badge
+      // lists, image URLs, etc. Patching here keeps those fields current (and
+      // lets backfills land) without spamming history. Idempotent on re-patch.
+      await ctx.db.patch(existing._id, patchData);
       return { _id: existing._id, action: "no_change" as const, hasChanges: false };
     }
   } else {
@@ -236,6 +248,7 @@ export const adminUpsertPlayerWithHistory = mutation({
     wingspan: v.optional(v.string()),
     archetype: v.optional(v.string()),
     build: v.optional(v.string()),
+    college: v.optional(v.string()),
     playerImage: v.optional(v.string()),
     teamImg: v.optional(v.string()),
     attributes: v.optional(v.record(v.string(), v.number())),
