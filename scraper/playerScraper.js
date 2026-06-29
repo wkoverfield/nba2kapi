@@ -170,8 +170,12 @@ export async function scrapePlayerDetails(page, basicPlayer) {
         else if (title.includes('Bronze')) badges.bronze = value;
       });
 
-      // Extract individual badge details with image URLs
+      // Extract individual badge details with image URLs.
+      // 2kratings renders each badge card twice (desktop + mobile layouts share
+      // the same .badge-card class), so de-dupe on name+tier to avoid storing
+      // every badge twice.
       const badgeList = [];
+      const seenBadgeKeys = new Set();
       const badgeCards = document.querySelectorAll('.badge-card');
 
       for (const card of badgeCards) {
@@ -195,6 +199,12 @@ export async function scrapePlayerDetails(page, basicPlayer) {
           else if (imgSrc.includes('-bronze-badge.png')) tier = 'Bronze';
 
           if (name && tier) {
+            const badgeKey = `${name.toLowerCase().trim()}|${tier.toLowerCase().trim()}`;
+            if (seenBadgeKeys.has(badgeKey)) {
+              continue; // Skip duplicate card (desktop/mobile render the same badge)
+            }
+            seenBadgeKeys.add(badgeKey);
+
             const badgeData = { name, tier, category };
             // Include image URL if it's a full URL (not relative)
             if (imgSrc.startsWith('http')) {
