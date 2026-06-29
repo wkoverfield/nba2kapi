@@ -100,17 +100,22 @@ export async function scrapePlayerDetails(page, basicPlayer) {
           }
         }
 
-        // Extract college / pre-NBA school (e.g., "Prior to NBA: Villanova").
-        // 2kratings labels this "Prior to NBA:" — value can be a U.S. college,
-        // an international club, or "High School". We store the raw value as
-        // `college` (the field name blacktop keys on).
-        if (text.includes('Prior to NBA:')) {
-          const collegeMatch = text.match(/Prior to NBA:\s*(.+)/);
-          if (collegeMatch) {
-            const college = collegeMatch[1].trim();
-            if (college) {
-              details.college = college;
-            }
+      }
+
+      // Extract college / pre-NBA school (e.g., "Prior to NBA: Villanova").
+      // 2kratings puts this in a profile list item, NOT a <p>, so the paragraph
+      // loop above never sees it — scan the whole page's innerText instead
+      // (newlines isolate the value on its own line). The value can be a U.S.
+      // college, an international club, or "High School"; we store the raw
+      // string as `college` (the field blacktop keys on). Anchored to "Prior to
+      // NBA:" so unrelated "College" nav links (e.g. "Best by College") never match.
+      {
+        const pageText = document.body?.innerText || '';
+        const collegeMatch = pageText.match(/Prior to NBA:\s*([^\n]+)/);
+        if (collegeMatch) {
+          const college = collegeMatch[1].trim();
+          if (college) {
+            details.college = college;
           }
         }
       }
