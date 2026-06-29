@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -49,15 +50,19 @@ type BadgeTier = keyof typeof TIER_COLORS;
 /**
  * Group badges by category (prevents duplication by only using badges.list)
  */
+type OrganizedBadge = { name: string; tier: string; imageUrl?: string };
+
 function organizeBadges(badges: PlayerBadges) {
-  const organized: Record<string, Array<{ name: string; tier: string }>> = {};
-  const seenBadges = new Set<string>(); // Track unique badge names to prevent duplicates
+  const organized: Record<string, Array<OrganizedBadge>> = {};
+  const seenBadges = new Set<string>(); // Track unique badge name+tier to prevent duplicates
 
   // Only use the list property to prevent duplication
   if (badges.list && Array.isArray(badges.list)) {
     badges.list.forEach((badge) => {
-      // Skip if we've already seen this exact badge name (case-insensitive)
-      const badgeKey = badge.name.toLowerCase().trim();
+      // Skip if we've already seen this exact badge name+tier (case-insensitive).
+      // The scraper can emit each badge twice (2kratings renders a desktop +
+      // mobile card for the same badge), so de-dupe on name+tier here.
+      const badgeKey = `${badge.name.toLowerCase().trim()}|${badge.tier.toLowerCase().trim()}`;
       if (seenBadges.has(badgeKey)) {
         return; // Skip duplicate
       }
@@ -70,6 +75,7 @@ function organizeBadges(badges: PlayerBadges) {
       organized[category].push({
         name: badge.name,
         tier: badge.tier,
+        imageUrl: badge.imageUrl,
       });
     });
   }
@@ -114,7 +120,7 @@ export function BadgesGrid({ player, className }: BadgesGridProps) {
   const filteredBadges = React.useMemo(() => {
     if (selectedTier === "All") return organizedBadges;
 
-    const filtered: Record<string, Array<{ name: string; tier: string }>> = {};
+    const filtered: Record<string, Array<OrganizedBadge>> = {};
     Object.entries(organizedBadges).forEach(([category, badgesList]) => {
       const tierBadges = badgesList.filter((b) => {
         // Case-insensitive comparison and handle variations
@@ -245,14 +251,24 @@ export function BadgesGrid({ player, className }: BadgesGridProps) {
                           <Badge
                             variant="outline"
                             className={cn(
-                              "border transition-all duration-150 hover:scale-105",
+                              "gap-1.5 border transition-all duration-150 hover:scale-105",
                               tierColors.bg,
                               tierColors.text,
                               tierColors.border
                             )}
                           >
+                            {badge.imageUrl ? (
+                              <Image
+                                src={badge.imageUrl}
+                                alt={`${badge.name} ${badge.tier} badge`}
+                                width={20}
+                                height={20}
+                                className="h-5 w-5 shrink-0 object-contain"
+                                unoptimized
+                              />
+                            ) : null}
                             <span className="font-semibold">{badge.name}</span>
-                            <span className="ml-1.5 opacity-70">· {badge.tier}</span>
+                            <span className="ml-1 opacity-70">· {badge.tier}</span>
                           </Badge>
                         </motion.div>
                       );
