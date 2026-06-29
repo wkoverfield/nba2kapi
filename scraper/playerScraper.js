@@ -99,6 +99,20 @@ export async function scrapePlayerDetails(page, basicPlayer) {
             details.positions = positionStr.split('/').map(p => p.trim());
           }
         }
+
+        // Extract college / pre-NBA school (e.g., "Prior to NBA: Villanova").
+        // 2kratings labels this "Prior to NBA:" — value can be a U.S. college,
+        // an international club, or "High School". We store the raw value as
+        // `college` (the field name blacktop keys on).
+        if (text.includes('Prior to NBA:')) {
+          const collegeMatch = text.match(/Prior to NBA:\s*(.+)/);
+          if (collegeMatch) {
+            const college = collegeMatch[1].trim();
+            if (college) {
+              details.college = college;
+            }
+          }
+        }
       }
 
       // Extract player image - try multiple selectors for different page layouts
@@ -381,6 +395,7 @@ export async function scrapePlayerDetails(page, basicPlayer) {
       weight: playerDetails.weight,
       wingspan: playerDetails.wingspan,
       archetype: playerDetails.archetype,
+      college: playerDetails.college,
       playerImage: playerDetails.playerImage,
       attributes: playerDetails.attributes,
       badges: playerDetails.badges,

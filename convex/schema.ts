@@ -30,6 +30,11 @@ export default defineSchema({
     // Build - old field, kept for backwards compatibility
     build: v.optional(v.string()),
 
+    // College / pre-NBA school (e.g., "Villanova"). Scraped from 2kratings'
+    // "Prior to NBA:" field. Used by downstream consumers (blacktop) to filter
+    // players by college.
+    college: v.optional(v.string()),
+
     // Images
     playerImage: v.optional(v.string()),
     teamImg: v.optional(v.string()),

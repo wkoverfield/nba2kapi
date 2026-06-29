@@ -88,6 +88,7 @@ export interface Player {
   wingspan?: string;
   archetype?: string;
   build?: string;
+  college?: string;
   jerseyNumber?: string;
   age?: number;
 

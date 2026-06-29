@@ -127,6 +127,7 @@ async function upsertWithHistoryHelper(
     wingspan?: string;
     archetype?: string;
     build?: string;
+    college?: string;
     playerImage?: string;
     teamImg?: string;
     attributes?: Record<string, number>;
@@ -236,6 +237,7 @@ export const adminUpsertPlayerWithHistory = mutation({
     wingspan: v.optional(v.string()),
     archetype: v.optional(v.string()),
     build: v.optional(v.string()),
+    college: v.optional(v.string()),
     playerImage: v.optional(v.string()),
     teamImg: v.optional(v.string()),
     attributes: v.optional(v.record(v.string(), v.number())),
