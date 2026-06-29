@@ -254,8 +254,36 @@ export const reconcileRoster = mutation({
       .map((p) => ({ name: p.name, team: p.team, lastUpdated: p.lastUpdated }));
 
     let deleted = 0;
+    let childrenDeleted = 0;
     if (!aborted && !args.dryRun) {
       for (const o of orphans) {
+        // Cascade: remove dependent rows so a delete doesn't leak history/
+        // snapshot/badge rows dangling by a now-invalid playerId.
+        const history = await ctx.db
+          .query("playerRatingHistory")
+          .withIndex("by_playerId", (q) => q.eq("playerId", o._id))
+          .collect();
+        for (const h of history) {
+          await ctx.db.delete(h._id);
+          childrenDeleted++;
+        }
+        const snapshots = await ctx.db
+          .query("playerSnapshots")
+          .withIndex("by_playerId", (q) => q.eq("playerId", o._id))
+          .collect();
+        for (const s of snapshots) {
+          await ctx.db.delete(s._id);
+          childrenDeleted++;
+        }
+        const pBadges = await ctx.db
+          .query("playerBadges")
+          .withIndex("by_playerId", (q) => q.eq("playerId", o._id))
+          .collect();
+        for (const b of pBadges) {
+          await ctx.db.delete(b._id);
+          childrenDeleted++;
+        }
+
         await ctx.db.delete(o._id);
         deleted++;
       }
@@ -267,6 +295,7 @@ export const reconcileRoster = mutation({
       scrapedCount: args.scrapedCount,
       orphanCount,
       deleted,
+      childrenDeleted,
       dryRun: !!args.dryRun,
       aborted,
       reasons,
