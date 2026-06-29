@@ -150,6 +150,27 @@ async function runScraper(options = {}) {
     console.log(`  Teams scraped: ${teamsScraped}`);
     console.log(`  Errors: ${errors.length}`);
 
+    // Reconcile: drop players for this teamType who weren't seen on any roster
+    // this run (departed/orphan rows). Only on a clean FULL-teamType scrape —
+    // never when a single `teams` filter was used (we only saw some teams), and
+    // never if the scrape errored (avoid pruning on partial data). The mutation
+    // itself has further safety guards. Set RECONCILE_DRY_RUN=true to preview.
+    if (!teams && playersScraped > 0 && errors.length === 0) {
+      try {
+        const reconcile = await client.mutation(api.players.reconcileRoster, {
+          adminKey: ADMIN_API_KEY,
+          teamType,
+          runStartedAt: startTime,
+          scrapedCount: playersScraped,
+          dryRun: process.env.RECONCILE_DRY_RUN === 'true',
+        });
+        console.log(`Reconcile (${teamType}):`, JSON.stringify(reconcile));
+      } catch (error) {
+        // Non-fatal: a reconcile failure shouldn't fail the scrape/upload.
+        console.error(`Reconcile failed for ${teamType} (non-fatal):`, error.message);
+      }
+    }
+
     return {
       jobId,
       gameVersion,
