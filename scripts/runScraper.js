@@ -190,6 +190,7 @@ async function runScraper(options = {}) {
       playersAdded,
       playersUnchanged,
       teamsScraped,
+      emptyTeams,
       errors,
       duration,
       startTime,
@@ -211,6 +212,7 @@ async function runScraper(options = {}) {
       playersAdded,
       playersUnchanged,
       teamsScraped,
+      emptyTeams,
       errors: [...errors, error.message],
       duration,
       startTime,
@@ -237,6 +239,22 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         console.error(
           '\n✖ FAILURE: scraped 0 players. The source almost certainly blocked ' +
           'the browser (Cloudflare). Data was NOT updated — failing so CI alerts.'
+        );
+        process.exit(1);
+      }
+
+      // Fail loudly on a PARTIAL scrape too. Cloudflare often soft-blocks part
+      // way through a session: some teams return rosters, others come back with
+      // 0 players (no error thrown). Every real NBA/2K team has a roster, so any
+      // empty team means the scrape is incomplete and most of the data went
+      // stale — which previously still exited 0 (green) because >0 players were
+      // scraped. Treat it as a failure so CI alerts and the run can be retried.
+      // (Reconcile already self-protects by skipping when emptyTeams > 0.)
+      if (result.emptyTeams > 0) {
+        console.error(
+          `\n✖ FAILURE: ${result.emptyTeams} team(s) returned 0 players (partial ` +
+          `Cloudflare block). Only ${result.playersScraped} players scraped — the ` +
+          'rest are stale. Failing so CI alerts; rerun to get a complete scrape.'
         );
         process.exit(1);
       }
