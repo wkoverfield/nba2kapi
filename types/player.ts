@@ -58,6 +58,8 @@ export interface Badge {
   name: string;
   tier: string;
   category?: string;
+  description?: string;
+  imageUrl?: string;
 }
 
 export interface PlayerBadges {
