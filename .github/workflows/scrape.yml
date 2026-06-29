@@ -18,6 +18,11 @@ on:
           - class
           - allt
           - all
+      reconcile_dry_run:
+        description: 'Reconcile in DRY-RUN (report departed/orphan players, delete nothing)'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   scrape:
@@ -60,28 +65,36 @@ jobs:
         env:
           CONVEX_URL: ${{ secrets.CONVEX_URL }}
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
-        run: xvfb-run -a node scripts/runScraper.js curr
+          # Scheduled runs always reconcile for real; manual dispatch can preview.
+          RECONCILE_DRY_RUN: ${{ github.event.inputs.reconcile_dry_run || 'false' }}
+        run: bash scripts/scrape-retry.sh curr
 
       - name: Run scraper (classic teams)
         if: github.event.inputs.team_type == 'class'
         env:
           CONVEX_URL: ${{ secrets.CONVEX_URL }}
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
-        run: xvfb-run -a node scripts/runScraper.js class
+          # Scheduled runs always reconcile for real; manual dispatch can preview.
+          RECONCILE_DRY_RUN: ${{ github.event.inputs.reconcile_dry_run || 'false' }}
+        run: bash scripts/scrape-retry.sh class
 
       - name: Run scraper (all-time teams)
         if: github.event.inputs.team_type == 'allt'
         env:
           CONVEX_URL: ${{ secrets.CONVEX_URL }}
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
-        run: xvfb-run -a node scripts/runScraper.js allt
+          # Scheduled runs always reconcile for real; manual dispatch can preview.
+          RECONCILE_DRY_RUN: ${{ github.event.inputs.reconcile_dry_run || 'false' }}
+        run: bash scripts/scrape-retry.sh allt
 
       - name: Run scraper (all team types)
         if: github.event.inputs.team_type == 'all'
         env:
           CONVEX_URL: ${{ secrets.CONVEX_URL }}
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+          # Scheduled runs always reconcile for real; manual dispatch can preview.
+          RECONCILE_DRY_RUN: ${{ github.event.inputs.reconcile_dry_run || 'false' }}
         run: |
-          xvfb-run -a node scripts/runScraper.js curr
-          xvfb-run -a node scripts/runScraper.js class
-          xvfb-run -a node scripts/runScraper.js allt
+          bash scripts/scrape-retry.sh curr
+          bash scripts/scrape-retry.sh class
+          bash scripts/scrape-retry.sh allt
