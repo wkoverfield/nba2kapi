@@ -24,21 +24,31 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
+    # 2kratings.com is behind Cloudflare's JS challenge, which blocks HEADLESS
+    # Chrome (HTTP 403). We run the browser HEADED under a virtual display
+    # (xvfb) so the challenge is solved like a real browser. Headless runs
+    # silently scraped 0 players for weeks while reporting success — the
+    # scraper now also exits non-zero on a 0-player run so this can't regress
+    # quietly again.
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright Chromium
-        run: npx playwright install chromium
+      # --with-deps installs the OS libraries Chromium needs; xvfb provides the
+      # virtual display that lets us run headed in a headless CI environment.
+      - name: Install Playwright Chromium + system deps
+        run: |
+          npx playwright install --with-deps chromium
+          sudo apt-get update && sudo apt-get install -y xvfb
 
       - name: Generate Convex client
         env:
@@ -50,21 +60,21 @@ jobs:
         env:
           CONVEX_URL: ${{ secrets.CONVEX_URL }}
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
-        run: node scripts/runScraper.js curr
+        run: xvfb-run -a node scripts/runScraper.js curr
 
       - name: Run scraper (classic teams)
         if: github.event.inputs.team_type == 'class'
         env:
           CONVEX_URL: ${{ secrets.CONVEX_URL }}
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
-        run: node scripts/runScraper.js class
+        run: xvfb-run -a node scripts/runScraper.js class
 
       - name: Run scraper (all-time teams)
         if: github.event.inputs.team_type == 'allt'
         env:
           CONVEX_URL: ${{ secrets.CONVEX_URL }}
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
-        run: node scripts/runScraper.js allt
+        run: xvfb-run -a node scripts/runScraper.js allt
 
       - name: Run scraper (all team types)
         if: github.event.inputs.team_type == 'all'
@@ -72,6 +82,6 @@ jobs:
           CONVEX_URL: ${{ secrets.CONVEX_URL }}
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
         run: |
-          node scripts/runScraper.js curr
-          node scripts/runScraper.js class
-          node scripts/runScraper.js allt
+          xvfb-run -a node scripts/runScraper.js curr
+          xvfb-run -a node scripts/runScraper.js class
+          xvfb-run -a node scripts/runScraper.js allt

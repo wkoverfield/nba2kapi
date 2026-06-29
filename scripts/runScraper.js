@@ -7,7 +7,7 @@ import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api.js";
 import { scrapeTeamLinks, scrapeTeamRoster } from '../scraper/teamScraper.js';
 import { scrapePlayerDetails } from '../scraper/playerScraper.js';
-import { initBrowser } from '../scraper/utils.js';
+import { initBrowser, createPage } from '../scraper/utils.js';
 
 // IMPORTANT: Scraper uses ConvexHttpClient which requires .convex.cloud domain
 // (NOT .convex.site which is for HTTP actions)
@@ -44,7 +44,7 @@ async function runScraper(options = {}) {
   try {
     // Initialize browser
     const browser = await initBrowser();
-    const page = await browser.newPage();
+    const page = await createPage(browser);
 
     try {
       // Scrape team links
@@ -197,6 +197,19 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   runScraper({ teamType, teams })
     .then(result => {
       console.log('\nScraper result:', JSON.stringify(result, null, 2));
+
+      // Fail loudly on an empty scrape. `success` only reflects "no exception
+      // thrown" — but a Cloudflare block returns 0 teams/players WITHOUT
+      // throwing, so the old code exited 0 and CI stayed green on frozen data
+      // for weeks. A 0-player run is a real failure: surface it so CI goes red.
+      if (result.playersScraped === 0) {
+        console.error(
+          '\n✖ FAILURE: scraped 0 players. The source almost certainly blocked ' +
+          'the browser (Cloudflare). Data was NOT updated — failing so CI alerts.'
+        );
+        process.exit(1);
+      }
+
       process.exit(result.success ? 0 : 1);
     })
     .catch(error => {

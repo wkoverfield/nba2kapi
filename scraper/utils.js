@@ -6,23 +6,57 @@ import { chromium } from 'playwright';
 import { SCRAPER_OPTIONS, BASE_URL } from './config.js';
 
 /**
- * Initialize and launch browser
+ * Initialize and launch browser.
+ *
+ * 2kratings.com sits behind Cloudflare's "Just a moment..." JS challenge.
+ * A real (headed) browser solves it automatically; a headless browser gets
+ * blocked (HTTP 403). In CI we therefore run headed under a virtual display
+ * (xvfb) — see .github/workflows/scrape.yml. The launch args below strip the
+ * most obvious automation fingerprints so the challenge passes cleanly.
+ *
  * @returns {Promise<Browser>} Playwright browser instance
  */
 export async function initBrowser() {
   const browser = await chromium.launch({
-    headless: SCRAPER_OPTIONS.headless
+    headless: SCRAPER_OPTIONS.headless,
+    args: [
+      '--disable-blink-features=AutomationControlled',
+      '--no-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-features=IsolateOrigins,site-per-process',
+    ],
   });
   return browser;
 }
 
+const STEALTH_USER_AGENT =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
+  '(KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36';
+
 /**
- * Create a new page with default settings
+ * Create a new page inside a hardened browser context.
+ *
+ * Sets a realistic user agent / viewport / locale and removes the
+ * `navigator.webdriver` flag so Cloudflare's bot-detection treats the session
+ * as an ordinary browser. Use this everywhere instead of `browser.newPage()`.
+ *
  * @param {Browser} browser - Playwright browser instance
  * @returns {Promise<Page>} Playwright page instance
  */
 export async function createPage(browser) {
-  const page = await browser.newPage();
+  const context = await browser.newContext({
+    userAgent: STEALTH_USER_AGENT,
+    viewport: { width: 1280, height: 800 },
+    locale: 'en-US',
+    timezoneId: 'America/Chicago',
+  });
+
+  // Hide the headless/automation tell that Cloudflare checks for.
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+  });
+
+  const page = await context.newPage();
 
   // Set default timeout
   page.setDefaultTimeout(SCRAPER_OPTIONS.timeout);

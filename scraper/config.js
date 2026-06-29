@@ -133,8 +133,11 @@ export const PLAYER_SELECTORS = {
  * Scraping options
  */
 export const SCRAPER_OPTIONS = {
-  // Browser options - headless in CI, headed locally for bot detection avoidance
-  headless: process.env.CI === 'true' || process.env.HEADLESS === 'true',
+  // Browser options.
+  // Cloudflare blocks headless Chrome on 2kratings.com, so we run HEADED by
+  // default — locally with a real display, in CI under a virtual one (xvfb).
+  // Only go headless when explicitly forced (HEADLESS=true), e.g. for debugging.
+  headless: process.env.HEADLESS === 'true',
 
   // Navigation options
   waitUntil: 'domcontentloaded',
