@@ -525,7 +525,8 @@ MIT License - see LICENSE file for details
 
 ## Analytics
 
-**Baseline (Nov 2025 - Feb 2026):** 48 API keys created, 1,842 requests made.
+**Feb 2026 baseline:** 48 API keys, 1,842 requests.
+**Jun 2026:** 168 API keys (146 active), ~45,700 requests — ~25× request growth in four months.
 
 ## Disclaimer
 
