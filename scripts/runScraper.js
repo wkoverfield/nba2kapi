@@ -37,6 +37,7 @@ async function runScraper(options = {}) {
   let playersAdded = 0;
   let playersUnchanged = 0;
   let teamsScraped = 0;
+  let emptyTeams = 0; // teams whose roster came back with 0 players (soft-block signal)
   const errors = [];
 
   console.log(`Starting scrape job ${jobId} for team type: ${teamType}`);
@@ -66,6 +67,10 @@ async function runScraper(options = {}) {
           // Get basic player data from roster
           const basicPlayers = await scrapeTeamRoster(page, team, teamType);
           console.log(`  Found ${basicPlayers.length} players`);
+          // A roster page that loads but yields 0 players is the per-team
+          // soft-block signature — track it so reconcile won't prune that
+          // team's players as "departed".
+          if (basicPlayers.length === 0) emptyTeams++;
 
           // Scrape detailed data for each player
           for (const basicPlayer of basicPlayers) {
@@ -149,6 +154,32 @@ async function runScraper(options = {}) {
     console.log(`  Players unchanged: ${playersUnchanged}`);
     console.log(`  Teams scraped: ${teamsScraped}`);
     console.log(`  Errors: ${errors.length}`);
+
+    // Reconcile: drop players for this teamType who weren't seen on any roster
+    // this run (departed/orphan rows). Only on a clean FULL-teamType scrape:
+    //  - never when a single `teams` filter was used (we only saw some teams)
+    //  - never if the scrape errored (partial data)
+    //  - never if ANY team's roster came back empty (per-team soft-block: that
+    //    team's players would otherwise be wrongly pruned as departed)
+    // The mutation has further guards (40% cap). Set RECONCILE_DRY_RUN=true to preview.
+    if (emptyTeams > 0) {
+      console.log(`Reconcile (${teamType}): SKIPPED — ${emptyTeams} team(s) returned 0 players (possible soft-block); not pruning.`);
+    }
+    if (!teams && playersScraped > 0 && errors.length === 0 && emptyTeams === 0) {
+      try {
+        const reconcile = await client.mutation(api.players.reconcileRoster, {
+          adminKey: ADMIN_API_KEY,
+          teamType,
+          runStartedAt: startTime,
+          scrapedCount: playersScraped,
+          dryRun: process.env.RECONCILE_DRY_RUN === 'true',
+        });
+        console.log(`Reconcile (${teamType}):`, JSON.stringify(reconcile));
+      } catch (error) {
+        // Non-fatal: a reconcile failure shouldn't fail the scrape/upload.
+        console.error(`Reconcile failed for ${teamType} (non-fatal):`, error.message);
+      }
+    }
 
     return {
       jobId,

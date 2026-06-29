@@ -191,6 +191,122 @@ export const deleteAllPlayers = internalMutation({
 });
 
 /**
+ * Reconcile a teamType's roster after a full scrape: remove "orphan" players
+ * that were NOT seen in the latest scrape (i.e. players who left a roster).
+ *
+ * Why: the scraper upserts by slug+team+teamType but never deletes departed
+ * players. With offseason roster churn this leaves stale duplicate rows — e.g.
+ * a traded player keeps a row under their old team AND gets a fresh row under
+ * the new one, so the API returns them twice on the wrong team.
+ *
+ * Orphans = players of `teamType` whose `lastUpdated` is older than the scrape
+ * run's start (every player touched this run was patched to a newer timestamp).
+ *
+ * SAFETY: this deletes production data, so it refuses to run when a scrape looks
+ * partial/broken — if it found nothing, or if pruning would remove more than
+ * MAX_PRUNE_FRACTION of the teamType. A false delete is self-healing anyway: the
+ * next scrape re-inserts anyone actually on a roster. Requires ADMIN_API_KEY.
+ * Pass dryRun to preview without deleting.
+ */
+export const reconcileRoster = mutation({
+  args: {
+    adminKey: v.string(),
+    teamType: v.union(v.literal("curr"), v.literal("class"), v.literal("allt")),
+    runStartedAt: v.string(), // ISO; players with lastUpdated < this weren't seen this run
+    scrapedCount: v.number(),
+    dryRun: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    if (args.adminKey !== process.env.ADMIN_API_KEY) {
+      throw new Error("Unauthorized: Invalid admin key");
+    }
+
+    const MAX_PRUNE_FRACTION = 0.4; // never remove >40% of a teamType in one run
+
+    const players = await ctx.db
+      .query("players")
+      .withIndex("by_teamType", (q) => q.eq("teamType", args.teamType))
+      .collect();
+    const existingCount = players.length;
+
+    // ISO 8601 strings sort lexicographically, so `<` is a valid time comparison.
+    const orphans = players.filter(
+      (p) => !p.lastUpdated || p.lastUpdated < args.runStartedAt
+    );
+    const orphanCount = orphans.length;
+
+    const reasons: string[] = [];
+    if (args.scrapedCount <= 0) reasons.push("scrapedCount<=0");
+    if (
+      existingCount > 0 &&
+      orphanCount > Math.floor(existingCount * MAX_PRUNE_FRACTION)
+    ) {
+      reasons.push(
+        `would prune ${orphanCount}/${existingCount} (${Math.round(
+          (100 * orphanCount) / existingCount
+        )}%) > ${MAX_PRUNE_FRACTION * 100}% cap`
+      );
+    }
+    const aborted = reasons.length > 0;
+
+    const sample = orphans
+      .slice(0, 15)
+      .map((p) => ({ name: p.name, team: p.team, lastUpdated: p.lastUpdated }));
+
+    let deleted = 0;
+    let childrenDeleted = 0;
+    if (!aborted && !args.dryRun) {
+      for (const o of orphans) {
+        // Cascade: remove dependent rows so a delete doesn't leak history/
+        // snapshot/badge rows dangling by a now-invalid playerId.
+        const history = await ctx.db
+          .query("playerRatingHistory")
+          .withIndex("by_playerId", (q) => q.eq("playerId", o._id))
+          .collect();
+        for (const h of history) {
+          await ctx.db.delete(h._id);
+          childrenDeleted++;
+        }
+        const snapshots = await ctx.db
+          .query("playerSnapshots")
+          .withIndex("by_playerId", (q) => q.eq("playerId", o._id))
+          .collect();
+        for (const s of snapshots) {
+          await ctx.db.delete(s._id);
+          childrenDeleted++;
+        }
+        const pBadges = await ctx.db
+          .query("playerBadges")
+          .withIndex("by_playerId", (q) => q.eq("playerId", o._id))
+          .collect();
+        for (const b of pBadges) {
+          await ctx.db.delete(b._id);
+          childrenDeleted++;
+        }
+
+        await ctx.db.delete(o._id);
+        deleted++;
+      }
+    }
+
+    const result = {
+      teamType: args.teamType,
+      existingCount,
+      scrapedCount: args.scrapedCount,
+      orphanCount,
+      deleted,
+      childrenDeleted,
+      dryRun: !!args.dryRun,
+      aborted,
+      reasons,
+      sample,
+    };
+    console.log("[reconcileRoster]", JSON.stringify(result));
+    return result;
+  },
+});
+
+/**
  * Update player positions array (for migration)
  * Internal only - not callable from client
  */
