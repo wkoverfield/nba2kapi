@@ -1,0 +1,39 @@
+name: Deploy Convex (prod)
+
+# The Vercel build runs `convex codegen` but NOT `convex deploy`, so the prod
+# Convex deployment only updated when someone ran `npx convex deploy` by hand —
+# easy to forget, and a drift between merged code and live functions/schema is
+# how the scraper's admin-key/schema expectations broke before. This deploys
+# Convex to prod automatically whenever convex/ changes land on main, using the
+# existing CONVEX_DEPLOY_KEY secret. It's isolated from the Vercel build, so a
+# failed deploy here can't take down the website.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'convex/**'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch: # manual trigger to verify / force a deploy
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy to Convex prod
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+        run: npx convex deploy -y

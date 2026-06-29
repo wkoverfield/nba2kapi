@@ -18,6 +18,11 @@ on:
           - class
           - allt
           - all
+      reconcile_dry_run:
+        description: 'Reconcile in DRY-RUN (report departed/orphan players, delete nothing)'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   scrape:
@@ -60,6 +65,8 @@ jobs:
         env:
           CONVEX_URL: ${{ secrets.CONVEX_URL }}
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+          # Scheduled runs always reconcile for real; manual dispatch can preview.
+          RECONCILE_DRY_RUN: ${{ github.event.inputs.reconcile_dry_run || 'false' }}
         run: xvfb-run -a node scripts/runScraper.js curr
 
       - name: Run scraper (classic teams)
@@ -67,6 +74,8 @@ jobs:
         env:
           CONVEX_URL: ${{ secrets.CONVEX_URL }}
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+          # Scheduled runs always reconcile for real; manual dispatch can preview.
+          RECONCILE_DRY_RUN: ${{ github.event.inputs.reconcile_dry_run || 'false' }}
         run: xvfb-run -a node scripts/runScraper.js class
 
       - name: Run scraper (all-time teams)
@@ -74,6 +83,8 @@ jobs:
         env:
           CONVEX_URL: ${{ secrets.CONVEX_URL }}
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+          # Scheduled runs always reconcile for real; manual dispatch can preview.
+          RECONCILE_DRY_RUN: ${{ github.event.inputs.reconcile_dry_run || 'false' }}
         run: xvfb-run -a node scripts/runScraper.js allt
 
       - name: Run scraper (all team types)
@@ -81,6 +92,8 @@ jobs:
         env:
           CONVEX_URL: ${{ secrets.CONVEX_URL }}
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+          # Scheduled runs always reconcile for real; manual dispatch can preview.
+          RECONCILE_DRY_RUN: ${{ github.event.inputs.reconcile_dry_run || 'false' }}
         run: |
           xvfb-run -a node scripts/runScraper.js curr
           xvfb-run -a node scripts/runScraper.js class
