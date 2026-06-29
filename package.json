@@ -5,7 +5,7 @@
   "description": "NBA 2K Player Ratings API - Scraper and Backend",
   "repository": {
     "type": "git",
-    "url": "https://github.com/woverfield/nba2kapi.git"
+    "url": "https://github.com/wkoverfield/nba2kapi.git"
   },
   "type": "module",
   "scripts": {

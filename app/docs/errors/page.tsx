@@ -299,7 +299,7 @@ if (!response.ok) {
             <p className="text-sm text-yellow-700 dark:text-yellow-300">
               If you're experiencing persistent errors or need clarification about an error code, please open an issue on{" "}
               <a
-                href="https://github.com/woverfield/nba2kapi/issues"
+                href="https://github.com/wkoverfield/nba2kapi/issues"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-medium underline"

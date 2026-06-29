@@ -72,7 +72,7 @@ export function Footer() {
             <ul className="space-y-2 text-sm">
               <li>
                 <a
-                  href="https://github.com/woverfield/nba2kapi"
+                  href="https://github.com/wkoverfield/nba2kapi"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5"
@@ -130,13 +130,13 @@ export function Footer() {
         <div className="flex flex-col gap-4 text-center text-sm text-muted-foreground md:flex-row md:justify-between">
           <p>Built with Next.js, Convex, and Playwright</p>
           <a
-            href="https://github.com/woverfield"
+            href="https://github.com/wkoverfield"
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-foreground transition-colors flex items-center gap-2 justify-center md:justify-end"
           >
             <Github className="h-4 w-4" />
-            github.com/woverfield
+            github.com/wkoverfield
           </a>
         </div>
       </div>

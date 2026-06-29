@@ -143,13 +143,13 @@ export function Header() {
               <TooltipTrigger asChild>
                 <a
                   className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "gap-1.5 px-2")}
-                  href="https://github.com/woverfield/nba2kapi"
+                  href="https://github.com/wkoverfield/nba2kapi"
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Star on GitHub"
                 >
                   <Github className="h-4 w-4" />
-                  <GitHubStars repo="woverfield/nba2kapi" />
+                  <GitHubStars repo="wkoverfield/nba2kapi" />
                 </a>
               </TooltipTrigger>
               <TooltipContent>
@@ -234,7 +234,7 @@ export function Header() {
               variant: "ghost",
               className: "justify-start",
             })}
-            href="https://github.com/woverfield/nba2kapi"
+            href="https://github.com/wkoverfield/nba2kapi"
             target="_blank"
             rel="noopener noreferrer"
           >

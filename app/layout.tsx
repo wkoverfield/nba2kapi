@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   },
   description: 'The only free NBA 2K API. Access player ratings, team rosters, attributes, and badges via REST API. Developer-friendly documentation and playground.',
   keywords: ['NBA 2K API', 'NBA 2K ratings API', 'NBA 2K player stats', '2K API', 'basketball API', 'NBA 2K player ratings', 'NBA 2K25 API'],
-  authors: [{ name: 'Wilson Overfield', url: 'https://github.com/woverfield' }],
+  authors: [{ name: 'Wilson Overfield', url: 'https://github.com/wkoverfield' }],
   creator: 'Wilson Overfield',
   openGraph: {
     type: 'website',

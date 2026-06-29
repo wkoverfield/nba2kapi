@@ -159,7 +159,7 @@ X-RateLimit-Reset: 1642521600`}
           <p className="text-slate-600 dark:text-slate-400">
             The current rate limits are designed to be generous for most use cases. If you have a legitimate need for higher limits, please reach out via{" "}
             <a
-              href="https://github.com/woverfield/nba2kapi/issues"
+              href="https://github.com/wkoverfield/nba2kapi/issues"
               target="_blank"
               rel="noopener noreferrer"
               className="font-medium text-primary hover:underline"
