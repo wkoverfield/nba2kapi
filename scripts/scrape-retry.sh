@@ -14,7 +14,7 @@
 set -u
 
 TEAM_TYPE="${1:?usage: scrape-retry.sh <curr|class|allt>}"
-MAX_ATTEMPTS="${SCRAPE_MAX_ATTEMPTS:-3}"
+MAX_ATTEMPTS="${SCRAPE_MAX_ATTEMPTS:-5}"
 BACKOFF_SECONDS="${SCRAPE_RETRY_BACKOFF:-30}"
 
 for attempt in $(seq 1 "$MAX_ATTEMPTS"); do

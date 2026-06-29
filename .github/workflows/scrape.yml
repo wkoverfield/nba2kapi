@@ -1,9 +1,12 @@
 name: Scrape NBA 2K Ratings
 
 on:
-  # Run on the 1st and 15th of each month at 3 AM UTC
+  # Weekly, Saturday 03:00 UTC — catches 2K's typical Friday-evening roster
+  # drops. Weekly matches how often ratings actually change, so we stay fresh
+  # without hammering 2kratings (one polite collector; the API caches + serves
+  # everyone downstream, so this is the ONLY request load they ever see).
   schedule:
-    - cron: '0 3 1,15 * *'
+    - cron: '0 3 * * 6'
 
   # Allow manual trigger from GitHub UI
   workflow_dispatch:
