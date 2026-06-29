@@ -67,7 +67,7 @@ jobs:
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
           # Scheduled runs always reconcile for real; manual dispatch can preview.
           RECONCILE_DRY_RUN: ${{ github.event.inputs.reconcile_dry_run || 'false' }}
-        run: xvfb-run -a node scripts/runScraper.js curr
+        run: bash scripts/scrape-retry.sh curr
 
       - name: Run scraper (classic teams)
         if: github.event.inputs.team_type == 'class'
@@ -76,7 +76,7 @@ jobs:
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
           # Scheduled runs always reconcile for real; manual dispatch can preview.
           RECONCILE_DRY_RUN: ${{ github.event.inputs.reconcile_dry_run || 'false' }}
-        run: xvfb-run -a node scripts/runScraper.js class
+        run: bash scripts/scrape-retry.sh class
 
       - name: Run scraper (all-time teams)
         if: github.event.inputs.team_type == 'allt'
@@ -85,7 +85,7 @@ jobs:
           ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
           # Scheduled runs always reconcile for real; manual dispatch can preview.
           RECONCILE_DRY_RUN: ${{ github.event.inputs.reconcile_dry_run || 'false' }}
-        run: xvfb-run -a node scripts/runScraper.js allt
+        run: bash scripts/scrape-retry.sh allt
 
       - name: Run scraper (all team types)
         if: github.event.inputs.team_type == 'all'
@@ -95,6 +95,6 @@ jobs:
           # Scheduled runs always reconcile for real; manual dispatch can preview.
           RECONCILE_DRY_RUN: ${{ github.event.inputs.reconcile_dry_run || 'false' }}
         run: |
-          xvfb-run -a node scripts/runScraper.js curr
-          xvfb-run -a node scripts/runScraper.js class
-          xvfb-run -a node scripts/runScraper.js allt
+          bash scripts/scrape-retry.sh curr
+          bash scripts/scrape-retry.sh class
+          bash scripts/scrape-retry.sh allt
