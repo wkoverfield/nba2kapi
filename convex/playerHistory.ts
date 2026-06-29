@@ -187,8 +187,16 @@ async function upsertWithHistoryHelper(
 
       return { _id: existing._id, action: "updated" as const, hasChanges: true };
     } else {
-      // No changes - just update timestamp
-      await ctx.db.patch(existing._id, { lastUpdated: now });
+      // No rating/attribute/badge changes worth a history entry, but still
+      // refresh the player doc from the latest scrape. detectChanges only gates
+      // HISTORY creation — it ignores metadata like `college`, cleaned-up badge
+      // lists, image URLs, etc. Patching the full payload here keeps those
+      // fields current (and lets backfills land) without spamming history.
+      // Re-patching unchanged fields with identical values is idempotent.
+      await ctx.db.patch(existing._id, {
+        ...playerData,
+        lastUpdated: now,
+      });
       return { _id: existing._id, action: "no_change" as const, hasChanges: false };
     }
   } else {
