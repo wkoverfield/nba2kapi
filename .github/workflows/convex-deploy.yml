@@ -17,9 +17,15 @@ on:
       - 'package-lock.json'
   workflow_dispatch: # manual trigger to verify / force a deploy
 
+# Serialize deploys so two quick merges can't race a last-write-wins push.
+concurrency:
+  group: convex-deploy-prod
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
