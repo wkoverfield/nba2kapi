@@ -1,94 +1,48 @@
+"use client";
+
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { LanguageTabs } from "@/components/language-tabs";
-import { TryItLiveButton } from "@/components/try-it-live-button";
-import { ArrowRight } from "lucide-react";
+import { CodeRail, DocColumns, DocH1, DocLabel, DocP, FinePrint } from "@/components/docs/kit";
 
-export default function QuickstartPage() {
-  return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="mb-4 text-4xl font-bold">Quickstart</h1>
-        <p className="text-lg text-slate-600 dark:text-slate-400">
-          Get up and running with the NBA 2K Ratings API in under 5 minutes.
-        </p>
-      </div>
-
-      <div className="space-y-6">
-        <div>
-          <h2 className="mb-3 text-2xl font-bold">1. Get your API key</h2>
-          <p className="mb-4 text-slate-600 dark:text-slate-400">
-            First, you'll need an API key to authenticate your requests. Click the button below to
-            get started:
-          </p>
-          <Button asChild>
-            <Link href="/dashboard">Get API Key</Link>
-          </Button>
-        </div>
-
-        <div>
-          <h2 className="mb-3 text-2xl font-bold">2. Make your first request</h2>
-          <p className="mb-4 text-slate-600 dark:text-slate-400">
-            Once you have your API key, you can start making requests. Here's how to fetch a
-            player's data:
-          </p>
-          <LanguageTabs
-            examples={{
-              javascript: `const response = await fetch(
-  'https://api.nba2kapi.com/api/players/slug/lebron-james',
+const SAMPLES = [
   {
-    headers: {
-      'X-API-Key': 'your_api_key_here'
-    }
-  }
+    label: "cURL",
+    code: `curl 'https://api.nba2kapi.com/api/players/slug/lebron-james' \\
+  -H 'X-API-Key: your_api_key_here'
+
+# Players on multiple teams (like Michael Jordan):
+# add ?teamType=class&team='95-'96 Bulls`,
+  },
+  {
+    label: "JS",
+    code: `const res = await fetch(
+  'https://api.nba2kapi.com/api/players/slug/lebron-james',
+  { headers: { 'X-API-Key': 'your_api_key_here' } }
 );
+const { success, data } = await res.json();
 
-const data = await response.json();
+if (success) {
+  console.log(data.name);      // "LeBron James"
+  console.log(data.overall);   // 97
+  console.log(data.positions); // ["SF", "PF"]
+  console.log(data.team);      // "Los Angeles Lakers"
+}`,
+  },
+  {
+    label: "Python",
+    code: `import requests
 
-if (data.success) {
-  console.log(data.data.name);      // "LeBron James"
-  console.log(data.data.overall);   // 97
-  console.log(data.data.positions); // ["SF", "PF"]
-  console.log(data.data.team);      // "Los Angeles Lakers"
-}
-
-// For players on multiple teams (like Michael Jordan), use team param:
-// /api/players/slug/michael-jordan?teamType=class&team='95-'96 Bulls`,
-              python: `import requests
-
-response = requests.get(
-    'https://api.nba2kapi.com/api/players/slug/lebron-james',
-    headers={'X-API-Key': 'your_api_key_here'}
-)
-
-data = response.json()
+res = requests.get(
+  'https://api.nba2kapi.com/api/players/slug/lebron-james',
+  headers={'X-API-Key': 'your_api_key_here'})
+data = res.json()
 
 if data['success']:
     print(data['data']['name'])     # "LeBron James"
-    print(data['data']['overall'])  # 97
-    print(data['data']['positions']) # ["SF", "PF"]
-    print(data['data']['team'])     # "Los Angeles Lakers"
+    print(data['data']['overall'])  # 97`,
+  },
+];
 
-# For players on multiple teams, add team param:
-# ?teamType=class&team='95-'96 Bulls`,
-              curl: `curl -X GET \\
-  'https://api.nba2kapi.com/api/players/slug/lebron-james' \\
-  -H 'X-API-Key: your_api_key_here'
-
-# For players on multiple teams (like Michael Jordan):
-# Add ?teamType=class&team='95-'96 Bulls`,
-            }}
-          />
-        </div>
-
-        <div>
-          <h2 className="mb-3 text-2xl font-bold">3. Understanding the response</h2>
-          <p className="mb-4 text-slate-600 dark:text-slate-400">
-            All API responses follow a consistent structure:
-          </p>
-          <LanguageTabs
-            examples={{
-              javascript: `{
+const RESPONSE = `{
   "success": true,
   "data": {
     "_id": "abc123",
@@ -100,123 +54,52 @@ if data['success']:
     "positions": ["SF", "PF"],
     "height": "6'9\\"",
     "weight": "250 lbs",
-    "playerImage": "https://...",
-    "teamImg": "https://...",
-    // Detailed attributes
+    "playerImage": "https://…",
+    "teamImg": "https://…",
     "closeShot": 92,
     "midRangeShot": 88,
     "threePointShot": 44,
-    // ... 40+ more attributes
+    … 40+ more attributes,
     "lastUpdated": "2025-01-15T00:00:00.000Z"
   }
-}`,
-            }}
-          />
-        </div>
+}`;
 
-        <div>
-          <h2 className="mb-3 text-2xl font-bold">4. Try other endpoints</h2>
-          <p className="mb-4 text-slate-600 dark:text-slate-400">
-            Now that you've made your first request, explore other endpoints:
-          </p>
-          <ul className="space-y-2 text-slate-600 dark:text-slate-400">
-            <li className="flex items-start gap-2">
-              <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-primary" />
-              <span>
-                <Link
-                  href="/docs/endpoints/players"
-                  className="font-medium text-primary hover:underline"
-                >
-                  GET /api/players
-                </Link>{" "}
-                - List all players with filtering
-              </span>
-            </li>
-            <li className="flex items-start gap-2">
-              <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-primary" />
-              <span>
-                <Link
-                  href="/docs/endpoints/teams"
-                  className="font-medium text-primary hover:underline"
-                >
-                  GET /api/teams
-                </Link>{" "}
-                - Get all team rosters
-              </span>
-            </li>
-            <li className="flex items-start gap-2">
-              <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-primary" />
-              <span>
-                <Link
-                  href="/docs/endpoints/search"
-                  className="font-medium text-primary hover:underline"
-                >
-                  GET /api/players/search
-                </Link>{" "}
-                - Search for players by name
-              </span>
-            </li>
-          </ul>
-        </div>
+export default function QuickstartPage() {
+  return (
+    <DocColumns rail={<CodeRail samples={SAMPLES} response={RESPONSE} playgroundHref="/playground" />}>
+      <DocH1>Quickstart</DocH1>
+      <DocP>From zero to first response in under 5 minutes.</DocP>
 
-        <div>
-          <h2 className="mb-3 text-2xl font-bold">5. Explore visually in the playground</h2>
-          <p className="mb-4 text-slate-600 dark:text-slate-400">
-            Not ready to write code yet? Try our interactive playground to explore player data
-            visually with advanced filtering and search.
-          </p>
-          <div className="flex gap-3">
-            <TryItLiveButton href="/playground" label="Explore All Players" />
-            <TryItLiveButton
-              href="/teams"
-              label="Browse Teams"
-              variant="secondary"
-            />
-          </div>
-        </div>
+      <DocLabel>STEP 1 · GET YOUR API KEY</DocLabel>
+      <DocP>
+        Every request authenticates with an API key. Grab yours from the{" "}
+        <Link href="/dashboard">dashboard</Link> — no password, the key is the login.
+      </DocP>
 
-        <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-900">
-          <h3 className="text-lg font-semibold">Next steps</h3>
-          <ul className="space-y-2 text-slate-600 dark:text-slate-400">
-            <li className="flex items-start gap-2">
-              <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-primary" />
-              <span>
-                Learn about{" "}
-                <Link
-                  href="/docs/authentication"
-                  className="font-medium text-primary hover:underline"
-                >
-                  authentication best practices
-                </Link>
-              </span>
-            </li>
-            <li className="flex items-start gap-2">
-              <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-primary" />
-              <span>
-                Explore the full{" "}
-                <Link
-                  href="/docs/endpoints/players"
-                  className="font-medium text-primary hover:underline"
-                >
-                  API reference
-                </Link>
-              </span>
-            </li>
-            <li className="flex items-start gap-2">
-              <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-primary" />
-              <span>
-                Understand{" "}
-                <Link
-                  href="/docs/rate-limits"
-                  className="font-medium text-primary hover:underline"
-                >
-                  rate limits
-                </Link>
-              </span>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </div>
+      <DocLabel>STEP 2 · MAKE YOUR FIRST REQUEST</DocLabel>
+      <DocP>
+        Pass the key in the <code>X-API-Key</code> header. The samples on the right fetch one
+        player by slug. For players who exist on multiple teams (like Michael Jordan), add{" "}
+        <code>?teamType=class&amp;team=&apos;95-&apos;96 Bulls</code> to pick the version you want.
+      </DocP>
+
+      <DocLabel>STEP 3 · READ THE RESPONSE</DocLabel>
+      <DocP>
+        Every response follows the same envelope: <code>success</code> plus <code>data</code>. A
+        player object carries name, slug, team, overall, positions, and 40+ individual attributes.
+        The full response is shown on the right.
+      </DocP>
+
+      <DocLabel>WHERE TO NEXT</DocLabel>
+      <DocP>
+        <Link href="/docs/endpoints/players">GET /api/players</Link> lists everyone with filtering,{" "}
+        <Link href="/docs/endpoints/teams">GET /api/teams</Link> serves rosters, and{" "}
+        <Link href="/docs/endpoints/search">GET /api/players/search</Link> finds players by name.
+        Read up on <Link href="/docs/authentication">authentication</Link> and{" "}
+        <Link href="/docs/rate-limits">rate limits</Link>, or skip the code entirely and explore in
+        the <Link href="/playground">playground</Link>.
+      </DocP>
+      <FinePrint>ALL SAMPLES USE THE LIVE API AT API.NBA2KAPI.COM.</FinePrint>
+    </DocColumns>
   );
 }

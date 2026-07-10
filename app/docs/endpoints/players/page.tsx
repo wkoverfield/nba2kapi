@@ -1,256 +1,197 @@
-import { Badge } from "@/components/ui/badge";
-import { CodeBlock } from "@/components/code-block";
-import { LanguageTabs } from "@/components/language-tabs";
-import { TryItLiveButton } from "@/components/try-it-live-button";
+"use client";
+
+import Link from "next/link";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  AuthPill,
+  CodeRail,
+  DocColumns,
+  DocLabel,
+  EndpointHeader,
+  FinePrint,
+  ParamsTable,
+} from "@/components/docs/kit";
 
-export default function PlayersEndpointPage() {
-  return (
-    <div className="space-y-8">
-      <div>
-        <div className="mb-4 flex items-center gap-3">
-          <Badge variant="outline" className="font-mono">
-            GET
-          </Badge>
-          <code className="text-2xl font-bold">/api/players</code>
-        </div>
-        <p className="text-lg text-slate-600 dark:text-slate-400">
-          Retrieve a list of NBA 2K players with optional filtering and pagination.
-        </p>
-        <div className="mt-4 flex gap-3">
-          <TryItLiveButton href="/playground" label="Explore All Players" />
-          <TryItLiveButton
-            href="/playground?minOverall=90"
-            label="Filter by Rating (90+)"
-            variant="secondary"
-          />
-        </div>
-      </div>
-
-      <div className="space-y-6">
-        <div>
-          <h2 className="mb-3 text-2xl font-bold">Query Parameters</h2>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Parameter</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Default</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow>
-                  <TableCell className="font-mono text-sm">teamType</TableCell>
-                  <TableCell>
-                    <code className="text-sm">curr | class | allt</code>
-                  </TableCell>
-                  <TableCell>Filter by team type (current, classic, all-time)</TableCell>
-                  <TableCell>
-                    <code className="text-sm">curr</code>
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-mono text-sm">team</TableCell>
-                  <TableCell>string</TableCell>
-                  <TableCell>Filter by team name</TableCell>
-                  <TableCell>-</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-mono text-sm">position</TableCell>
-                  <TableCell>string</TableCell>
-                  <TableCell>Filter by position (PG, SG, SF, PF, C)</TableCell>
-                  <TableCell>-</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-mono text-sm">minRating</TableCell>
-                  <TableCell>number</TableCell>
-                  <TableCell>Minimum overall rating (0-99)</TableCell>
-                  <TableCell>-</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-mono text-sm">maxRating</TableCell>
-                  <TableCell>number</TableCell>
-                  <TableCell>Maximum overall rating (0-99)</TableCell>
-                  <TableCell>-</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-mono text-sm">limit</TableCell>
-                  <TableCell>number</TableCell>
-                  <TableCell>Number of results to return (max 100)</TableCell>
-                  <TableCell>
-                    <code className="text-sm">50</code>
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-mono text-sm">cursor</TableCell>
-                  <TableCell>string</TableCell>
-                  <TableCell>Pagination cursor from previous response</TableCell>
-                  <TableCell>-</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
-        </div>
-
-        <div>
-          <h2 className="mb-3 text-2xl font-bold">Example Request</h2>
-          <LanguageTabs
-            examples={{
-              javascript: `const response = await fetch(
-  'https://api.nba2kapi.com/api/players?teamType=curr&minRating=90&limit=10',
+const SAMPLES = [
   {
-    headers: {
-      'X-API-Key': 'your_api_key_here'
-    }
-  }
+    label: "cURL",
+    code: `curl 'https://api.nba2kapi.com/api/players?\\
+  position=guard&era=all&\\
+  three_ball_gte=85&sort=overall:desc' \\
+  -H 'X-API-Key: YOUR_KEY'`,
+  },
+  {
+    label: "JS",
+    code: `const res = await fetch(
+  'https://api.nba2kapi.com/api/players?' +
+  'position=guard&era=all&three_ball_gte=85',
+  { headers: { 'X-API-Key': KEY } }
 );
+const { data } = await res.json();`,
+  },
+  {
+    label: "Python",
+    code: `import requests
 
-const data = await response.json();
-console.log(data.data); // Array of top 10 current players rated 90+`,
-              python: `import requests
+res = requests.get(
+  'https://api.nba2kapi.com/api/players',
+  params={'position': 'guard', 'era': 'all',
+          'three_ball_gte': 85},
+  headers={'X-API-Key': KEY})
+data = res.json()['data']`,
+  },
+];
 
-response = requests.get(
-    'https://api.nba2kapi.com/api/players',
-    params={
-        'teamType': 'curr',
-        'minRating': 90,
-        'limit': 10
-    },
-    headers={'X-API-Key': 'your_api_key_here'}
-)
-
-data = response.json()
-print(data['data'])  # Array of top 10 current players rated 90+`,
-              curl: `curl -X GET \\
-  'https://api.nba2kapi.com/api/players?teamType=curr&minRating=90&limit=10' \\
-  -H 'X-API-Key: your_api_key_here'`,
-            }}
-          />
-        </div>
-
-        <div>
-          <h2 className="mb-3 text-2xl font-bold">Example Response</h2>
-          <CodeBlock
-            code={`{
+const RESPONSE = `{
   "success": true,
   "data": [
     {
-      "_id": "abc123",
-      "name": "LeBron James",
-      "slug": "lebron-james",
-      "team": "Los Angeles Lakers",
+      "name": "Shai Gilgeous-Alexander",
+      "slug": "shai-gilgeous-alexander",
+      "team": "Oklahoma City Thunder",
       "teamType": "curr",
-      "overall": 97,
-      "positions": ["SF", "PF"],
-      "height": "6'9\\"",
-      "weight": "250 lbs",
-      "playerImage": "https://...",
-      "teamImg": "https://...",
-      "closeShot": 92,
-      "midRangeShot": 88,
-      "threePointShot": 44,
-      "freeThrow": 70,
-      "shotIQ": 95,
-      "offensiveConsistency": 95,
-      // ... 30+ more attributes
-      "lastUpdated": "2025-01-15T00:00:00.000Z"
+      "overall": 98,
+      "positions": ["PG", "SG"],
+      "attributes": { "threePointShot": 85, … },
+      "badges": { "total": 26, … }
     },
-    // ... more players
+    …
   ],
-  "pagination": {
-    "hasMore": true,
-    "nextCursor": "abc123",
-    "count": 10,
-    "limit": 10
-  },
-  "meta": {
-    "timestamp": "2025-01-15T00:00:00.000Z"
-  }
-}`}
-            language="json"
-          />
-        </div>
+  "meta": { "pagination": { "total": 231, "nextCursor": "50" } }
+}`;
 
-        <div>
-          <h2 className="mb-3 text-2xl font-bold">Response Fields</h2>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Field</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Description</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow>
-                  <TableCell className="font-mono text-sm">_id</TableCell>
-                  <TableCell>string</TableCell>
-                  <TableCell>Unique player identifier</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-mono text-sm">name</TableCell>
-                  <TableCell>string</TableCell>
-                  <TableCell>Player's full name</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-mono text-sm">slug</TableCell>
-                  <TableCell>string</TableCell>
-                  <TableCell>URL-friendly identifier (e.g., "lebron-james")</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-mono text-sm">overall</TableCell>
-                  <TableCell>number</TableCell>
-                  <TableCell>Overall player rating (0-99)</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-mono text-sm">positions</TableCell>
-                  <TableCell>string[]</TableCell>
-                  <TableCell>Player positions (PG, SG, SF, PF, C)</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-mono text-sm">team</TableCell>
-                  <TableCell>string</TableCell>
-                  <TableCell>Team name</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
-        </div>
+export default function PlayersEndpointPage() {
+  return (
+    <DocColumns
+      rail={
+        <CodeRail
+          samples={SAMPLES}
+          response={RESPONSE}
+          playgroundHref="/playground?position=guard&era=all&three_ball_gte=85&sort=overall%3Adesc"
+        />
+      }
+    >
+      <EndpointHeader path="/api/players" title="List players">
+        <p className="m-0">
+          Every player in the database — 1,700+ across current, classic, and all-time rosters —
+          filterable on any attribute, sortable on any column. This is the endpoint the{" "}
+          <Link href="/playground">playground</Link> writes for you.
+        </p>
+      </EndpointHeader>
+      <AuthPill>REQUIRES X-API-KEY HEADER · 500 REQ/HR FREE</AuthPill>
 
-        <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-900">
-          <h3 className="text-lg font-semibold">Related Endpoints</h3>
-          <ul className="space-y-2 text-slate-600 dark:text-slate-400">
-            <li>
-              <code className="mr-2 rounded bg-white px-1.5 py-0.5 text-sm dark:bg-slate-950">
-                GET /api/players/slug/:slug
-              </code>
-              - Get a single player by slug (use <code className="text-xs">?teamType=class&team=Team Name</code> for players on multiple teams)
-            </li>
-            <li>
-              <code className="mr-2 rounded bg-white px-1.5 py-0.5 text-sm dark:bg-slate-950">
-                GET /api/players/search
-              </code>
-              - Search players by name
-            </li>
-            <li>
-              <code className="mr-2 rounded bg-white px-1.5 py-0.5 text-sm dark:bg-slate-950">
-                GET /api/teams
-              </code>
-              - Get all teams
-            </li>
-          </ul>
-        </div>
-      </div>
-    </div>
+      <DocLabel>QUERY PARAMETERS</DocLabel>
+      <ParamsTable
+        rows={[
+          {
+            name: "era",
+            type: "string",
+            isNew: true,
+            desc: (
+              <>
+                <code>curr</code> (default), <code>class</code>, <code>allt</code> — or{" "}
+                <code>all</code> to search every era in one call. <code>teamType</code> remains a
+                supported alias.
+              </>
+            ),
+          },
+          {
+            name: "position",
+            type: "string",
+            desc: (
+              <>
+                Position or group: <code>PG</code>, <code>SG</code>, <code>SF</code>,{" "}
+                <code>PF</code>, <code>C</code> — or <code>guard</code>, <code>wing</code>,{" "}
+                <code>big</code>.
+              </>
+            ),
+          },
+          {
+            name: "team",
+            type: "string",
+            desc: (
+              <>
+                Filter to one team by full name, e.g. <code>Los Angeles Lakers</code> or{" "}
+                <code>1995-96 Chicago Bulls</code>.
+              </>
+            ),
+          },
+          {
+            name: "minRating / maxRating",
+            type: "number",
+            desc: <>Bound the overall rating, 0–99.</>,
+          },
+          {
+            name: "{attribute}_gte / _lte",
+            type: "number",
+            isNew: true,
+            desc: (
+              <>
+                Bound any of the 40+ attributes in snake_case: <code>three_ball_gte=85</code>,{" "}
+                <code>speed_lte=70</code>, <code>shot_iq_gte=90</code>, …
+              </>
+            ),
+          },
+          {
+            name: "sort",
+            type: "string",
+            isNew: true,
+            desc: (
+              <>
+                Any attribute plus direction: <code>sort=overall:desc</code> (default),{" "}
+                <code>sort=three_ball:asc</code>, <code>sort=name:asc</code>.
+              </>
+            ),
+          },
+          {
+            name: "fields",
+            type: "string",
+            isNew: true,
+            desc: (
+              <>
+                Trim the payload to just the fields you need:{" "}
+                <code>fields=name,overall,slug</code>.
+              </>
+            ),
+          },
+          {
+            name: "limit / cursor",
+            type: "number / string",
+            desc: (
+              <>
+                Page size (max 100, default 50) and the offset cursor from{" "}
+                <code>meta.pagination.nextCursor</code>.
+              </>
+            ),
+          },
+        ]}
+      />
+      <FinePrint>RESPONSES ARE CACHED 1H AND SUPPORT ETAG / 304 REVALIDATION.</FinePrint>
+
+      <DocLabel>RELATED ENDPOINTS</DocLabel>
+      <ParamsTable
+        rows={[
+          {
+            name: "/api/players/bulk",
+            type: "GET",
+            desc: <>The whole matching dataset in one call — one request against your rate limit.</>,
+          },
+          {
+            name: "/api/players/slug/:slug",
+            type: "GET",
+            desc: (
+              <>
+                One player, full detail: all attributes, badges, hot zones. Add{" "}
+                <code>?teamType=</code> for classic or all-time versions.
+              </>
+            ),
+          },
+          {
+            name: "/api/players/:id/history",
+            type: "GET",
+            desc: <>Weekly rating snapshots — the dossier&apos;s history chart uses this.</>,
+          },
+        ]}
+      />
+    </DocColumns>
   );
 }

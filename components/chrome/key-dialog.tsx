@@ -82,7 +82,7 @@ export function KeyDialog({ open, onOpenChange, onSuccess }: KeyDialogProps) {
                 Get your key
               </Dialog.Title>
               <Dialog.Description className="mt-1.5 mb-0 text-[13px] leading-[1.5] text-[#57534a]">
-                Free. 100 requests an hour. No credit card, no password — the key is your login.
+                Free. 500 requests an hour. No credit card, no password — the key is your login.
               </Dialog.Description>
               <form onSubmit={handleSubmit} className="mt-[18px] flex flex-col gap-3">
                 <div>
