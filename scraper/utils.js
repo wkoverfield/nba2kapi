@@ -76,6 +76,9 @@ export async function createPage(browser) {
 const CHALLENGE_PATH = '/.well-known/sgcaptcha';
 
 export async function gotoThroughChallenge(page, url, retries = 3) {
+  const samePage = () =>
+    page.url().split('?')[0].replace(/\/$/, '') === url.split('?')[0].replace(/\/$/, '');
+
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       await page.goto(url, { waitUntil: SCRAPER_OPTIONS.waitUntil });
@@ -92,8 +95,14 @@ export async function gotoThroughChallenge(page, url, retries = 3) {
     if (!page.url().includes(CHALLENGE_PATH)) {
       await page.waitForTimeout(500);
     }
+
     if (!page.url().includes(CHALLENGE_PATH)) {
-      return; // on the target page
+      if (samePage()) {
+        return;
+      }
+      // Escaped the challenge but on the wrong page (stale r= bounce or a
+      // superseded navigation) — re-goto the target.
+      continue;
     }
 
     logProgress(
@@ -104,11 +113,11 @@ export async function gotoThroughChallenge(page, url, retries = 3) {
         timeout: 35000,
       });
       await page.waitForLoadState('domcontentloaded').catch(() => {});
-      // Challenge solved and cookie set. If it bounced us to a different page
-      // than requested (its r= target can be a previous URL), loop to re-goto.
-      if (page.url().split('?')[0].replace(/\/$/, '') === url.split('?')[0].replace(/\/$/, '')) {
+      if (samePage()) {
         return;
       }
+      // Challenge solved (cookie now set) but bounced elsewhere — loop to
+      // re-goto the target.
     } catch {
       // Challenge never auto-resolved — capture what it showed for forensics.
       const title = await page.title().catch(() => '?');
