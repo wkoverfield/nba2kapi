@@ -204,6 +204,7 @@ export const VALID_PARAMS_BY_ENDPOINT: Record<string, Set<string>> = {
   "/api/players": new Set([
     "teamType",
     "era",
+    "search",
     "team",
     "minRating",
     "maxRating",

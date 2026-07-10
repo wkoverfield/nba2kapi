@@ -694,6 +694,7 @@ app.get("/api/players",
     // era supersedes teamType; "all" merges current + classic + all-time.
     era: z.enum(["all", "curr", "class", "allt"]).optional(),
     team: z.string().optional(),
+    search: z.string().max(80).optional(),
     minRating: z.coerce.number().min(0).max(99).optional(),
     maxRating: z.coerce.number().min(0).max(99).optional(),
     position: z.string().optional(),
@@ -727,6 +728,7 @@ app.get("/api/players",
       if (era !== "all") queryArgs.teamType = era;
 
       if (params.team) queryArgs.teams = [params.team];
+      if (params.search) queryArgs.search = params.search;
       if (params.minRating !== undefined) queryArgs.minOverall = params.minRating;
       if (params.maxRating !== undefined) queryArgs.maxOverall = params.maxRating;
       if (params.position) {

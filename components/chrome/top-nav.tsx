@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Search } from "lucide-react";
+import { CommandPalette } from "@/components/chrome/command-palette";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
@@ -82,26 +83,20 @@ export function TopNav({
 }: TopNavProps) {
   const ctaLabel = hasApiKey ? "View dashboard" : "Get an API key";
   const pathname = usePathname();
-  const router = useRouter();
   const stars = useGitHubStars(GITHUB_REPO);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
-  // Until the global command palette ships, ⌘K and the search pill route to
-  // the Playground, where full player search lives.
+  // ⌘K / Ctrl+K opens the global command palette (a modal, so it's safe to
+  // fire even while an input has focus).
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey) || e.key !== "k") return;
-      // Don't steal the shortcut while the user is typing (e.g. the
-      // registration dialog's form fields).
-      const el = document.activeElement as HTMLElement | null;
-      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) {
-        return;
-      }
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "k") return;
       e.preventDefault();
-      router.push("/playground");
+      setPaletteOpen((o) => !o);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [router]);
+  }, []);
 
   const ctaClasses =
     "rounded-full bg-[#1a1918] px-5 py-2.5 text-[13.5px] font-semibold text-[#faf9f5] no-underline transition-[background,transform] duration-150 ease-out hover:bg-[#333] active:scale-[0.97] motion-reduce:transition-none";
@@ -141,8 +136,8 @@ export function TopNav({
       <div className="flex items-center gap-2.5">
         <button
           type="button"
-          onClick={() => router.push("/playground")}
-          title="Search everything — players, teams, badges"
+          onClick={() => setPaletteOpen(true)}
+          title="Search everything — players, teams, queries"
           className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#e5e2da] bg-white px-3.5 py-[9px] transition-[border-color,transform] duration-150 ease-out hover:border-[#1a1918] active:scale-[0.97] motion-reduce:transition-none"
         >
           <Search className="h-[13px] w-[13px] text-[#57534a]" strokeWidth={2} />
@@ -179,6 +174,8 @@ export function TopNav({
           </Link>
         )}
       </div>
+
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </div>
   );
 }
