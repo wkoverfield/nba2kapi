@@ -182,7 +182,8 @@ export const CANONICAL_ATTRIBUTES = [
   "postMoves",
 ] as const;
 
-const toSnake = (key: string) => key.replace(/([A-Z])/g, "_$1").toLowerCase();
+// Treat a run of capitals as one unit so shotIQ → shot_iq, not shot_i_q.
+const toSnake = (key: string) => key.replace(/([A-Z]+)/g, (m) => "_" + m.toLowerCase());
 
 /**
  * Query-param spelling → canonical attribute key. Accepts snake_case of every
