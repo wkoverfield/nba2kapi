@@ -431,7 +431,7 @@ function TeamPage() {
                       </div>
                       {starter ? (
                         <Link
-                          href={`/players/${starter.slug}`}
+                          href={`/players/${starter.slug}?type=${era}&team=${encodeURIComponent(teamInfo?.name ?? "")}`}
                           className="relative block overflow-hidden rounded-[14px] border border-[#e5e2da] bg-white text-[#1a1918] no-underline transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-[#1a1918] hover:shadow-[0_14px_28px_-18px_rgba(26,25,24,0.3)] active:scale-[0.98] motion-reduce:transition-none"
                         >
                           <div className="relative h-[118px] bg-[#f1efe8]">
@@ -477,7 +477,7 @@ function TeamPage() {
                         return (
                           <Link
                             key={`${p.slug}-${i}`}
-                            href={`/players/${p.slug}`}
+                            href={`/players/${p.slug}?type=${era}&team=${encodeURIComponent(teamInfo?.name ?? "")}`}
                             className={cn(
                               "mt-1.5 flex items-center gap-[9px] rounded-[11px] border border-[#e5e2da] bg-white text-[#1a1918] no-underline transition-[border-color,transform] duration-150 hover:border-[#1a1918] active:scale-[0.98] motion-reduce:transition-none",
                               i === 0 ? "px-2.5 py-2" : "px-2.5 py-1.5"
@@ -532,7 +532,7 @@ function TeamPage() {
                     {tableRows.map((p, i) => (
                       <Link
                         key={`${p.slug}-${i}`}
-                        href={`/players/${p.slug}`}
+                        href={`/players/${p.slug}?type=${era}&team=${encodeURIComponent(teamInfo?.name ?? "")}`}
                         className={cn(
                           tableGrid,
                           "border-b border-[#faf8f2] py-2 text-[#1a1918] no-underline transition-colors duration-100 hover:bg-[#faf8f2]"

@@ -8,7 +8,7 @@ import { Footer } from "@/components/footer";
 // their own chrome (TopNav / SiteFooter) inside the page, so the legacy
 // header/footer must not double up on them.
 const RESKINNED_ROUTES = new Set(["/", "/playground", "/teams"]);
-const RESKINNED_PREFIXES = ["/teams/"];
+const RESKINNED_PREFIXES = ["/teams/", "/players/"];
 
 function isReskinned(pathname: string) {
   return RESKINNED_ROUTES.has(pathname) || RESKINNED_PREFIXES.some((p) => pathname.startsWith(p));

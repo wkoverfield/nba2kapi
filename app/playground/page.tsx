@@ -473,7 +473,7 @@ function Playground() {
                     return (
                       <Link
                         key={`${p.slug}-${p.teamType}-${p.team}`}
-                        href={`/players/${p.slug}`}
+                        href={`/players/${p.slug}?type=${p.teamType}&team=${encodeURIComponent(p.team)}`}
                         className={cn(
                           rowGrid,
                           "border-b border-[#faf8f2] py-[7px] text-[#1a1918] no-underline transition-colors duration-100 hover:bg-[#faf8f2]"
