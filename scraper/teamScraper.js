@@ -4,7 +4,7 @@
  */
 
 import { BASE_URL, TEAM_SELECTORS, TEAM_TYPES, SCRAPER_OPTIONS } from './config.js';
-import { normalizeUrl, logProgress, logError, delay, parseIntSafe } from './utils.js';
+import { normalizeUrl, logProgress, logError, delay, parseIntSafe, gotoThroughChallenge } from './utils.js';
 
 /**
  * Scrape team links from the team listing page
@@ -21,7 +21,7 @@ export async function scrapeTeamLinks(page, teamType) {
   const url = `${BASE_URL}${config.url}`;
   logProgress(`Navigating to ${config.name} teams: ${url}`);
 
-  await page.goto(url, { waitUntil: SCRAPER_OPTIONS.waitUntil });
+  await gotoThroughChallenge(page, url);
 
   // Extract team links from the page
   const teams = await page.$$eval(TEAM_SELECTORS.teamLinks, (links) => {
@@ -57,7 +57,7 @@ export async function scrapeTeamRoster(page, team, teamType) {
   try {
     logProgress(`Scraping roster: ${team.teamName}`);
 
-    await page.goto(teamUrl, { waitUntil: SCRAPER_OPTIONS.waitUntil });
+    await gotoThroughChallenge(page, teamUrl);
 
     // Extract player data from roster table
     const players = await page.$$eval(

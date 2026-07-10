@@ -65,6 +65,66 @@ export async function createPage(browser) {
 }
 
 /**
+ * SiteGround's anti-bot layer ("sgcaptcha") intercepts navigations from
+ * low-reputation IPs and redirects to /.well-known/sgcaptcha/?r=<target>.
+ * In a real (headed) browser the challenge is a JS check that auto-solves,
+ * sets a cookie on the context, and redirects back to <target>. This wrapper
+ * makes every navigation challenge-aware: detect the redirect, wait for the
+ * auto-solve, and retry the target. Cookies persist on the shared context, so
+ * one solved challenge usually covers the rest of the run.
+ */
+const CHALLENGE_PATH = '/.well-known/sgcaptcha';
+
+export async function gotoThroughChallenge(page, url, retries = 3) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      await page.goto(url, { waitUntil: SCRAPER_OPTIONS.waitUntil });
+    } catch (error) {
+      // The challenge redirect can interrupt the navigation itself; that is
+      // not fatal — fall through and handle whatever page we landed on.
+      if (!String(error.message).includes('interrupted by another navigation')) {
+        throw error;
+      }
+      await page.waitForLoadState('domcontentloaded').catch(() => {});
+    }
+
+    // Give a just-issued challenge redirect a beat to land.
+    if (!page.url().includes(CHALLENGE_PATH)) {
+      await page.waitForTimeout(500);
+    }
+    if (!page.url().includes(CHALLENGE_PATH)) {
+      return; // on the target page
+    }
+
+    logProgress(
+      `Anti-bot challenge intercepted ${url} (attempt ${attempt}/${retries}) — waiting for it to solve…`
+    );
+    try {
+      await page.waitForURL((u) => !u.toString().includes(CHALLENGE_PATH), {
+        timeout: 35000,
+      });
+      await page.waitForLoadState('domcontentloaded').catch(() => {});
+      // Challenge solved and cookie set. If it bounced us to a different page
+      // than requested (its r= target can be a previous URL), loop to re-goto.
+      if (page.url().split('?')[0].replace(/\/$/, '') === url.split('?')[0].replace(/\/$/, '')) {
+        return;
+      }
+    } catch {
+      // Challenge never auto-resolved — capture what it showed for forensics.
+      const title = await page.title().catch(() => '?');
+      const snippet = await page
+        .evaluate(() => document.body?.innerText?.slice(0, 300) ?? '')
+        .catch(() => '');
+      logError(
+        `Challenge did not auto-resolve on attempt ${attempt} (title: "${title}"): ${snippet.replace(/\s+/g, ' ')}`
+      );
+      await delay(5000 * attempt);
+    }
+  }
+  throw new Error(`Blocked by anti-bot challenge after ${retries} attempts: ${url}`);
+}
+
+/**
  * Normalize URL - convert relative URLs to absolute
  * @param {string} url - URL to normalize
  * @returns {string} Absolute URL
