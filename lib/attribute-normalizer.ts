@@ -59,62 +59,8 @@ export const ATTRIBUTE_NAME_MAP: Record<string, string> = {
   postMoves: "postMoves",
 };
 
-/**
- * Attribute categories for proper grouping
- */
-export const ATTRIBUTE_CATEGORIES = {
-  outsideScoring: [
-    "closeShot",
-    "midRangeShot",
-    "threePointShot",
-    "freeThrow",
-    "shotIQ",
-    "offensiveConsistency",
-  ],
-  insideScoring: [
-    "drivingLayup",
-    "standingDunk",
-    "drivingDunk",
-    "postHook",
-    "postFade",
-    "postControl",
-    "drawFoul",
-    "hands",
-  ],
-  playmaking: [
-    "passAccuracy",
-    "ballHandle",
-    "speedWithBall",
-    "passIQ",
-    "passVision",
-    "passing",
-    "postMoves",
-  ],
-  athleticism: [
-    "speed",
-    "acceleration",
-    "agility",
-    "vertical",
-    "strength",
-    "stamina",
-    "hustle",
-    "durability",
-  ],
-  defending: [
-    "interiorDefense",
-    "perimeterDefense",
-    "steal",
-    "block",
-    "helpDefenseIQ",
-    "passPerception",
-    "defensiveConsistency",
-    "lateralQuickness",
-  ],
-  rebounding: [
-    "offensiveRebound",
-    "defensiveRebound",
-  ],
-} as const;
+import { ATTRIBUTE_CATEGORIES } from "@/convex/attributeCategories";
+export { ATTRIBUTE_CATEGORIES };
 
 /**
  * Human-readable attribute name formatting
