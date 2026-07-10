@@ -1,0 +1,21 @@
+name: Scrape anti-bot diagnostic
+
+# Write-free probe: runs the scraper's browser stack against 2kratings from a
+# GitHub runner and reports whether the sgcaptcha challenge auto-solves.
+# No secrets, no Convex writes.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run probe (headed under xvfb, same as the real scrape)
+        run: xvfb-run --auto-servernum node scripts/debugChallenge.mjs

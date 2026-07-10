@@ -5,7 +5,7 @@
  */
 
 import { SCRAPER_OPTIONS } from './config.js';
-import { normalizeUrl, logProgress, logError, delay, slugify } from './utils.js';
+import { normalizeUrl, logProgress, logError, delay, slugify , gotoThroughChallenge } from './utils.js';
 
 /**
  * Scrape detailed player data from individual player page
@@ -22,7 +22,7 @@ export async function scrapePlayerDetails(page, basicPlayer) {
   const playerUrl = normalizeUrl(basicPlayer.playerUrl);
 
   try {
-    await page.goto(playerUrl, { waitUntil: SCRAPER_OPTIONS.waitUntil });
+    await gotoThroughChallenge(page, playerUrl);
 
     // Scrape all player details using the ACTUAL HTML structure
     const playerDetails = await page.evaluate(() => {
