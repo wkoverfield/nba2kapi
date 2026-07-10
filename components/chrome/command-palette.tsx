@@ -88,13 +88,14 @@ export function CommandPalette({
     for (const era of ["curr", "class", "allt"] as const) {
       all
         .filter((t) => t.teamType === era)
-        .sort((a, b) => b.avg - a.avg)
+        .sort((a, b) => b.avg - a.avg || a.team.localeCompare(b.team))
         .forEach((t, i) => rank.set(`${t.team}:${t.teamType}`, i + 1));
     }
-    return all.map((t): Result => {
+    return all.map((t): Result & { teamType: TeamType } => {
       const conf = getTeamConference(t.team);
       return {
         kind: "team",
+        teamType: t.teamType,
         key: `t:${t.team}:${t.teamType}`,
         name: formatTeamShortName(t.team, t.teamType),
         meta: `#${rank.get(`${t.team}:${t.teamType}`)}${conf ? ` · ${conf}` : ""} · ${t.avg.toFixed(1)} AVG${t.teamType === "curr" ? "" : t.teamType === "class" ? " · CLASSIC" : " · ALL-TIME"}`,
@@ -128,7 +129,7 @@ export function CommandPalette({
       const matchedTeams = query
         ? teams.filter((t) => t.name.toLowerCase().includes(query)).slice(0, 6)
         : teams
-            .filter((t) => t.kind === "team" && t.meta.startsWith("#") && t.href.includes("type=curr"))
+            .filter((t) => t.teamType === "curr")
             .sort((a, b) => Number(a.meta.slice(1).split(" ")[0]) - Number(b.meta.slice(1).split(" ")[0]))
             .slice(0, 3);
       if (matchedTeams.length) out.push({ label: "TEAMS", items: matchedTeams });
