@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import {
@@ -244,6 +244,14 @@ function Whiteboard() {
   const [posF, setPosF] = useState("ALL");
   const [sortF, setSortF] = useState<"ovr" | "az">("ovr");
   const [dragging, setDragging] = useState<PoolPlayer | null>(null);
+  // Browsers synthesize a click after pointerup, so a completed drag would
+  // also fire the tap handlers (remove / tap-place). Swallow clicks that
+  // land right after a drag ends.
+  const lastDragEndRef = useRef(0);
+  const guardedTap = (fn: () => void) => () => {
+    if (Date.now() - lastDragEndRef.current < 300) return;
+    fn();
+  };
 
   const players = useQuery(api.players.getPlaygroundPlayers) as PoolPlayer[] | undefined;
 
@@ -366,6 +374,7 @@ function Whiteboard() {
 
   const onDragEnd = (e: DragEndEvent) => {
     setDragging(null);
+    lastDragEndRef.current = Date.now();
     const data = e.active.data.current;
     if (!data) return;
     const overId = e.over?.id as string | undefined;
@@ -561,7 +570,15 @@ function Whiteboard() {
           </div>
         </div>
 
-        <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+        <DndContext
+          sensors={sensors}
+          onDragStart={onDragStart}
+          onDragEnd={onDragEnd}
+          onDragCancel={() => {
+            setDragging(null);
+            lastDragEndRef.current = Date.now();
+          }}
+        >
           <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,270px),1fr))] items-start gap-3.5">
             {/* Player pool */}
             <div
@@ -616,7 +633,7 @@ function Whiteboard() {
                         key={`${p.slug}:${p.teamType}:${p.team}`}
                         p={p}
                         placed={placedKeys.has(`${p.slug}:${p.teamType}:${p.team}`)}
-                        onTap={() => tapPlace(p)}
+                        onTap={guardedTap(() => tapPlace(p))}
                       />
                     ))
                   : Array.from({ length: 10 }, (_, i) => (
@@ -693,7 +710,7 @@ function Whiteboard() {
                     spot={spot}
                     player={yours[i]}
                     pulsing={false}
-                    onRemove={() => remove("yours", i)}
+                    onRemove={guardedTap(() => remove("yours", i))}
                   />
                 ))}
                 {SPOTS.map((spot, i) => (
@@ -704,7 +721,7 @@ function Whiteboard() {
                     spot={spot}
                     player={opps[i]}
                     pulsing={hasOpp}
-                    onRemove={() => remove("opps", i)}
+                    onRemove={guardedTap(() => remove("opps", i))}
                   />
                 ))}
 
