@@ -382,7 +382,7 @@ function TeamPage() {
                   </div>
                 </div>
                 <span className="rounded-full border border-[#e5e2da] bg-white px-3.5 py-2 font-plex text-[9.5px] text-[#8a8577]">
-                  GET /api/teams/{slug}/roster
+                  GET /api/teams/{slug}/roster{era !== "curr" ? `?teamType=${era}` : ""}
                 </span>
               </div>
             </div>
