@@ -23,22 +23,65 @@ export async function scrapeTeamLinks(page, teamType) {
 
   await gotoThroughChallenge(page, url);
 
-  // Extract team links from the page
+  // Extract team links from the page. Some anchors are image-only (no text,
+  // no alt, no title) — the All-Time Timberwolves shipped that way and got
+  // scraped as team "" — so the name falls back through img alt / title and
+  // finally the href slug ("all-time-minnesota-timberwolves" →
+  // "All-Time Minnesota Timberwolves").
   const teams = await page.$$eval(TEAM_SELECTORS.teamLinks, (links) => {
+    const nameFromSlug = (href) => {
+      const slug = (href || '').split('/').filter(Boolean).pop() || '';
+      if (!slug) return '';
+      let rest = slug;
+      let prefix = '';
+      const allTime = rest.match(/^all-time-(.+)$/);
+      const classicYears = rest.match(/^(\d{4}-\d{2})-(.+)$/);
+      if (allTime) {
+        prefix = 'All-Time ';
+        rest = allTime[1];
+      } else if (classicYears) {
+        prefix = `${classicYears[1]} `;
+        rest = classicYears[2];
+      }
+      const title = rest
+        .split('-')
+        .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : w))
+        .join(' ');
+      return prefix + title;
+    };
     return links.map(link => {
       const img = link.querySelector('img');
+      const href = link.getAttribute('href');
+      const teamName =
+        link.textContent.trim() ||
+        (img?.alt || '').trim() ||
+        (link.getAttribute('title') || '').trim() ||
+        nameFromSlug(href);
       return {
-        link: link.getAttribute('href'),
-        teamName: link.textContent.trim(),
+        link: href,
+        teamName,
         teamImg: img ? img.src : ''
       };
     });
   });
 
-  // Deduplicate teams (page has duplicate links)
+  // Deduplicate by href (the logo anchor and the name anchor share it) and
+  // drop anything that still has no name or link.
   const uniqueTeams = Array.from(
-    new Map(teams.map(team => [team.teamName, team])).values()
-  );
+    new Map(
+      teams
+        .filter((team) => team.link && team.teamName)
+        .map((team) => [team.link, team])
+    ).values()
+  ).map((team, _, all) => {
+    // Prefer a named duplicate's name and a logo duplicate's image.
+    const twins = all.filter((t) => t.link === team.link);
+    return {
+      link: team.link,
+      teamName: twins.map((t) => t.teamName).find(Boolean) || team.teamName,
+      teamImg: twins.map((t) => t.teamImg).find(Boolean) || team.teamImg,
+    };
+  });
 
   logProgress(`Found ${uniqueTeams.length} teams`);
   return uniqueTeams;
