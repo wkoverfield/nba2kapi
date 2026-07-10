@@ -56,13 +56,16 @@ function OctocatIcon() {
 type TopNavProps = {
   /** Override the primary CTA's default link-to-dashboard behavior. */
   onCtaClick?: () => void;
+  /** Swaps the CTA label for returning users who already hold a key. */
+  hasApiKey?: boolean;
 };
 
 /**
  * Shared chrome for reskinned (paper/editorial) pages: wordmark, pill nav,
  * search pill, GitHub star chip, and the primary API-key CTA.
  */
-export function TopNav({ onCtaClick }: TopNavProps) {
+export function TopNav({ onCtaClick, hasApiKey = false }: TopNavProps) {
+  const ctaLabel = hasApiKey ? "View dashboard" : "Get an API key";
   const pathname = usePathname();
   const router = useRouter();
   const stars = useGitHubStars(GITHUB_REPO);
@@ -71,10 +74,15 @@ export function TopNav({ onCtaClick }: TopNavProps) {
   // the Playground, where full player search lives.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        router.push("/playground");
+      if (!(e.metaKey || e.ctrlKey) || e.key !== "k") return;
+      // Don't steal the shortcut while the user is typing (e.g. the
+      // registration dialog's form fields).
+      const el = document.activeElement as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) {
+        return;
       }
+      e.preventDefault();
+      router.push("/playground");
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -137,11 +145,11 @@ export function TopNav({ onCtaClick }: TopNavProps) {
 
         {onCtaClick ? (
           <button type="button" onClick={onCtaClick} className={cn(ctaClasses, "cursor-pointer")}>
-            Get an API key
+            {ctaLabel}
           </button>
         ) : (
           <Link href="/dashboard" className={ctaClasses}>
-            Get an API key
+            {ctaLabel}
           </Link>
         )}
       </div>

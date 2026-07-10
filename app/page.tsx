@@ -166,7 +166,7 @@ export default function Home() {
   return (
     <>
       <div className="min-h-screen bg-[linear-gradient(to_bottom,#fffdf8,#faf9f5_600px)] font-body text-[#1a1918]">
-        <TopNav onCtaClick={handleGetApiKey} />
+        <TopNav onCtaClick={handleGetApiKey} hasApiKey={hasApiKey} />
 
         {/* Hero */}
         <div className="mx-auto grid max-w-[1360px] grid-cols-[repeat(auto-fit,minmax(min(100%,460px),1fr))] items-start gap-[clamp(32px,5vw,72px)] px-[clamp(20px,4vw,48px)] pt-[clamp(32px,5vw,60px)] pb-[72px]">
