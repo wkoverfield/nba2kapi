@@ -1263,7 +1263,27 @@ app.get("/api/teams/:teamName/roster",
         rosterArgs.teamType = teamType;
       }
 
-      const roster = await c.env.runQuery(api.players.getPlayersByTeam, rosterArgs);
+      let roster = await c.env.runQuery(api.players.getPlayersByTeam, rosterArgs);
+
+      // Also accept team slugs ("los-angeles-lakers") alongside exact names.
+      // Without teamType we try every era — classic/all-time slugs are
+      // distinct ("1995-96-chicago-bulls"), so the first hit wins.
+      if (roster.length === 0 && /^[a-z0-9-]+$/.test(teamName)) {
+        const erasToTry = teamType ? [teamType] : (["curr", "class", "allt"] as const);
+        for (const era of erasToTry) {
+          const teamInfo = await c.env.runQuery(api.teams.getTeamBySlug, {
+            slug: teamName,
+            teamType: era,
+          });
+          if (teamInfo) {
+            roster = await c.env.runQuery(api.players.getPlayersByTeam, {
+              team: teamInfo.name,
+              teamType: era,
+            });
+            if (roster.length > 0) break;
+          }
+        }
+      }
 
       if (roster.length === 0) {
         return c.json(errorResponse(
