@@ -123,6 +123,11 @@ One player, full detail (all attributes, badges, hot zones). Optional
 Name search (partial, word-order-agnostic). Params: \`q\` (required),
 \`teamType\`, \`limit\` (max 50, default 50).
 
+Player documents also carry two history fields straight from 2kratings:
+\`ratingHistory\` (game-to-game overalls: \`[{ gameVersion, overall, delta }]\`)
+and \`seasonMovement\` (in-season milestones for the current game:
+\`[{ label, overall }]\`, filled in as the season progresses).
+
 ## GET /api/players/{id}/history
 
 Weekly rating snapshots for a player. Params: \`gameVersion\`, \`limit\`.

@@ -135,6 +135,7 @@ async function upsertWithHistoryHelper(
     badges?: any;
     hotZones?: any;
     ratingHistory?: any[];
+    seasonMovement?: { label: string; overall: number }[];
     gameVersion?: string;
     scrapeJobId?: string;
     lastUpdated: string;
@@ -256,6 +257,9 @@ export const adminUpsertPlayerWithHistory = mutation({
     badges: v.optional(v.any()),
     hotZones: v.optional(v.any()),
     ratingHistory: v.optional(v.array(v.any())),
+    seasonMovement: v.optional(
+      v.array(v.object({ label: v.string(), overall: v.number() }))
+    ),
     gameVersion: v.optional(v.string()),
     scrapeJobId: v.optional(v.string()),
     lastUpdated: v.string(),
