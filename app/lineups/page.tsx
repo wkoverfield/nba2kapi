@@ -650,8 +650,7 @@ function Whiteboard() {
                 )}
               </div>
               <div className="px-4 py-[9px] font-plex text-[8px] leading-[1.6] text-[#b5b0a1]">
-                DRAG ONTO A SLOT (OR TAP: FILLS YOUR SPOT, THEN THEIRS) · TAP A PLACED CHIP TO
-                REMOVE · DRAG A CHIP OFF-COURT TO CLEAR IT
+                DRAG OR TAP TO PLACE · TAP A CHIP TO REMOVE
               </div>
             </div>
 
