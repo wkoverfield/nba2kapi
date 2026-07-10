@@ -1,173 +1,234 @@
 "use client";
 
-import * as React from "react";
+import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { motion } from "framer-motion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LoadingCard } from "@/components/ui/loading-card";
-import { fadeIn, staggerContainer, staggerItem } from "@/lib/animations";
+import { TopNav } from "@/components/chrome/top-nav";
+import { FooterStrip } from "@/components/chrome/footer-strip";
+import { Headshot } from "@/components/ui/headshot";
 import { getRatingClasses } from "@/lib/rating-colors";
-import { Users, Trophy, TrendingUp } from "lucide-react";
-import type { TeamType } from "@/types/player";
+import { getTeamAbbreviation, getTeamConference } from "@/lib/team-abbr";
+import { API_KEY_STORAGE_KEY } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
-export default function TeamsPage() {
-  const [teamType, setTeamType] = React.useState<TeamType>("curr");
+type TeamType = "curr" | "class" | "allt";
 
-  const teams = useQuery(api.teams.getAllTeams, { teamType });
+const ERA_TABS: { label: string; param: TeamType }[] = [
+  { label: "Current", param: "curr" },
+  { label: "Classic", param: "class" },
+  { label: "All-Time", param: "allt" },
+];
+
+/**
+ * Board display name: current teams keep their full name; classic
+ * "1995-96 Chicago Bulls" reads "'95-'96 Bulls"; all-time keeps
+ * "All-Time <nickname>".
+ */
+function boardName(team: string, teamType: TeamType): string {
+  if (teamType === "class") {
+    const m = team.match(/^\d{2}(\d{2})-(\d{2})\s+(.*)$/);
+    if (m) {
+      const nickname = m[3].split(" ").slice(-1)[0];
+      return `'${m[1]}-'${m[2]} ${nickname}`;
+    }
+  }
+  if (teamType === "allt") {
+    const nickname = team.replace(/^All-Time\s+/, "").split(" ").slice(-1)[0];
+    return `All-Time ${nickname}`;
+  }
+  return team;
+}
+
+function TeamLogo({ src, team }: { src: string | null; team: string }) {
+  const [errored, setErrored] = useState(false);
+  if (!src || errored) {
+    return (
+      <div className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[#f1efe8] font-display text-[10px] font-extrabold text-[#57534a]">
+        {getTeamAbbreviation(team)}
+      </div>
+    );
+  }
+  return (
+    <div className="relative h-[34px] w-[34px]">
+      <Image
+        src={src}
+        alt={team}
+        fill
+        sizes="34px"
+        className="object-contain"
+        onError={() => setErrored(true)}
+      />
+    </div>
+  );
+}
+
+function Board() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const eraParam = searchParams.get("era");
+  const era: TeamType = ERA_TABS.some((t) => t.param === eraParam)
+    ? (eraParam as TeamType)
+    : "curr";
+  const [hasApiKey, setHasApiKey] = useState(false);
+
+  const board = useQuery(api.teams.getBoard, { teamType: era });
+
+  useEffect(() => {
+    setHasApiKey(!!localStorage.getItem(API_KEY_STORAGE_KEY));
+  }, []);
+
+  const setEra = (next: TeamType) =>
+    router.replace(next === "curr" ? "/teams" : `/teams?era=${next}`, { scroll: false });
+
+  // Bar widths normalized the way the design does: floor sits 1.5 below the
+  // weakest roster so the spread reads clearly.
+  const min = board && board.length ? Math.min(...board.map((t) => t.avgRating)) - 1.5 : 0;
+  const max = board && board.length ? Math.max(...board.map((t) => t.avgRating)) : 1;
+
+  const rowGrid =
+    "grid grid-cols-[56px_44px_minmax(160px,1.2fr)_60px_minmax(180px,1.6fr)_60px_minmax(170px,1fr)] items-center gap-3 px-[22px]";
 
   return (
-    <div className="container mx-auto max-w-7xl space-y-8 px-4 py-8">
-      {/* Header */}
-      <motion.div
-        variants={fadeIn}
-        initial="initial"
-        animate="animate"
-        className="space-y-2"
-      >
-        <h1 className="text-4xl font-bold tracking-tight">NBA 2K Teams</h1>
-        <p className="text-lg text-muted-foreground">
-          Browse teams from current NBA, classic, and all-time rosters
-        </p>
-      </motion.div>
+    <div className="min-h-screen bg-[#faf9f5] font-body text-[#1a1918]">
+      <TopNav hasApiKey={hasApiKey} width="narrow" />
 
-      {/* Team Type Filter */}
-      <motion.div
-        variants={fadeIn}
-        initial="initial"
-        animate="animate"
-        transition={{ delay: 0.1 }}
-      >
-        <Tabs value={teamType} onValueChange={(v) => setTeamType(v as TeamType)}>
-          <TabsList>
-            <TabsTrigger value="curr">Current Teams</TabsTrigger>
-            <TabsTrigger value="class">Classic Teams</TabsTrigger>
-            <TabsTrigger value="allt">All-Time Teams</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </motion.div>
-
-      {/* Teams Grid */}
-      {teams === undefined ? (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 9 }).map((_, i) => (
-            <LoadingCard key={i} variant="player" />
-          ))}
+      <div className="mx-auto max-w-[1280px] px-[clamp(20px,4vw,48px)] pt-3.5">
+        <div className="flex flex-wrap items-end justify-between gap-4 animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
+          <div>
+            <h1 className="m-0 font-display text-[clamp(30px,3.4vw,40px)] font-extrabold tracking-[-0.03em]">
+              The board
+            </h1>
+            <p className="mt-1.5 mb-0 font-plex text-[10px] tracking-[0.1em] text-[#8a8577]">
+              EVERY TEAM RANKED BY RATING STRENGTH — NOT STANDINGS
+            </p>
+          </div>
+          <div className="flex gap-[3px] rounded-full border border-[#e5e2da] bg-white p-1">
+            {ERA_TABS.map((t) => (
+              <button
+                key={t.param}
+                type="button"
+                onClick={() => setEra(t.param)}
+                className={cn(
+                  "cursor-pointer rounded-full px-4 py-[7px] text-[12.5px] font-semibold transition-[background,color,transform] duration-150 select-none active:scale-[0.97] motion-reduce:transition-none",
+                  era === t.param ? "bg-[#1a1918] text-[#faf9f5]" : "text-[#57534a] hover:bg-[#f1efe8]"
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
-      ) : teams.length === 0 ? (
-        <motion.div
-          variants={fadeIn}
-          initial="initial"
-          animate="animate"
-          className="text-center py-12"
-        >
-          <p className="text-lg text-muted-foreground">
-            No teams found for this category
-          </p>
-        </motion.div>
-      ) : (
-        <motion.div
-          key={teamType}
-          variants={staggerContainer}
-          initial="initial"
-          animate="animate"
-          className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
-        >
-          {teams.map((team) => (
-            <motion.div key={`${team.name}-${team.type}`} variants={staggerItem}>
-              <a href={`/teams/${team.slug}?type=${team.type}`}>
-                <Card className="h-full transition-all hover:shadow-lg hover:border-primary/50 cursor-pointer">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        {team.logo && (
-                          <div className="relative h-12 w-12 shrink-0">
-                            <Image
-                              src={team.logo}
-                              alt={team.name}
-                              fill
-                              className="rounded-lg object-contain"
-                            />
-                          </div>
-                        )}
-                        <div>
-                          <CardTitle className="text-xl">{team.name}</CardTitle>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {team.type === "curr"
-                              ? "Current"
-                              : team.type === "class"
-                              ? "Classic"
-                              : "All-Time"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </CardHeader>
 
-                  <CardContent className="space-y-4">
-                    {/* Stats */}
-                    <div className="grid grid-cols-3 gap-4 text-center">
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-center gap-1">
-                          <Users className="h-3 w-3 text-muted-foreground" />
-                          <p className="text-xs text-muted-foreground">Players</p>
-                        </div>
-                        <p className="text-lg font-bold">{team.playerCount}</p>
-                      </div>
+        <div
+          className="mt-5 overflow-hidden rounded-2xl border border-[#e5e2da] bg-white animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
+          style={{ animationDelay: "80ms" }}
+        >
+          <div className="overflow-x-auto">
+            <div className="min-w-[720px]">
+              <div className={cn(rowGrid, "border-b border-[#e5e2da] bg-[#faf9f5] py-[11px]")}>
+                <span className="font-plex text-[8.5px] tracking-[0.08em] text-[#b5b0a1]">RANK</span>
+                <span />
+                <span className="font-plex text-[8.5px] tracking-[0.08em] text-[#b5b0a1]">TEAM</span>
+                <span className="font-plex text-[8.5px] tracking-[0.08em] text-[#b5b0a1]">CONF</span>
+                <span className="font-plex text-[8.5px] tracking-[0.08em] text-[#b5b0a1]">
+                  ROSTER STRENGTH — AVG RATING OF FULL ROSTER
+                </span>
+                <span className="font-plex text-[8.5px] font-bold tracking-[0.08em] text-[#1a1918]">
+                  AVG ↓
+                </span>
+                <span className="font-plex text-[8.5px] tracking-[0.08em] text-[#b5b0a1]">
+                  BEST PLAYER
+                </span>
+              </div>
 
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-center gap-1">
-                          <TrendingUp className="h-3 w-3 text-muted-foreground" />
-                          <p className="text-xs text-muted-foreground">Avg Rating</p>
-                        </div>
+              {board
+                ? board.map((t, i) => (
+                    <Link
+                      key={t.team}
+                      href={`/teams/${t.slug}?type=${era}`}
+                      className={cn(
+                        rowGrid,
+                        "border-b border-[#f6f4ee] py-2.5 text-[#1a1918] no-underline transition-colors duration-100 animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] hover:bg-[#faf8f2] active:scale-[0.995] motion-reduce:animate-none"
+                      )}
+                      style={{ animationDelay: `${Math.min(i, 20) * 30}ms` }}
+                    >
+                      <span className="font-display text-[19px] font-extrabold text-[#b5b0a1]">
+                        {i + 1}
+                      </span>
+                      <TeamLogo src={t.logo} team={t.team} />
+                      <span className="overflow-hidden text-[14.5px] font-semibold text-ellipsis whitespace-nowrap">
+                        {boardName(t.team, era)}
+                      </span>
+                      <span className="font-plex text-[9px] text-[#b5b0a1]">
+                        {getTeamConference(t.team) ?? "—"}
+                      </span>
+                      <div className="h-2 rounded-full bg-[#f1efe8]">
                         <div
+                          className="h-full rounded-full bg-[linear-gradient(to_right,#8a8577,#1a1918)] transition-[width] duration-400"
+                          style={{
+                            width: `${Math.round(((t.avgRating - min) / (max - min)) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="font-plex text-[13px] font-bold tabular-nums">
+                        {t.avgRating.toFixed(1)}
+                      </span>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Headshot
+                          src={t.bestPlayer.playerImage}
+                          name={t.bestPlayer.name}
+                          size={26}
+                        />
+                        <span className="flex-1 overflow-hidden text-[12px] font-semibold text-ellipsis whitespace-nowrap">
+                          {t.bestPlayer.name}
+                        </span>
+                        <span
                           className={cn(
-                            "inline-flex items-center justify-center px-2 py-0.5 rounded-sm",
-                            getRatingClasses(team.avgRating).bg,
-                            getRatingClasses(team.avgRating).shadow
+                            "inline-flex min-w-[30px] items-center justify-center rounded-[5px] px-1 py-0.5 text-[11px] font-bold text-white tabular-nums",
+                            getRatingClasses(t.bestPlayer.overall).bg
                           )}
                         >
-                          <span className="text-lg font-bold tabular-nums text-white">
-                            {team.avgRating}
-                          </span>
-                        </div>
+                          {t.bestPlayer.overall}
+                        </span>
                       </div>
-
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-center gap-1">
-                          <Trophy className="h-3 w-3 text-muted-foreground" />
-                          <p className="text-xs text-muted-foreground">Top Player</p>
-                        </div>
-                        <div
-                          className={cn(
-                            "inline-flex items-center justify-center px-2 py-0.5 rounded-sm",
-                            getRatingClasses(team.topPlayerOverall).bg,
-                            getRatingClasses(team.topPlayerOverall).shadow
-                          )}
-                        >
-                          <span className="text-lg font-bold tabular-nums text-white">
-                            {team.topPlayerOverall}
-                          </span>
-                        </div>
-                      </div>
+                    </Link>
+                  ))
+                : Array.from({ length: 12 }, (_, i) => (
+                    <div key={i} className={cn(rowGrid, "animate-pulse border-b border-[#f6f4ee] py-2.5")}>
+                      <span className="h-5 w-6 rounded bg-[#f1efe8]" />
+                      <div className="h-[34px] w-[34px] rounded-full bg-[#f1efe8]" />
+                      <span className="h-3.5 w-3/4 rounded bg-[#f1efe8]" />
+                      <span className="h-3 w-8 rounded bg-[#f1efe8]" />
+                      <span className="h-2 rounded-full bg-[#f1efe8]" />
+                      <span className="h-3.5 w-9 rounded bg-[#f1efe8]" />
+                      <span className="h-[26px] w-2/3 rounded-full bg-[#f1efe8]" />
                     </div>
+                  ))}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-[#faf9f5] px-[22px] py-2.5">
+            <span className="font-plex text-[8.5px] text-[#b5b0a1]">
+              CLICK A TEAM → DEPTH CHART · ← → CYCLES TEAMS FROM ANY TEAM PAGE
+            </span>
+            <span className="font-plex text-[8.5px] text-[#b5b0a1]">GET /api/teams?era={era}</span>
+          </div>
+        </div>
+      </div>
 
-                    {/* View Team Button */}
-                    <Button className="w-full" variant="outline">
-                      View Roster
-                    </Button>
-                  </CardContent>
-                </Card>
-              </a>
-            </motion.div>
-          ))}
-        </motion.div>
-      )}
+      <div className="mt-12">
+        <FooterStrip width="narrow" />
+      </div>
     </div>
+  );
+}
+
+export default function TeamsPage() {
+  return (
+    <Suspense fallback={null}>
+      <Board />
+    </Suspense>
   );
 }

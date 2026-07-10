@@ -1,17 +1,18 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { SHELL_WIDTHS } from "@/components/chrome/top-nav";
 
 /**
  * Compact one-line footer used by data-dense reskinned pages (Playground,
  * Board, Whiteboard). Marketing-weight pages use SiteFooter instead.
  */
-export function FooterStrip({ wide = false }: { wide?: boolean }) {
+export function FooterStrip({ width = "default" }: { width?: keyof typeof SHELL_WIDTHS }) {
   return (
     <div className="border-t border-[#e5e2da] bg-[#f5f3ec]">
       <div
         className={cn(
           "mx-auto flex flex-wrap items-center justify-between gap-2.5 px-[clamp(20px,4vw,48px)] py-[18px] font-plex text-[11px] text-[#8a8577]",
-          wide ? "max-w-[1440px]" : "max-w-[1360px]"
+          SHELL_WIDTHS[width]
         )}
       >
         <span className="font-display text-[15px] font-extrabold text-[#1a1918]">nba2kapi</span>

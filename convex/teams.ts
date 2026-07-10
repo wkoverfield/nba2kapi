@@ -40,6 +40,58 @@ export const getTeamBySlug = query({
 });
 
 /**
+ * The Board: every team of an era ranked by average roster rating, with the
+ * best player attached. One row per team, slim payload.
+ */
+export const getBoard = query({
+  args: {
+    teamType: v.union(v.literal("curr"), v.literal("class"), v.literal("allt")),
+  },
+  handler: async (ctx, args) => {
+    const players = await ctx.db
+      .query("players")
+      .withIndex("by_teamType", (q) => q.eq("teamType", args.teamType))
+      .collect();
+
+    type Agg = {
+      team: string;
+      logo: string | null;
+      count: number;
+      sum: number;
+      best: (typeof players)[number];
+    };
+    const byTeam = new Map<string, Agg>();
+    for (const p of players) {
+      let agg = byTeam.get(p.team);
+      if (!agg) {
+        agg = { team: p.team, logo: p.teamImg ?? null, count: 0, sum: 0, best: p };
+        byTeam.set(p.team, agg);
+      }
+      agg.count++;
+      agg.sum += p.overall;
+      if (!agg.logo && p.teamImg) agg.logo = p.teamImg;
+      if (p.overall > agg.best.overall) agg.best = p;
+    }
+
+    return [...byTeam.values()]
+      .map((t) => ({
+        team: t.team,
+        slug: t.team.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+        logo: t.logo,
+        playerCount: t.count,
+        avgRating: Math.round((t.sum / t.count) * 10) / 10,
+        bestPlayer: {
+          name: t.best.name,
+          slug: t.best.slug,
+          overall: t.best.overall,
+          playerImage: t.best.playerImage ?? null,
+        },
+      }))
+      .sort((a, b) => b.avgRating - a.avgRating || a.team.localeCompare(b.team));
+  },
+});
+
+/**
  * Get detailed team statistics
  */
 export const getTeamStats = query({

@@ -237,7 +237,7 @@ export const VALID_PARAMS_BY_ENDPOINT: Record<string, Set<string>> = {
   "/api/players/:id/attribute/:attr": new Set(["limit"]),
   "/api/players/:id/versions": new Set([]),
   "/api/players/slug/:slug": new Set(["teamType", "team"]),
-  "/api/teams": new Set(["teamType"]),
+  "/api/teams": new Set(["teamType", "era"]),
   "/api/teams/:teamName/roster": new Set(["teamType"]),
   "/api/trending": new Set(["teamType", "days", "limit"]),
   "/api/badges": new Set(["category", "gameVersion"]),

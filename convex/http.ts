@@ -1210,10 +1210,13 @@ app.get("/api/teams",
   rejectUnknownParams("/api/teams"),
   zValidator("query", z.object({
     teamType: z.enum(["curr", "class", "allt"]).default("curr"),
+    // era is an alias for teamType (matches /api/players naming)
+    era: z.enum(["curr", "class", "allt"]).optional(),
   })),
   async (c) => {
     try {
-      const { teamType } = c.req.valid("query");
+      const params = c.req.valid("query");
+      const teamType = params.era ?? params.teamType;
 
       const teams = await c.env.runQuery(api.players.getTeams, { teamType });
 

@@ -346,7 +346,7 @@ function Playground() {
 
   return (
     <div className="min-h-screen bg-[#faf9f5] font-body text-[#1a1918]">
-      <TopNav hasApiKey={hasApiKey} wide />
+      <TopNav hasApiKey={hasApiKey} width="wide" />
 
       {/* Query card */}
       <div className="mx-auto max-w-[1440px] animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] px-[clamp(20px,4vw,48px)] pt-2 motion-reduce:animate-none">
@@ -626,7 +626,7 @@ function Playground() {
         </div>
       </div>
 
-      <FooterStrip wide />
+      <FooterStrip width="wide" />
     </div>
   );
 }

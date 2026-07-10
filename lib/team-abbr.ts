@@ -34,7 +34,71 @@ export const TEAM_ABBREVIATIONS: Record<string, string> = {
   "Toronto Raptors": "TOR",
   "Utah Jazz": "UTA",
   "Washington Wizards": "WAS",
+  // Historical franchise names that appear in classic-era rosters
+  "Seattle SuperSonics": "SEA",
+  "Seattle Supersonics": "SEA",
+  "New Jersey Nets": "NJN",
+  "Vancouver Grizzlies": "VAN",
+  "Washington Bullets": "WAS",
+  "Charlotte Bobcats": "CHA",
+  "New Orleans Hornets": "NOH",
 };
+
+/** Franchise → conference. Same includes-matching as abbreviations. */
+export const TEAM_CONFERENCES: Record<string, "EAST" | "WEST"> = {
+  "Atlanta Hawks": "EAST",
+  "Boston Celtics": "EAST",
+  "Brooklyn Nets": "EAST",
+  "Charlotte Hornets": "EAST",
+  "Chicago Bulls": "EAST",
+  "Cleveland Cavaliers": "EAST",
+  "Dallas Mavericks": "WEST",
+  "Denver Nuggets": "WEST",
+  "Detroit Pistons": "EAST",
+  "Golden State Warriors": "WEST",
+  "Houston Rockets": "WEST",
+  "Indiana Pacers": "EAST",
+  "LA Clippers": "WEST",
+  "Los Angeles Clippers": "WEST",
+  "Los Angeles Lakers": "WEST",
+  "Memphis Grizzlies": "WEST",
+  "Miami Heat": "EAST",
+  "Milwaukee Bucks": "EAST",
+  "Minnesota Timberwolves": "WEST",
+  "New Orleans Pelicans": "WEST",
+  "New York Knicks": "EAST",
+  "Oklahoma City Thunder": "WEST",
+  "Orlando Magic": "EAST",
+  "Philadelphia 76ers": "EAST",
+  "Phoenix Suns": "WEST",
+  "Portland Trail Blazers": "WEST",
+  "Sacramento Kings": "WEST",
+  "San Antonio Spurs": "WEST",
+  "Toronto Raptors": "EAST",
+  "Utah Jazz": "WEST",
+  "Washington Wizards": "EAST",
+  // Historical franchise names that appear in classic-era rosters
+  "Seattle SuperSonics": "WEST",
+  "Seattle Supersonics": "WEST",
+  "New Jersey Nets": "EAST",
+  "Vancouver Grizzlies": "WEST",
+  "Washington Bullets": "EAST",
+  "Charlotte Bobcats": "EAST",
+  "New Orleans Hornets": "WEST",
+};
+
+/**
+ * Conference for any team name variant (classic/all-time included).
+ * Historical relocations aside, this maps by the modern franchise name;
+ * unknown names return null.
+ */
+export function getTeamConference(team: string): "EAST" | "WEST" | null {
+  if (TEAM_CONFERENCES[team]) return TEAM_CONFERENCES[team];
+  for (const [name, conf] of Object.entries(TEAM_CONFERENCES)) {
+    if (team.includes(name)) return conf;
+  }
+  return null;
+}
 
 /**
  * Abbreviate any team name, including classic ("'96 Chicago Bulls") and
