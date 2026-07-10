@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { TopNav } from "@/components/chrome/top-nav";
 import { FooterStrip } from "@/components/chrome/footer-strip";
+import { toast } from "sonner";
+import { LLMS_FULL } from "@/lib/llms-docs";
 import { API_KEY_STORAGE_KEY } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -74,6 +76,36 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
               </div>
             </div>
           ))}
+
+          {/* Docs for LLMs */}
+          <div className="rounded-[10px] border border-[#e5e2da] bg-white px-3 py-2.5">
+            <div className="mb-1.5 font-plex text-[8.5px] tracking-[0.12em] text-[#b5b0a1]">
+              FOR LLMS
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                navigator.clipboard
+                  .writeText(LLMS_FULL)
+                  .then(() => toast.success("Full API docs copied as markdown"))
+              }
+              className="block cursor-pointer text-left text-[12px] font-semibold text-[#1a1918] hover:text-[#57534a]"
+            >
+              Copy docs as Markdown
+            </button>
+            <a
+              href="/llms-full.txt"
+              className="mt-1 block text-[12px] font-medium text-[#57534a] no-underline hover:text-[#1a1918]"
+            >
+              llms-full.txt
+            </a>
+            <a
+              href="/llms.txt"
+              className="mt-0.5 block text-[12px] font-medium text-[#57534a] no-underline hover:text-[#1a1918]"
+            >
+              llms.txt
+            </a>
+          </div>
         </div>
 
         {/* Page body */}
