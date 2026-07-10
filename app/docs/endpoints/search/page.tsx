@@ -1,114 +1,44 @@
-import { Badge } from "@/components/ui/badge";
-import { CodeBlock } from "@/components/code-block";
-import { LanguageTabs } from "@/components/language-tabs";
-import { TryItLiveButton } from "@/components/try-it-live-button";
+"use client";
+
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  AuthPill,
+  CodeRail,
+  DocColumns,
+  DocLabel,
+  DocP,
+  EndpointHeader,
+  FinePrint,
+  ParamsTable,
+} from "@/components/docs/kit";
 
-export default function SearchEndpointPage() {
-  return (
-    <div className="space-y-8">
-      <div>
-        <div className="mb-4 flex items-center gap-3">
-          <Badge variant="outline" className="font-mono">
-            GET
-          </Badge>
-          <code className="text-2xl font-bold">/api/players/search</code>
-        </div>
-        <p className="text-lg text-slate-600 dark:text-slate-400">
-          Search for players by name with fuzzy matching support.
-        </p>
-        <div className="mt-4 flex gap-3">
-          <TryItLiveButton href="/playground?search=lebron" label="Try Search: LeBron" />
-          <TryItLiveButton
-            href="/playground?search=curry"
-            label="Try Search: Curry"
-            variant="secondary"
-          />
-        </div>
-      </div>
-
-      <div className="space-y-6">
-        <div>
-          <h2 className="mb-3 text-2xl font-bold">Query Parameters</h2>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Parameter</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Required</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow>
-                  <TableCell className="font-mono text-sm">q</TableCell>
-                  <TableCell>string</TableCell>
-                  <TableCell>Search query (player name)</TableCell>
-                  <TableCell>Yes</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-mono text-sm">teamType</TableCell>
-                  <TableCell>
-                    <code className="text-sm">curr | class | allt</code>
-                  </TableCell>
-                  <TableCell>Filter by team type</TableCell>
-                  <TableCell>No</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-mono text-sm">limit</TableCell>
-                  <TableCell>number</TableCell>
-                  <TableCell>Maximum results to return (max 50)</TableCell>
-                  <TableCell>No (default: 50)</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
-        </div>
-
-        <div>
-          <h2 className="mb-3 text-2xl font-bold">Example Request</h2>
-          <LanguageTabs
-            examples={{
-              javascript: `const response = await fetch(
-  'https://api.nba2kapi.com/api/players/search?q=lebron',
+const SAMPLES = [
   {
-    headers: {
-      'X-API-Key': 'your_api_key_here'
-    }
-  }
+    label: "cURL",
+    code: `curl 'https://api.nba2kapi.com/api/players/search?\\
+q=lebron' \\
+  -H 'X-API-Key: YOUR_KEY'`,
+  },
+  {
+    label: "JS",
+    code: `const res = await fetch(
+  'https://api.nba2kapi.com/api/players/search?q=lebron',
+  { headers: { 'X-API-Key': KEY } }
 );
+const { data } = await res.json();`,
+  },
+  {
+    label: "Python",
+    code: `import requests
 
-const data = await response.json();
-console.log(data.data); // Array of matching players`,
-              python: `import requests
+res = requests.get(
+  'https://api.nba2kapi.com/api/players/search',
+  params={'q': 'lebron'},
+  headers={'X-API-Key': KEY})
+data = res.json()['data']`,
+  },
+];
 
-response = requests.get(
-    'https://api.nba2kapi.com/api/players/search',
-    params={'q': 'lebron'},
-    headers={'X-API-Key': 'your_api_key_here'}
-)
-
-data = response.json()
-print(data['data'])  # Array of matching players`,
-              curl: `curl -X GET \\
-  'https://api.nba2kapi.com/api/players/search?q=lebron' \\
-  -H 'X-API-Key: your_api_key_here'`,
-            }}
-          />
-        </div>
-
-        <div>
-          <h2 className="mb-3 text-2xl font-bold">Example Response</h2>
-          <CodeBlock
-            code={`{
+const RESPONSE = `{
   "success": true,
   "data": [
     {
@@ -119,8 +49,8 @@ print(data['data'])  # Array of matching players`,
       "teamType": "curr",
       "overall": 97,
       "positions": ["SF", "PF"],
-      "playerImage": "https://...",
-      "teamImg": "https://..."
+      "playerImage": "https://…",
+      "teamImg": "https://…"
     }
   ],
   "meta": {
@@ -129,72 +59,61 @@ print(data['data'])  # Array of matching players`,
     "truncated": false,
     "timestamp": "2025-01-15T00:00:00.000Z"
   }
-}`}
-            language="json"
-          />
-        </div>
+}`;
 
-        <div>
-          <h2 className="mb-3 text-2xl font-bold">Search Tips</h2>
-          <div className="space-y-4">
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
-              <h4 className="mb-2 font-semibold">Partial Matching</h4>
-              <p className="mb-2 text-sm text-slate-600 dark:text-slate-400">
-                Search works with partial names. You don't need to type the full name.
-              </p>
-              <CodeBlock
-                code={`// All of these will find LeBron James:
-?q=lebron
-?q=lebron james
-?q=leb
-?q=james lebron`}
-                language="javascript"
-              />
-            </div>
+export default function SearchEndpointPage() {
+  return (
+    <DocColumns
+      rail={
+        <CodeRail samples={SAMPLES} response={RESPONSE} playgroundHref="/playground?search=lebron" />
+      }
+    >
+      <EndpointHeader path="/api/players/search" title="Search players">
+        <p className="m-0">
+          Find players by name with fuzzy matching — the endpoint behind autocomplete boxes,
+          type-to-search UIs, and Discord bot commands.
+        </p>
+      </EndpointHeader>
+      <AuthPill>REQUIRES X-API-KEY HEADER · 100 REQ/HR FREE</AuthPill>
 
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
-              <h4 className="mb-2 font-semibold">Case Insensitive</h4>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                Search is case-insensitive. <code className="rounded bg-white px-1 text-xs dark:bg-slate-950">?q=LEBRON</code> and{" "}
-                <code className="rounded bg-white px-1 text-xs dark:bg-slate-950">?q=lebron</code> return the same results.
-              </p>
-            </div>
+      <DocLabel>QUERY PARAMETERS</DocLabel>
+      <ParamsTable
+        rows={[
+          {
+            name: "q",
+            type: "string · required",
+            desc: (
+              <>
+                The search query. Partial names work — <code>lebron</code>, <code>leb</code>, and{" "}
+                <code>james lebron</code> all find LeBron James.
+              </>
+            ),
+          },
+          {
+            name: "teamType",
+            type: "string",
+            desc: (
+              <>
+                Narrow to one era: <code>curr</code>, <code>class</code>, or <code>allt</code>.
+                E.g. <code>q=kobe&amp;teamType=class</code>.
+              </>
+            ),
+          },
+          {
+            name: "limit",
+            type: "number",
+            desc: <>Maximum results to return. Max 50, default 50.</>,
+          },
+        ]}
+      />
 
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
-              <h4 className="mb-2 font-semibold">Combine with Filters</h4>
-              <p className="mb-2 text-sm text-slate-600 dark:text-slate-400">
-                Narrow results by combining search with team type filters.
-              </p>
-              <CodeBlock
-                code={`// Search only current rosters
-?q=michael jordan&teamType=curr
-
-// Search classic teams
-?q=kobe&teamType=class`}
-                language="javascript"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-900">
-          <h3 className="text-lg font-semibold">Common Use Cases</h3>
-          <ul className="space-y-2 text-slate-600 dark:text-slate-400">
-            <li>
-              • Building an autocomplete search box
-            </li>
-            <li>
-              • Finding players by last name
-            </li>
-            <li>
-              • Implementing a "type to search" feature
-            </li>
-            <li>
-              • Creating Discord bot commands (/player search lebron)
-            </li>
-          </ul>
-        </div>
-      </div>
-    </div>
+      <DocLabel>MATCHING BEHAVIOR</DocLabel>
+      <DocP>
+        Search is case-insensitive — <code>?q=LEBRON</code> and <code>?q=lebron</code> return the
+        same results — and word order doesn&apos;t matter. <code>meta.truncated</code> tells you
+        whether more matches exist beyond <code>limit</code>.
+      </DocP>
+      <FinePrint>RETURNS SUMMARY PLAYER OBJECTS · FETCH /API/PLAYERS/SLUG/:SLUG FOR FULL DETAIL.</FinePrint>
+    </DocColumns>
   );
 }
