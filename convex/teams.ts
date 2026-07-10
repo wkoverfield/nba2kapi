@@ -92,6 +92,21 @@ export const getBoard = query({
 });
 
 /**
+ * team name → logo URL map across all eras (command palette icons).
+ */
+export const getTeamLogoMap = query({
+  args: {},
+  handler: async (ctx) => {
+    const players = await ctx.db.query("players").collect();
+    const map: Record<string, string> = {};
+    for (const p of players) {
+      if (p.teamImg && !map[p.team]) map[p.team] = p.teamImg;
+    }
+    return map;
+  },
+});
+
+/**
  * Get detailed team statistics
  */
 export const getTeamStats = query({

@@ -299,10 +299,8 @@ function TeamPage() {
           </Link>
           <div className="flex flex-wrap items-center gap-2">
             {prevTeam && (
-              <Link href={`/teams/${prevTeam.slug}?type=${era}`} className={cn(pillClass, "py-1.5 pr-3.5 pl-2.5")}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#8a8577" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="m15 18-6-6 6-6" />
-                </svg>
+              <Link href={`/teams/${prevTeam.slug}?type=${era}`} className={cn(pillClass, "py-1.5 pr-3.5 pl-2")}>
+                <span className="flex h-[18px] w-[18px] items-center justify-center rounded-[4px] border border-[#d9d4c7] bg-[#faf9f5] font-plex text-[9px] leading-none text-[#57534a]">←</span>
                 <TeamLogo src={prevTeam.logo} team={prevTeam.team} size={20} />
                 <span className="font-plex text-[10px] tracking-[0.06em] text-[#57534a]">
                   <b className="text-[#1a1918]">
@@ -319,12 +317,9 @@ function TeamPage() {
                   {formatTeamNickname(nextTeam.team, era).toUpperCase()}
                 </span>
                 <TeamLogo src={nextTeam.logo} team={nextTeam.team} size={20} />
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#8a8577" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="m9 18 6-6-6-6" />
-                </svg>
+                <span className="flex h-[18px] w-[18px] items-center justify-center rounded-[4px] border border-[#d9d4c7] bg-[#faf9f5] font-plex text-[9px] leading-none text-[#57534a]">→</span>
               </Link>
             )}
-            <span className="font-plex text-[9px] tracking-[0.08em] text-[#b5b0a1]">OR ← → KEYS</span>
           </div>
         </div>
 

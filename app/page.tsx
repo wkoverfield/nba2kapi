@@ -204,10 +204,19 @@ export default function Home() {
               >
                 {hasApiKey ? "View dashboard" : "Get an API key"}
               </button>
-              <div className="rounded-full border border-[#e5e2da] bg-[#f1efe8] px-[18px] py-3 font-plex text-[13px] text-[#57534a]">
+              <button
+                type="button"
+                onClick={() =>
+                  navigator.clipboard
+                    .writeText("curl https://api.nba2kapi.com/api/players")
+                    .then(() => toast.success("curl command copied"))
+                }
+                title="Copy this command"
+                className="cursor-pointer rounded-full border border-[#e5e2da] bg-[#f1efe8] px-[18px] py-3 font-plex text-[13px] text-[#57534a] transition-[border-color,transform] duration-150 hover:border-[#1a1918] active:scale-[0.98] motion-reduce:transition-none"
+              >
                 $ curl api.nba2kapi.com/api/players
                 <span className="ml-1 inline-block h-3.5 w-[7px] translate-y-[2px] animate-[caret-blink_1.1s_step-end_infinite] bg-[#1a1918] motion-reduce:animate-none" />
-              </div>
+              </button>
             </div>
             <div
               className={cn("flex flex-wrap gap-x-8 gap-y-[18px] font-plex text-[12px] text-[#8a8577]", RISE_IN)}
