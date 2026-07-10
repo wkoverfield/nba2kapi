@@ -86,6 +86,17 @@ export default function DashboardPage() {
     return () => clearInterval(tick);
   }, []);
 
+  // A stale key (deleted or regenerated in another browser) resolves to null:
+  // drop it and fall back to the signup state.
+  useEffect(() => {
+    if (apiKey && stats === null) {
+      localStorage.removeItem(API_KEY_STORAGE_KEY);
+      setApiKey(null);
+      setShowDialog(true);
+      toast("That key is no longer active — create a fresh one.");
+    }
+  }, [apiKey, stats]);
+
   const resetsInMin = useMemo(() => {
     if (!stats?.resetAt) return null;
     return Math.max(0, Math.ceil((new Date(stats.resetAt).getTime() - now) / 60000));

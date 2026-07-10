@@ -151,10 +151,10 @@ export default function Home() {
     }
   };
 
+  // Don't close the dialog or navigate here: the key is shown in full exactly
+  // once on the dialog's second step, and its own buttons navigate onward.
   const handleRegistrationSuccess = () => {
     setHasApiKey(true);
-    setShowRegistration(false);
-    router.push("/dashboard");
   };
 
   const copyTeaserUrl = () => {
