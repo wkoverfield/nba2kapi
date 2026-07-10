@@ -58,15 +58,21 @@ type TopNavProps = {
   onCtaClick?: () => void;
   /** Swaps the CTA label for returning users who already hold a key. */
   hasApiKey?: boolean;
-  /** Data-dense pages (Playground, Board, Whiteboard) run a 1440px shell. */
-  wide?: boolean;
+  /** Page shell width: narrow 1280 (Board), default 1360, wide 1440 (Playground). */
+  width?: "narrow" | "default" | "wide";
 };
+
+export const SHELL_WIDTHS = {
+  narrow: "max-w-[1280px]",
+  default: "max-w-[1360px]",
+  wide: "max-w-[1440px]",
+} as const;
 
 /**
  * Shared chrome for reskinned (paper/editorial) pages: wordmark, pill nav,
  * search pill, GitHub star chip, and the primary API-key CTA.
  */
-export function TopNav({ onCtaClick, hasApiKey = false, wide = false }: TopNavProps) {
+export function TopNav({ onCtaClick, hasApiKey = false, width = "default" }: TopNavProps) {
   const ctaLabel = hasApiKey ? "View dashboard" : "Get an API key";
   const pathname = usePathname();
   const router = useRouter();
@@ -97,7 +103,7 @@ export function TopNav({ onCtaClick, hasApiKey = false, wide = false }: TopNavPr
     <div
       className={cn(
         "mx-auto flex w-full flex-wrap items-center justify-between gap-3 px-[clamp(20px,4vw,48px)] py-5",
-        wide ? "max-w-[1440px]" : "max-w-[1360px]"
+        SHELL_WIDTHS[width]
       )}
     >
       <Link
