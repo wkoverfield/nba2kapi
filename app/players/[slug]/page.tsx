@@ -128,17 +128,19 @@ function PlayerDossier() {
       ? dossier.roster[(rosterIndex + 1) % dossier.roster.length]
       : null;
 
+  const teamQuery = player ? `&team=${encodeURIComponent(player.team)}` : "";
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const el = document.activeElement as HTMLElement | null;
       if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
-      if (e.key === "ArrowLeft" && prevPlayer) router.push(`/players/${prevPlayer.slug}?type=${era}`);
-      if (e.key === "ArrowRight" && nextPlayer) router.push(`/players/${nextPlayer.slug}?type=${era}`);
+      if (e.key === "ArrowLeft" && prevPlayer) router.push(`/players/${prevPlayer.slug}?type=${era}${teamQuery}`);
+      if (e.key === "ArrowRight" && nextPlayer) router.push(`/players/${nextPlayer.slug}?type=${era}${teamQuery}`);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [prevPlayer, nextPlayer, era, router]);
+  }, [prevPlayer, nextPlayer, era, teamQuery, router]);
 
   // Signature stats: three best interesting attributes
   const signature = useMemo(() => {
@@ -301,7 +303,7 @@ function PlayerDossier() {
           )}
           <div className="flex flex-wrap items-center gap-2">
             {prevPlayer && (
-              <Link href={`/players/${prevPlayer.slug}?type=${era}`} className={cn(pillClass, "py-1.5 pr-3.5 pl-2.5")}>
+              <Link href={`/players/${prevPlayer.slug}?type=${era}${teamQuery}`} className={cn(pillClass, "py-1.5 pr-3.5 pl-2.5")}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#8a8577" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="m15 18-6-6 6-6" />
                 </svg>
@@ -311,7 +313,7 @@ function PlayerDossier() {
               </Link>
             )}
             {nextPlayer && (
-              <Link href={`/players/${nextPlayer.slug}?type=${era}`} className={cn(pillClass, "py-1.5 pr-2.5 pl-3.5")}>
+              <Link href={`/players/${nextPlayer.slug}?type=${era}${teamQuery}`} className={cn(pillClass, "py-1.5 pr-2.5 pl-3.5")}>
                 <span className="font-plex text-[10px] tracking-[0.06em] text-[#57534a]">
                   {shortPlayerLabel(nextPlayer.name)} · {nextPlayer.overall}
                 </span>
