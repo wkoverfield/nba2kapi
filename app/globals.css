@@ -248,3 +248,23 @@
     background-color: #faefc4;
   }
 }
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-slot {
+  0%, 100% {
+    border-color: #b5b0a1;
+  }
+  50% {
+    border-color: #1a1918;
+  }
+}

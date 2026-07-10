@@ -5,6 +5,7 @@
 
 import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { ATTRIBUTE_CATEGORIES } from "./attributeCategories";
 
 /**
  * Insert a single player into the database
@@ -855,14 +856,20 @@ export const getAllFiltered = query({
 });
 
 /**
- * Lightweight projection of every player for the Playground's client-side
- * sentence-query engine: filtering/sorting happens in the browser, so this
- * returns one slim row per player instead of full documents.
+ * Lightweight projection of every player for client-side engines (Playground
+ * sentence queries, Whiteboard pool): filtering/sorting happens in the
+ * browser, so this returns one slim row per player instead of full documents.
+ * cats are rounded category means used by the Whiteboard tape/duels.
  */
 export const getPlaygroundPlayers = query({
   args: {},
   handler: async (ctx) => {
     const players = await ctx.db.query("players").collect();
+    const catScore = (attrs: Record<string, number> | undefined, keys: readonly string[]) => {
+      if (!attrs) return null;
+      const vals = keys.map((k) => attrs[k]).filter((n): n is number => typeof n === "number");
+      return vals.length ? Math.round(vals.reduce((s, n) => s + n, 0) / vals.length) : null;
+    };
     return players.map((p) => ({
       name: p.name,
       slug: p.slug,
@@ -875,6 +882,14 @@ export const getPlaygroundPlayers = query({
       speed: p.attributes?.speed ?? null,
       drivingDunk: p.attributes?.drivingDunk ?? null,
       perimeterDefense: p.attributes?.perimeterDefense ?? null,
+      cats: {
+        ins: catScore(p.attributes, ATTRIBUTE_CATEGORIES.insideScoring),
+        out: catScore(p.attributes, ATTRIBUTE_CATEGORIES.outsideScoring),
+        ply: catScore(p.attributes, ATTRIBUTE_CATEGORIES.playmaking),
+        ath: catScore(p.attributes, ATTRIBUTE_CATEGORIES.athleticism),
+        reb: catScore(p.attributes, ATTRIBUTE_CATEGORIES.rebounding),
+        def: catScore(p.attributes, ATTRIBUTE_CATEGORIES.defending),
+      },
     }));
   },
 });

@@ -1,620 +1,866 @@
 "use client";
 
-import * as React from "react";
-import { Suspense } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  PointerSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { Search } from "lucide-react";
+import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import { motion } from "framer-motion";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { PlayerSearchPanel } from "@/components/lineups/player-search-panel";
-import { LineupGrid } from "@/components/lineups/lineup-grid";
-import { LineupRadarChart } from "@/components/lineups/lineup-radar-chart";
-import { LineupStats } from "@/components/lineups/lineup-stats";
-import { PlayerInfoModal } from "@/components/lineups/player-info-modal";
-import { ShareLineupModal } from "@/components/lineups/share-lineup-modal";
-import { LoadingCard } from "@/components/ui/loading-card";
-import { parseLineupFromURL, lineupToURLParams, LineupPlayer } from "@/lib/lineup-url";
-import { fadeIn } from "@/lib/animations";
-import { cn } from "@/lib/utils";
+import { TopNav } from "@/components/chrome/top-nav";
+import { FooterStrip } from "@/components/chrome/footer-strip";
+import { Headshot } from "@/components/ui/headshot";
 import { getRatingClasses } from "@/lib/rating-colors";
-import { Plus, X, Share2, User } from "lucide-react";
-import type { Player, TeamType } from "@/types/player";
-import Image from "next/image";
+import { getTeamAbbreviation } from "@/lib/team-abbr";
+import { parseLineupFromURL, lineupToURLParams, type LineupPlayer } from "@/lib/lineup-url";
+import { API_KEY_STORAGE_KEY } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 
-// Empty slot placeholder
-const EMPTY_SLOT: LineupPlayer = { slug: "", teamType: "curr" };
+type TeamType = "curr" | "class" | "allt";
 
-export default function LineupsPage() {
+type PoolPlayer = {
+  name: string;
+  slug: string;
+  team: string;
+  teamType: TeamType;
+  positions: string[];
+  overall: number;
+  playerImage: string | null;
+  threePointShot: number | null;
+  speed: number | null;
+  drivingDunk: number | null;
+  perimeterDefense: number | null;
+  cats: {
+    ins: number | null;
+    out: number | null;
+    ply: number | null;
+    ath: number | null;
+    reb: number | null;
+    def: number | null;
+  };
+};
+
+const POSITIONS = ["PG", "SG", "SF", "PF", "C"] as const;
+
+// Court spot geometry from the design (viewBox 100 x 56), left half; the
+// right half mirrors x.
+const SPOTS = [
+  { pos: "PG", x: 30, y: 28 },
+  { pos: "SG", x: 16, y: 13 },
+  { pos: "SF", x: 16, y: 43 },
+  { pos: "PF", x: 37, y: 17 },
+  { pos: "C", x: 38, y: 40 },
+];
+
+const CATS = ["ins", "out", "ply", "ath", "reb", "def"] as const;
+const CAT_LABELS: Record<(typeof CATS)[number], string> = {
+  ins: "INSIDE",
+  out: "OUTSIDE",
+  ply: "PLAYMAKING",
+  ath: "ATHLETICISM",
+  reb: "REBOUNDING",
+  def: "DEFENSE",
+};
+
+type Side = "yours" | "opps";
+type Slots = (PoolPlayer | null)[];
+
+function lastName(name: string) {
+  const parts = name.split(" ").filter(Boolean);
+  return (parts[parts.length - 1] ?? name).toUpperCase();
+}
+
+function primarySlot(p: PoolPlayer): number {
+  const idx = POSITIONS.indexOf((p.positions[0] ?? "") as (typeof POSITIONS)[number]);
+  if (idx >= 0) return idx;
+  const second = POSITIONS.indexOf((p.positions[1] ?? "") as (typeof POSITIONS)[number]);
+  return second >= 0 ? second : 2;
+}
+
+function avgOf(list: PoolPlayer[], f: (p: PoolPlayer) => number | null): number | null {
+  const vals = list.map(f).filter((n): n is number => n !== null);
+  return vals.length ? Math.round(vals.reduce((s, n) => s + n, 0) / vals.length) : null;
+}
+
+function eraColor(t: TeamType) {
+  return t === "curr" ? "#8a8577" : "#9a6700";
+}
+
+function shortMeta(p: PoolPlayer) {
+  const abbr = getTeamAbbreviation(p.team);
+  const era = p.teamType === "curr" ? abbr : p.teamType === "class" ? `${abbr} CLASSIC` : `${abbr} A-T`;
+  return `${p.positions.join("/")} · ${era}`;
+}
+
+function MiniOvr({ ovr }: { ovr: number }) {
   return (
-    <Suspense fallback={<LineupsLoading />}>
-      <LineupsContent />
-    </Suspense>
+    <span
+      className={cn(
+        "inline-flex min-w-[28px] items-center justify-center rounded-[5px] px-1 py-0.5 text-[11px] font-bold text-white",
+        getRatingClasses(ovr).bg
+      )}
+    >
+      {ovr}
+    </span>
   );
 }
 
-function LineupsLoading() {
+// ---- Court pieces -----------------------------------------------------------
+
+function CourtSlot({
+  side,
+  index,
+  spot,
+  player,
+  pulsing,
+  onRemove,
+}: {
+  side: Side;
+  index: number;
+  spot: { pos: string; x: number; y: number };
+  player: PoolPlayer | null;
+  pulsing: boolean;
+  onRemove: () => void;
+}) {
+  const x = side === "yours" ? spot.x : 100 - spot.x;
+  const y = (spot.y / 56) * 100;
+  const { setNodeRef, isOver } = useDroppable({ id: `slot:${side}:${index}` });
+  const drag = useDraggable({
+    id: `chip:${side}:${index}`,
+    data: { kind: "chip", side, index },
+    disabled: !player,
+  });
+
   return (
-    <div className="container py-8">
-      <div className="grid gap-8 lg:grid-cols-4">
-        <div className="lg:col-span-1">
-          <LoadingCard />
-        </div>
-        <div className="lg:col-span-3">
-          <div className="grid gap-4 md:grid-cols-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <LoadingCard key={i} />
-            ))}
+    <div
+      ref={setNodeRef}
+      className="absolute z-[2] -translate-x-1/2 -translate-y-1/2 text-center"
+      style={{ left: `${x}%`, top: `${y}%` }}
+    >
+      {player ? (
+        <div
+          ref={drag.setNodeRef}
+          {...drag.listeners}
+          {...drag.attributes}
+          onClick={onRemove}
+          title={`${player.name} — click to remove, drag to move`}
+          className={cn(
+            "cursor-grab touch-none animate-[pop-in_250ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none",
+            drag.isDragging && "opacity-30"
+          )}
+        >
+          <div
+            className={cn(
+              "relative mx-auto h-[clamp(38px,4.5vw,52px)] w-[clamp(38px,4.5vw,52px)] rounded-full border-2 bg-white shadow-[0_4px_12px_-4px_rgba(26,25,24,0.35)]",
+              isOver ? "border-[#0a7f3f]" : "border-[#1a1918]"
+            )}
+          >
+            <Headshot src={player.playerImage} name={player.name} size={48} className="h-full w-full" />
+            <span
+              className={cn(
+                "absolute -top-[7px] -right-[9px] inline-flex min-w-[21px] items-center justify-center rounded-[5px] px-[3px] py-px text-[9px] font-bold text-white",
+                getRatingClasses(player.overall).bg
+              )}
+            >
+              {player.overall}
+            </span>
           </div>
+          <span className="mt-1 inline-block rounded-[4px] bg-white/90 px-[5px] py-px font-plex text-[7.5px] tracking-[0.06em] whitespace-nowrap text-[#57534a]">
+            {lastName(player.name)}
+          </span>
         </div>
-      </div>
+      ) : (
+        <div
+          className={cn(
+            "flex h-[clamp(38px,4.5vw,52px)] w-[clamp(38px,4.5vw,52px)] items-center justify-center rounded-full border-2 border-dashed bg-white/55 font-plex text-[8px] text-[#8a8577]",
+            isOver
+              ? "border-[#0a7f3f] bg-white/80"
+              : pulsing
+                ? "animate-[pulse-slot_2s_ease-in-out_infinite] border-[#b5b0a1] motion-reduce:animate-none"
+                : "border-[#b5b0a1]"
+          )}
+        >
+          {spot.pos}
+        </div>
+      )}
     </div>
   );
 }
 
-function LineupsContent() {
+function PoolRow({ p, placed, onTap }: { p: PoolPlayer; placed: boolean; onTap: () => void }) {
+  const drag = useDraggable({
+    id: `pool:${p.slug}:${p.teamType}:${p.team}`,
+    data: { kind: "pool", player: p },
+    disabled: placed,
+  });
+  return (
+    <div
+      ref={drag.setNodeRef}
+      {...drag.listeners}
+      {...drag.attributes}
+      onClick={placed ? undefined : onTap}
+      className={cn(
+        "flex touch-none items-center gap-2.5 border-b border-[#faf8f2] px-4 py-[7px] transition-colors duration-100",
+        placed ? "opacity-35" : "cursor-grab hover:bg-[#faf8f2] active:scale-[0.99]",
+        drag.isDragging && "opacity-30"
+      )}
+    >
+      <Headshot src={p.playerImage} name={p.name} size={28} />
+      <div className="min-w-0 flex-1">
+        <p className="m-0 overflow-hidden text-[12.5px] font-semibold text-ellipsis whitespace-nowrap">
+          {p.name}
+        </p>
+        <p className="mt-px mb-0 font-plex text-[8px]" style={{ color: eraColor(p.teamType) }}>
+          {shortMeta(p)}
+        </p>
+      </div>
+      <MiniOvr ovr={p.overall} />
+    </div>
+  );
+}
+
+// ---- Page -------------------------------------------------------------------
+
+const POOL_LIMIT = 40;
+
+function Whiteboard() {
   const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
-
-  // Parse initial state from URL
-  const initialState = React.useMemo(
-    () => parseLineupFromURL(searchParams),
-    [searchParams]
-  );
-
-  // State - using LineupPlayer arrays with teamType per player
-  const [filterTeamType, setFilterTeamType] = React.useState<TeamType>(initialState.filterTeamType);
-  const [lineup1Entries, setLineup1Entries] = React.useState<LineupPlayer[]>(() => {
-    // Pad initial lineup to 5 slots
-    const padded = [...initialState.lineup1];
-    while (padded.length < 5) padded.push({ ...EMPTY_SLOT });
-    return padded;
-  });
-  const [lineup2Entries, setLineup2Entries] = React.useState<LineupPlayer[]>(() => {
-    const initial = initialState.lineup2 || [];
-    const padded = [...initial];
-    while (padded.length < 5) padded.push({ ...EMPTY_SLOT });
-    return padded;
-  });
-  const [showLineup2, setShowLineup2] = React.useState(!!initialState.lineup2?.length);
-  const [lineup1Name, setLineup1Name] = React.useState("Lineup 1");
-  const [lineup2Name, setLineup2Name] = React.useState("Lineup 2");
-  const [activePlayer, setActivePlayer] = React.useState<Player | null>(null);
-  const [modalPlayer, setModalPlayer] = React.useState<Player | null>(null);
-  const [isModalOpen, setIsModalOpen] = React.useState(false);
-  const [isShareModalOpen, setIsShareModalOpen] = React.useState(false);
-
-  // Handle opening player info modal
-  const handleOpenPlayerInfo = (player: Player) => {
-    setModalPlayer(player);
-    setIsModalOpen(true);
+  const [hasApiKey, setHasApiKey] = useState(false);
+  const [yours, setYours] = useState<Slots>([null, null, null, null, null]);
+  const [opps, setOpps] = useState<Slots>([null, null, null, null, null]);
+  const [hydrated, setHydrated] = useState(false);
+  const [q, setQ] = useState("");
+  const [posF, setPosF] = useState("ALL");
+  const [sortF, setSortF] = useState<"ovr" | "az">("ovr");
+  const [dragging, setDragging] = useState<PoolPlayer | null>(null);
+  // Browsers synthesize a click after pointerup, so a completed drag would
+  // also fire the tap handlers (remove / tap-place). Swallow clicks that
+  // land right after a drag ends.
+  const lastDragEndRef = useRef(0);
+  const guardedTap = (fn: () => void) => () => {
+    if (Date.now() - lastDragEndRef.current < 300) return;
+    fn();
   };
 
-  // DnD sensors
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
+  const players = useQuery(api.players.getPlaygroundPlayers) as PoolPlayer[] | undefined;
+
+  useEffect(() => {
+    setHasApiKey(!!localStorage.getItem(API_KEY_STORAGE_KEY));
+  }, []);
+
+  // Hydrate slots from a shared URL once the pool is loaded (legacy-compatible
+  // lineup1/lineup2 scheme; players land on their primary-position slot,
+  // falling back to the first open one).
+  useEffect(() => {
+    if (!players || hydrated) return;
+    const state = parseLineupFromURL(new URLSearchParams(searchParams.toString()));
+    const resolve = (entry: LineupPlayer) =>
+      players.find(
+        (p) =>
+          p.slug === entry.slug &&
+          p.teamType === entry.teamType &&
+          (!entry.team || p.team === entry.team)
+      ) ??
+      players.find((p) => p.slug === entry.slug) ??
+      null;
+    const fill = (entries: LineupPlayer[]): Slots => {
+      const slots: Slots = [null, null, null, null, null];
+      for (const entry of entries.slice(0, 5)) {
+        const p = resolve(entry);
+        if (!p) continue;
+        let idx = primarySlot(p);
+        if (slots[idx]) idx = slots.findIndex((s) => s === null);
+        if (idx >= 0) slots[idx] = p;
+      }
+      return slots;
+    };
+    if (state.lineup1.length) setYours(fill(state.lineup1));
+    if (state.lineup2?.length) setOpps(fill(state.lineup2));
+    setHydrated(true);
+  }, [players, hydrated, searchParams]);
+
+  // Mirror slots back into the URL (shareable, legacy-compatible)
+  useEffect(() => {
+    if (!hydrated) return;
+    const toEntries = (slots: Slots): LineupPlayer[] =>
+      slots
+        .filter((p): p is PoolPlayer => p !== null)
+        .map((p) => ({ slug: p.slug, teamType: p.teamType, team: p.team }));
+    const params = lineupToURLParams({
+      lineup1: toEntries(yours),
+      lineup2: toEntries(opps),
+      filterTeamType: "curr",
+    });
+    const next = params.toString();
+    if (next !== searchParams.toString()) {
+      router.replace(next ? `/lineups?${next}` : "/lineups", { scroll: false });
+    }
+  }, [yours, opps, hydrated, router, searchParams]);
+
+  const yoursFilled = yours.filter((p): p is PoolPlayer => p !== null);
+  const oppsFilled = opps.filter((p): p is PoolPlayer => p !== null);
+  const hasOpp = oppsFilled.length > 0;
+  const yourOvr = avgOf(yoursFilled, (p) => p.overall);
+  const oppOvr = avgOf(oppsFilled, (p) => p.overall);
+
+  const placedKeys = useMemo(
+    () =>
+      new Set(
+        [...yoursFilled, ...oppsFilled].map((p) => `${p.slug}:${p.teamType}:${p.team}`)
+      ),
+    [yoursFilled, oppsFilled]
+  );
+
+  const pool = useMemo(() => {
+    if (!players) return [];
+    const query = q.trim().toLowerCase();
+    return players
+      .filter(
+        (p) =>
+          (posF === "ALL" || p.positions.includes(posF)) &&
+          (!query || p.name.toLowerCase().includes(query))
+      )
+      .sort((a, b) => (sortF === "ovr" ? b.overall - a.overall : a.name.localeCompare(b.name)))
+      .slice(0, POOL_LIMIT);
+  }, [players, q, posF, sortF]);
+
+  const place = (side: Side, index: number, p: PoolPlayer) => {
+    const setter = side === "yours" ? setYours : setOpps;
+    setter((slots) => {
+      const next = [...slots];
+      next[index] = p;
+      return next;
+    });
+  };
+
+  const remove = (side: Side, index: number) => {
+    const setter = side === "yours" ? setYours : setOpps;
+    setter((slots) => {
+      const next = [...slots];
+      next[index] = null;
+      return next;
+    });
+  };
+
+  // Tap fallback: your matching slot first, then theirs
+  const tapPlace = (p: PoolPlayer) => {
+    const idx = primarySlot(p);
+    if (!yours[idx]) return place("yours", idx, p);
+    if (!opps[idx]) return place("opps", idx, p);
+    toast(`Both ${POSITIONS[idx]} spots are taken — drag onto a slot to replace`);
+  };
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+
+  const onDragStart = (e: DragStartEvent) => {
+    const data = e.active.data.current;
+    if (data?.kind === "pool") setDragging(data.player as PoolPlayer);
+    if (data?.kind === "chip") {
+      const { side, index } = data as { side: Side; index: number };
+      setDragging((side === "yours" ? yours : opps)[index]);
+    }
+  };
+
+  const onDragEnd = (e: DragEndEvent) => {
+    setDragging(null);
+    lastDragEndRef.current = Date.now();
+    const data = e.active.data.current;
+    if (!data) return;
+    const overId = e.over?.id as string | undefined;
+
+    if (data.kind === "pool") {
+      if (!overId?.startsWith("slot:")) return;
+      const [, side, idxStr] = overId.split(":");
+      place(side as Side, Number(idxStr), data.player as PoolPlayer);
+      return;
+    }
+
+    if (data.kind === "chip") {
+      const from = data as { side: Side; index: number };
+      const moving = (from.side === "yours" ? yours : opps)[from.index];
+      if (!moving) return;
+      if (!overId?.startsWith("slot:")) {
+        // dropped off-court → remove
+        remove(from.side, from.index);
+        return;
+      }
+      const [, toSideRaw, toIdxStr] = overId.split(":");
+      const toSide = toSideRaw as Side;
+      const toIndex = Number(toIdxStr);
+      if (toSide === from.side && toIndex === from.index) return;
+      const displaced = (toSide === "yours" ? yours : opps)[toIndex];
+      place(toSide, toIndex, moving);
+      if (displaced) place(from.side, from.index, displaced);
+      else remove(from.side, from.index);
+    }
+  };
+
+  // Tale of the tape
+  const tape = useMemo(() => {
+    const rows = [
+      { label: "OVERALL", a: yourOvr, b: oppOvr },
+      ...CATS.map((c) => ({
+        label: CAT_LABELS[c],
+        a: avgOf(yoursFilled, (p) => p.cats[c]),
+        b: avgOf(oppsFilled, (p) => p.cats[c]),
+      })),
+    ];
+    return rows.map((t) => {
+      const aWins = t.a !== null && (!hasOpp || t.b === null || t.a >= t.b);
+      const bWins = hasOpp && t.b !== null && (t.a === null || t.b >= t.a);
+      return {
+        ...t,
+        aText: t.a ?? "—",
+        bText: hasOpp ? (t.b ?? "—") : "—",
+        aW: `${t.a ?? 0}%`,
+        bW: hasOpp ? `${t.b ?? 0}%` : "0%",
+        aC: aWins ? "#1a1918" : "#b5b0a1",
+        bC: bWins ? "#1a1918" : "#b5b0a1",
+        aBar: aWins ? "#1a1918" : "#c9c4b6",
+        bBar: bWins ? "#1a1918" : "#c9c4b6",
+      };
+    });
+  }, [yoursFilled, oppsFilled, yourOvr, oppOvr, hasOpp]);
+
+  // Coach's / matchup read — data-driven
+  const reads = useMemo(() => {
+    if (yoursFilled.length === 0) {
+      return [
+        { tag: "START", c: "#8a8577", t: "Tap or drag anyone from the pool to seat your five — mixing eras is the whole point." },
+        { tag: "TIP", c: "#8a8577", t: "Filter the pool by position to fill a specific spot; the tape below builds as you go." },
+      ];
+    }
+    if (hasOpp) {
+      const yo = yourOvr ?? 0;
+      const oo = oppOvr ?? 0;
+      return [
+        {
+          tag: yo >= oo ? "EDGE" : "TRAIL",
+          c: yo >= oo ? "#0a7f3f" : "#c03a2b",
+          t:
+            yo >= oo
+              ? `Your five carries the talent edge, ${yo} to ${oo} average overall.`
+              : `They out-talent you ${oo} to ${yo} — you need the matchups to break right.`,
+        },
+        {
+          tag: "WATCH",
+          c: "#9a6700",
+          t:
+            oppsFilled.length < 5
+              ? `Their five is incomplete (${oppsFilled.length}/5) — the tape firms up as spots fill.`
+              : "All five duels are set. Playmaking and defense decide close tapes.",
+        },
+        { tag: "NOTE", c: "#8a8577", t: "Guard assignments default to position." },
+      ];
+    }
+    const shooters = yoursFilled.filter((p) => (p.threePointShot ?? 0) >= 85);
+    const playmakers = yoursFilled.filter((p) => (p.cats.ply ?? 0) >= 85);
+    const bestReb = [...yoursFilled].sort((a, b) => (b.cats.reb ?? 0) - (a.cats.reb ?? 0))[0];
+    const centers = yoursFilled.filter((p) => p.positions.includes("C"));
+    return [
+      {
+        tag: "SPACING",
+        c: shooters.length >= 3 ? "#0a7f3f" : shooters.length >= 1 ? "#9a6700" : "#c03a2b",
+        t: shooters.length
+          ? `${shooters.map((p) => lastName(p.name)).join(", ")} shoot${shooters.length === 1 ? "s" : ""} 85+ from deep.`
+          : "Nobody placed shoots 85+ from three — the paint will be packed.",
       },
-    })
+      {
+        tag: "PLAYMAKING",
+        c: playmakers.length >= 2 ? "#0a7f3f" : playmakers.length === 1 ? "#9a6700" : "#c03a2b",
+        t: playmakers.length
+          ? `${playmakers.length} player${playmakers.length === 1 ? "" : "s"} with 85+ playmaking — the ball moves.`
+          : "No high-end creator yet — someone has to organize the offense.",
+      },
+      {
+        tag: "GLASS",
+        c: (bestReb?.cats.reb ?? 0) >= 85 ? "#0a7f3f" : (bestReb?.cats.reb ?? 0) >= 70 ? "#9a6700" : "#c03a2b",
+        t: bestReb
+          ? `${lastName(bestReb.name)} leads the glass at ${bestReb.cats.reb ?? "—"} rebounding; ${centers.length} true center${centers.length === 1 ? "" : "s"} placed.`
+          : "No rebounding presence yet.",
+      },
+    ];
+  }, [yoursFilled, oppsFilled, hasOpp, yourOvr, oppOvr]);
+
+  const duels = useMemo(
+    () =>
+      SPOTS.map((s, i) => {
+        const a = yours[i];
+        const b = opps[i];
+        if (!a || !b) return null;
+        const edge = a.overall === b.overall ? "EVEN" : a.overall > b.overall ? "EDGE: YOU" : "EDGE: THEM";
+        return {
+          pos: s.pos,
+          a,
+          b,
+          edge,
+          eC: edge === "EVEN" ? "#9a6700" : edge === "EDGE: YOU" ? "#0a7f3f" : "#c03a2b",
+        };
+      }).filter((d): d is NonNullable<typeof d> => d !== null),
+    [yours, opps]
   );
 
-  // Group players by teamType for fetching
-  const getPlayersByTeamType = (entries: LineupPlayer[]) => {
-    const byType: Record<TeamType, { slug: string; team?: string }[]> = { curr: [], class: [], allt: [] };
-    entries.forEach(entry => {
-      if (entry.slug) {
-        byType[entry.teamType].push({ slug: entry.slug, team: entry.team });
-      }
-    });
-    return byType;
-  };
+  const guardLines = SPOTS.map((s, i) =>
+    yours[i] && opps[i] ? { x1: s.x + 2.5, y1: s.y, x2: 100 - s.x - 2.5, y2: s.y } : null
+  ).filter((l): l is NonNullable<typeof l> => l !== null);
 
-  const lineup1ByType = getPlayersByTeamType(lineup1Entries);
-  const lineup2ByType = getPlayersByTeamType(lineup2Entries);
-
-  // Fetch players for each team type (extract just slugs for query)
-  const lineup1CurrSlugs = lineup1ByType.curr.map(e => e.slug);
-  const lineup1ClassSlugs = lineup1ByType.class.map(e => e.slug);
-  const lineup1AlltSlugs = lineup1ByType.allt.map(e => e.slug);
-  const lineup2CurrSlugs = lineup2ByType.curr.map(e => e.slug);
-  const lineup2ClassSlugs = lineup2ByType.class.map(e => e.slug);
-  const lineup2AlltSlugs = lineup2ByType.allt.map(e => e.slug);
-
-  const lineup1CurrPlayers = useQuery(
-    api.players.getPlayersBySlugs,
-    lineup1CurrSlugs.length > 0 ? { slugs: lineup1CurrSlugs, teamType: "curr" } : "skip"
-  );
-  const lineup1ClassPlayers = useQuery(
-    api.players.getPlayersBySlugs,
-    lineup1ClassSlugs.length > 0 ? { slugs: lineup1ClassSlugs, teamType: "class" } : "skip"
-  );
-  const lineup1AlltPlayers = useQuery(
-    api.players.getPlayersBySlugs,
-    lineup1AlltSlugs.length > 0 ? { slugs: lineup1AlltSlugs, teamType: "allt" } : "skip"
-  );
-
-  const lineup2CurrPlayers = useQuery(
-    api.players.getPlayersBySlugs,
-    lineup2CurrSlugs.length > 0 ? { slugs: lineup2CurrSlugs, teamType: "curr" } : "skip"
-  );
-  const lineup2ClassPlayers = useQuery(
-    api.players.getPlayersBySlugs,
-    lineup2ClassSlugs.length > 0 ? { slugs: lineup2ClassSlugs, teamType: "class" } : "skip"
-  );
-  const lineup2AlltPlayers = useQuery(
-    api.players.getPlayersBySlugs,
-    lineup2AlltSlugs.length > 0 ? { slugs: lineup2AlltSlugs, teamType: "allt" } : "skip"
-  );
-
-  // Combine all fetched players into maps for lookup (keyed by slug:teamType:team)
-  const lineup1PlayerMap = React.useMemo(() => {
-    const map = new Map<string, Player>();
-    [lineup1CurrPlayers, lineup1ClassPlayers, lineup1AlltPlayers].forEach(players => {
-      players?.forEach(p => {
-        const key = `${p.slug}:${p.teamType || 'curr'}:${p.team || ''}`;
-        map.set(key, p);
-      });
-    });
-    return map;
-  }, [lineup1CurrPlayers, lineup1ClassPlayers, lineup1AlltPlayers]);
-
-  const lineup2PlayerMap = React.useMemo(() => {
-    const map = new Map<string, Player>();
-    [lineup2CurrPlayers, lineup2ClassPlayers, lineup2AlltPlayers].forEach(players => {
-      players?.forEach(p => {
-        const key = `${p.slug}:${p.teamType || 'curr'}:${p.team || ''}`;
-        map.set(key, p);
-      });
-    });
-    return map;
-  }, [lineup2CurrPlayers, lineup2ClassPlayers, lineup2AlltPlayers]);
-
-  // Maintain player order based on entries (preserving empty slots)
-  const orderedLineup1 = React.useMemo(() => {
-    return lineup1Entries.map((entry) => {
-      if (!entry.slug) return undefined;
-      const key = `${entry.slug}:${entry.teamType}:${entry.team || ''}`;
-      return lineup1PlayerMap.get(key);
-    }) as (Player | undefined)[];
-  }, [lineup1PlayerMap, lineup1Entries]);
-
-  const orderedLineup2 = React.useMemo(() => {
-    return lineup2Entries.map((entry) => {
-      if (!entry.slug) return undefined;
-      const key = `${entry.slug}:${entry.teamType}:${entry.team || ''}`;
-      return lineup2PlayerMap.get(key);
-    }) as (Player | undefined)[];
-  }, [lineup2PlayerMap, lineup2Entries]);
-
-  // Get actual players (non-empty) for stats
-  const lineup1ForStats = orderedLineup1.filter((p): p is Player => !!p);
-  const lineup2ForStats = orderedLineup2.filter((p): p is Player => !!p);
-
-  // Sync state to URL
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      const params = lineupToURLParams({
-        lineup1: lineup1Entries.filter(e => e.slug !== ""),
-        lineup2: showLineup2 ? lineup2Entries.filter(e => e.slug !== "") : undefined,
-        filterTeamType,
-      });
-
-      const newURL = params.toString() ? `${pathname}?${params.toString()}` : pathname;
-      router.replace(newURL, { scroll: false });
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [lineup1Entries, lineup2Entries, showLineup2, filterTeamType, pathname, router]);
-
-  // Get all selected player keys for highlighting (slug:team to match exact version)
-  const allSelectedSlugs = [...lineup1Entries, ...lineup2Entries]
-    .filter(e => e.slug !== "")
-    .map(e => `${e.slug}:${e.team || ''}`);
-
-  // Handle adding player to lineup (finds first empty slot)
-  const handleAddPlayer = (player: Player, lineupIndex: 1 | 2 = 1) => {
-    const playerTeamType = (player.teamType || filterTeamType) as TeamType;
-    const playerTeam = player.team;
-
-    if (lineupIndex === 1) {
-      const activeEntries = lineup1Entries.filter(e => e.slug !== "");
-      // Check if same player from same team already exists
-      if (activeEntries.length >= 5 || activeEntries.some(e => e.slug === player.slug && e.team === playerTeam)) return;
-
-      // Find first empty slot
-      const emptyIndex = lineup1Entries.findIndex(e => e.slug === "");
-      if (emptyIndex !== -1) {
-        const newEntries = [...lineup1Entries];
-        newEntries[emptyIndex] = { slug: player.slug, teamType: playerTeamType, team: playerTeam };
-        setLineup1Entries(newEntries);
-      }
-    } else {
-      const activeEntries = lineup2Entries.filter(e => e.slug !== "");
-      if (activeEntries.length >= 5 || activeEntries.some(e => e.slug === player.slug && e.team === playerTeam)) return;
-
-      const emptyIndex = lineup2Entries.findIndex(e => e.slug === "");
-      if (emptyIndex !== -1) {
-        const newEntries = [...lineup2Entries];
-        newEntries[emptyIndex] = { slug: player.slug, teamType: playerTeamType, team: playerTeam };
-        setLineup2Entries(newEntries);
-      }
-    }
-  };
-
-  // Handle placing player at specific slot index
-  const handlePlacePlayerAtSlot = (player: Player, lineupIndex: 1 | 2, slotIndex: number) => {
-    const playerTeamType = (player.teamType || filterTeamType) as TeamType;
-    const playerTeam = player.team;
-
-    if (lineupIndex === 1) {
-      const activeEntries = lineup1Entries.filter(e => e.slug !== "");
-      // Don't add if same player from same team already in lineup or lineup is full
-      if (activeEntries.some(e => e.slug === player.slug && e.team === playerTeam)) return;
-      if (activeEntries.length >= 5) return;
-
-      // Place at specific slot
-      const newEntries = [...lineup1Entries];
-      newEntries[slotIndex] = { slug: player.slug, teamType: playerTeamType, team: playerTeam };
-      setLineup1Entries(newEntries);
-    } else {
-      const activeEntries = lineup2Entries.filter(e => e.slug !== "");
-      if (activeEntries.some(e => e.slug === player.slug && e.team === playerTeam)) return;
-      if (activeEntries.length >= 5) return;
-
-      const newEntries = [...lineup2Entries];
-      newEntries[slotIndex] = { slug: player.slug, teamType: playerTeamType, team: playerTeam };
-      setLineup2Entries(newEntries);
-    }
-  };
-
-  // Handle click from search panel
-  const handlePlayerClick = (player: Player) => {
-    // Add to lineup 1 if not full, otherwise lineup 2 if showing
-    const active1 = lineup1Entries.filter(e => e.slug !== "");
-    const active2 = lineup2Entries.filter(e => e.slug !== "");
-
-    if (active1.length < 5 && !active1.some(e => e.slug === player.slug)) {
-      handleAddPlayer(player, 1);
-    } else if (showLineup2 && active2.length < 5 && !active2.some(e => e.slug === player.slug)) {
-      handleAddPlayer(player, 2);
-    }
-  };
-
-  // Handle drag start
-  const handleDragStart = (event: DragStartEvent) => {
-    const player = event.active.data.current?.player as Player | undefined;
-    if (player) {
-      setActivePlayer(player);
-    }
-  };
-
-  // Handle drag end
-  const handleDragEnd = (event: DragEndEvent) => {
-    setActivePlayer(null);
-    const { active, over } = event;
-
-    if (!over) return;
-
-    const activeId = active.id.toString();
-    const overId = over.id.toString();
-    const activeData = active.data.current as { player?: Player; index?: number; lineupId?: string } | undefined;
-    const overData = over.data.current as { index?: number; lineupId?: string } | undefined;
-
-    // Handle dropping from search panel to lineup
-    if (activeId.startsWith("search-") && activeData?.player) {
-      const player = activeData.player;
-
-      // Check if dropping on a specific slot
-      if (overData?.index !== undefined && overData?.lineupId) {
-        const lineupIndex = overData.lineupId === "lineup2" ? 2 : 1;
-        handlePlacePlayerAtSlot(player, lineupIndex, overData.index);
-      }
-      // Fallback: determine lineup from ID prefix
-      else if (overId.startsWith("lineup2")) {
-        handleAddPlayer(player, 2);
-      } else if (overId.startsWith("lineup1")) {
-        handleAddPlayer(player, 1);
-      }
-    }
-    // Handle reordering within a lineup
-    else if (activeData?.lineupId && overData?.index !== undefined) {
-      const fromLineup = activeData.lineupId;
-      const toLineup = overData.lineupId;
-      const fromIndex = activeData.index;
-      const toIndex = overData.index;
-
-      // Only handle same-lineup reordering for now
-      if (fromLineup === toLineup && fromIndex !== undefined && fromIndex !== toIndex) {
-        if (fromLineup === "lineup1") {
-          // Remove from old position, insert at new position
-          const newEntries = [...lineup1Entries];
-          const [movedEntry] = newEntries.splice(fromIndex, 1);
-          newEntries.splice(toIndex, 0, movedEntry);
-          // Ensure we still have 5 slots
-          while (newEntries.length < 5) newEntries.push({ ...EMPTY_SLOT });
-          setLineup1Entries(newEntries.slice(0, 5));
-        } else if (fromLineup === "lineup2") {
-          const newEntries = [...lineup2Entries];
-          const [movedEntry] = newEntries.splice(fromIndex, 1);
-          newEntries.splice(toIndex, 0, movedEntry);
-          while (newEntries.length < 5) newEntries.push({ ...EMPTY_SLOT });
-          setLineup2Entries(newEntries.slice(0, 5));
-        }
-      }
-    }
-  };
-
-  // Update lineup players - preserve teamType when reordering
-  const handleLineup1Change = (players: (Player | undefined)[]) => {
-    setLineup1Entries(players.map((p, i) => {
-      if (!p) return { ...EMPTY_SLOT };
-      // Find existing entry to preserve teamType
-      const existing = lineup1Entries.find(e => e.slug === p.slug);
-      return existing || { slug: p.slug, teamType: (p.teamType || filterTeamType) as TeamType };
-    }));
-  };
-
-  const handleLineup2Change = (players: (Player | undefined)[]) => {
-    setLineup2Entries(players.map((p, i) => {
-      if (!p) return { ...EMPTY_SLOT };
-      const existing = lineup2Entries.find(e => e.slug === p.slug);
-      return existing || { slug: p.slug, teamType: (p.teamType || filterTeamType) as TeamType };
-    }));
-  };
-
-  // Toggle comparison mode
-  const handleToggleComparison = () => {
-    if (showLineup2) {
-      setLineup2Entries([{ ...EMPTY_SLOT }, { ...EMPTY_SLOT }, { ...EMPTY_SLOT }, { ...EMPTY_SLOT }, { ...EMPTY_SLOT }]);
-    }
-    setShowLineup2(!showLineup2);
-  };
-
-  // Share lineup
-  const handleShare = () => {
-    setIsShareModalOpen(true);
+  const shareLineup = () => {
+    navigator.clipboard
+      .writeText(window.location.href)
+      .then(() => toast.success("Lineup URL copied — anyone can open it"));
   };
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="container mx-auto max-w-7xl px-4 py-8">
+    <div className="min-h-screen bg-[#faf9f5] font-body text-[#1a1918]">
+      <TopNav hasApiKey={hasApiKey} width="wide" />
+
+      <div className="mx-auto max-w-[1440px] px-[clamp(20px,4vw,48px)] pt-2 pb-12">
         {/* Header */}
-        <motion.div
-          variants={fadeIn}
-          initial="initial"
-          animate="animate"
-          className="mb-8 space-y-2"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold tracking-tight">Lineup Builder</h1>
-              <p className="text-lg text-muted-foreground">
-                Build and compare NBA 2K lineups
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleShare}
-              >
-                <Share2 className="h-4 w-4 mr-2" />
-                Share
-              </Button>
-              <Button
-                variant={showLineup2 ? "destructive" : "default"}
-                size="sm"
-                onClick={handleToggleComparison}
-              >
-                {showLineup2 ? (
-                  <>
-                    <X className="h-4 w-4 mr-2" />
-                    Remove Lineup 2
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Lineup 2
-                  </>
-                )}
-              </Button>
-            </div>
+        <div className="flex flex-wrap items-end justify-between gap-3.5 animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
+          <div>
+            <h1 className="m-0 font-display text-[clamp(28px,3.2vw,38px)] font-extrabold tracking-[-0.03em]">
+              The whiteboard
+            </h1>
+            <p className="mt-1.5 mb-0 font-plex text-[10px] tracking-[0.1em] text-[#8a8577]">
+              {hasOpp
+                ? "MATCHUP MODE — THE LAYER WOKE WHEN YOU ADDED AN OPPONENT"
+                : "BUILDING — DRAG OR TAP PLAYERS FROM THE POOL ONTO THE COURT"}
+            </p>
           </div>
-        </motion.div>
-
-        <div className="grid gap-8 lg:grid-cols-4">
-          {/* Left Sidebar - Player Search */}
-          <motion.div
-            variants={fadeIn}
-            initial="initial"
-            animate="animate"
-            className="lg:col-span-1"
-          >
-            <Card className="sticky top-4 h-[calc(100vh-12rem)] flex flex-col overflow-hidden">
-              <PlayerSearchPanel
-                teamType={filterTeamType}
-                onTeamTypeChange={setFilterTeamType}
-                onPlayerClick={handlePlayerClick}
-                onPlayerInfoClick={handleOpenPlayerInfo}
-                selectedSlugs={allSelectedSlugs}
-              />
-            </Card>
-          </motion.div>
-
-          {/* Main Content */}
-          <div className="lg:col-span-3 space-y-6">
-            {/* Lineups - Stacked vertically for matchup view */}
-            <div className="space-y-4">
-              {/* Lineup 1 */}
-              <motion.div
-                variants={fadeIn}
-                initial="initial"
-                animate="animate"
+          <div className="flex items-center gap-2.5">
+            {hasOpp && (
+              <button
+                type="button"
+                onClick={() => setOpps([null, null, null, null, null])}
+                className="cursor-pointer rounded-full border border-[#e5e2da] bg-white px-3.5 py-[7px] text-[11.5px] font-semibold text-[#1a1918] transition-[border-color,transform] duration-150 hover:border-[#1a1918] active:scale-[0.97] motion-reduce:transition-none"
               >
-                <LineupGrid
-                  players={orderedLineup1}
-                  onPlayersChange={handleLineup1Change}
-                  onPlayerDrop={(player) => handleAddPlayer(player, 1)}
-                  onPlayerClick={handleOpenPlayerInfo}
-                  title={lineup1Name}
-                  onTitleChange={setLineup1Name}
-                  color="var(--chart-1)"
-                  horizontal
-                  lineupId="lineup1"
-                />
-              </motion.div>
-
-              {/* Lineup 2 */}
-              {showLineup2 && (
-                <motion.div
-                  variants={fadeIn}
-                  initial="initial"
-                  animate="animate"
-                >
-                  <LineupGrid
-                    players={orderedLineup2}
-                    onPlayersChange={handleLineup2Change}
-                    onPlayerDrop={(player) => handleAddPlayer(player, 2)}
-                    onPlayerClick={handleOpenPlayerInfo}
-                    title={lineup2Name}
-                    onTitleChange={setLineup2Name}
-                    color="var(--chart-2)"
-                    horizontal
-                    lineupId="lineup2"
-                  />
-                </motion.div>
-              )}
-            </div>
-
-            {/* Stats Section */}
-            <div className={cn(
-              "grid gap-8",
-              showLineup2 ? "lg:grid-cols-2" : "lg:grid-cols-2"
-            )}>
-              {/* Radar Chart */}
-              <motion.div
-                variants={fadeIn}
-                initial="initial"
-                animate="animate"
+                Clear opponent
+              </button>
+            )}
+            {yoursFilled.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setYours([null, null, null, null, null]);
+                  setOpps([null, null, null, null, null]);
+                }}
+                className="cursor-pointer rounded-full border border-[#e5e2da] bg-white px-3.5 py-[7px] text-[11.5px] font-semibold text-[#1a1918] transition-[border-color,transform] duration-150 hover:border-[#1a1918] active:scale-[0.97] motion-reduce:transition-none"
               >
-                <LineupRadarChart
-                  lineup1={lineup1ForStats}
-                  lineup2={showLineup2 ? lineup2ForStats : undefined}
-                  lineup1Name={lineup1Name}
-                  lineup2Name={lineup2Name}
-                />
-              </motion.div>
-
-              {/* Stats */}
-              <motion.div
-                variants={fadeIn}
-                initial="initial"
-                animate="animate"
-              >
-                <LineupStats
-                  lineup1={lineup1ForStats}
-                  lineup2={showLineup2 ? lineup2ForStats : undefined}
-                  lineup1Name={lineup1Name}
-                  lineup2Name={lineup2Name}
-                />
-              </motion.div>
-            </div>
+                Clear all
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={shareLineup}
+              className="cursor-pointer rounded-full bg-[#1a1918] px-3.5 py-[7px] text-[11.5px] font-semibold text-[#faf9f5] transition-[background,transform] duration-150 hover:bg-[#333] active:scale-[0.97] motion-reduce:transition-none"
+            >
+              Share lineup
+            </button>
           </div>
         </div>
 
-        {/* Drag Overlay */}
-        <DragOverlay>
-          {activePlayer && (
-            <Card className="w-32 opacity-95 shadow-xl overflow-hidden p-0 gap-0 border-0">
-              <CardContent className="p-0">
-                {/* Player image - starts at top */}
-                <div className="relative aspect-[3/4] bg-muted">
-                  {activePlayer.playerImage ? (
-                    <Image
-                      src={activePlayer.playerImage}
-                      alt={activePlayer.name}
-                      fill
-                      sizes="128px"
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                      <User className="h-8 w-8 text-muted-foreground" />
-                    </div>
-                  )}
-
-                  {/* Team logo - on top of player image */}
-                  {activePlayer.teamImg && (
-                    <div className="absolute top-2 left-2 z-10 w-5 h-5">
-                      <Image
-                        src={activePlayer.teamImg}
-                        alt={activePlayer.team}
-                        fill
-                        className="object-contain drop-shadow-md"
-                      />
-                    </div>
-                  )}
-
-                  {/* Overall rating - on card, top right */}
-                  <div
-                    className={cn(
-                      "absolute top-2 right-2 z-10 px-1.5 py-0.5 rounded-md shadow-lg",
-                      getRatingClasses(activePlayer.overall).bg,
-                      getRatingClasses(activePlayer.overall).shadow
-                    )}
+        <DndContext
+          sensors={sensors}
+          onDragStart={onDragStart}
+          onDragEnd={onDragEnd}
+          onDragCancel={() => {
+            setDragging(null);
+            lastDragEndRef.current = Date.now();
+          }}
+        >
+          <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,270px),1fr))] items-start gap-3.5">
+            {/* Player pool */}
+            <div
+              className="overflow-hidden rounded-[14px] border border-[#e5e2da] bg-white animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
+              style={{ animationDelay: "60ms" }}
+            >
+              <div className="border-b border-[#f1efe8] px-4 pt-[11px] pb-3">
+                <div className="mb-2.5 flex items-center justify-between">
+                  <span className="font-plex text-[9px] tracking-[0.1em] text-[#8a8577]">
+                    PLAYER POOL — ANY ERA
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSortF((s) => (s === "ovr" ? "az" : "ovr"))}
+                    className="cursor-pointer font-plex text-[8.5px] text-[#57534a] transition-colors duration-150 select-none hover:text-[#1a1918]"
                   >
-                    <span className="text-sm font-bold tabular-nums text-white">
-                      {activePlayer.overall}
+                    SORT: {sortF === "ovr" ? "OVR" : "A–Z"} ⇅
+                  </button>
+                </div>
+                <div className="mb-[9px] flex items-center gap-2 rounded-full border border-[#e5e2da] bg-[#faf9f5] px-3 py-2">
+                  <Search className="h-[13px] w-[13px] text-[#8a8577]" strokeWidth={2} />
+                  <input
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    placeholder="Search the pool…"
+                    className="min-w-0 flex-1 border-none bg-transparent font-body text-[12.5px] text-[#1a1918] outline-none placeholder:text-[#b5b0a1]"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-[5px]">
+                  {["ALL", ...POSITIONS].map((label) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => setPosF(label)}
+                      className={cn(
+                        "cursor-pointer rounded-full border border-[#e5e2da] px-[11px] py-1 font-plex text-[8.5px] font-bold tracking-[0.06em] transition-[background,color,transform] duration-150 select-none active:scale-95 motion-reduce:transition-none",
+                        posF === label
+                          ? "bg-[#1a1918] text-[#faf9f5]"
+                          : "bg-[#faf9f5] text-[#8a8577] hover:text-[#1a1918]"
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="max-h-[520px] overflow-y-auto">
+                {players
+                  ? pool.map((p) => (
+                      <PoolRow
+                        key={`${p.slug}:${p.teamType}:${p.team}`}
+                        p={p}
+                        placed={placedKeys.has(`${p.slug}:${p.teamType}:${p.team}`)}
+                        onTap={guardedTap(() => tapPlace(p))}
+                      />
+                    ))
+                  : Array.from({ length: 10 }, (_, i) => (
+                      <div key={i} className="flex animate-pulse items-center gap-2.5 border-b border-[#faf8f2] px-4 py-[7px]">
+                        <div className="h-7 w-7 rounded-full bg-[#f1efe8]" />
+                        <div className="h-3.5 flex-1 rounded bg-[#f1efe8]" />
+                        <div className="h-[20px] w-7 rounded-[5px] bg-[#f1efe8]" />
+                      </div>
+                    ))}
+                {players && pool.length === 0 && (
+                  <div className="px-4 py-[22px] text-center font-plex text-[9px] tracking-[0.08em] text-[#b5b0a1]">
+                    NO PLAYERS MATCH — CLEAR THE FILTERS
+                  </div>
+                )}
+              </div>
+              <div className="px-4 py-[9px] font-plex text-[8px] leading-[1.6] text-[#b5b0a1]">
+                DRAG ONTO A SLOT (OR TAP: FILLS YOUR SPOT, THEN THEIRS) · TAP A PLACED CHIP TO
+                REMOVE · DRAG A CHIP OFF-COURT TO CLEAR IT
+              </div>
+            </div>
+
+            {/* Court + analysis */}
+            <div className="min-w-0 lg:col-span-2" style={{ gridColumn: "span 2" }}>
+              <div
+                className="relative aspect-[16/9.4] overflow-hidden rounded-2xl border border-[#e5e2da] bg-[#f6f4ee] animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
+                style={{ animationDelay: "100ms" }}
+              >
+                <svg viewBox="0 0 100 56" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
+                  <line x1="50" y1="0" x2="50" y2="56" stroke="#d9d4c7" strokeWidth="0.25" />
+                  <circle cx="50" cy="28" r="7" fill="none" stroke="#d9d4c7" strokeWidth="0.25" />
+                  <rect x="0" y="18" width="14" height="20" fill="none" stroke="#d9d4c7" strokeWidth="0.25" />
+                  <rect x="86" y="18" width="14" height="20" fill="none" stroke="#d9d4c7" strokeWidth="0.25" />
+                  <path d="M 0 6 Q 30 28 0 50" fill="none" stroke="#d9d4c7" strokeWidth="0.25" />
+                  <path d="M 100 6 Q 70 28 100 50" fill="none" stroke="#d9d4c7" strokeWidth="0.25" />
+                  {guardLines.map((l, i) => (
+                    <line
+                      key={i}
+                      x1={l.x1}
+                      y1={l.y1}
+                      x2={l.x2}
+                      y2={l.y2}
+                      stroke="#b5b0a1"
+                      strokeWidth="0.3"
+                      strokeDasharray="1 1.6"
+                    />
+                  ))}
+                </svg>
+
+                <span className="absolute top-2.5 left-3.5 font-plex text-[8.5px] tracking-[0.1em] text-[#b5b0a1]">
+                  YOUR FIVE · {yoursFilled.length}/5
+                  {yourOvr !== null && (
+                    <>
+                      {" · "}
+                      <b className="text-[#1a1918]">{yourOvr} OVR</b>
+                    </>
+                  )}
+                </span>
+                <span className="absolute top-2.5 right-3.5 font-plex text-[8.5px] tracking-[0.1em] text-[#b5b0a1]">
+                  {hasOpp ? (
+                    <>
+                      THEIR FIVE · {oppsFilled.length}/5 ·{" "}
+                      <b className="text-[#1a1918]">{oppOvr} OVR</b>
+                    </>
+                  ) : (
+                    "OPEN HALF — ADD FROM THE POOL"
+                  )}
+                </span>
+
+                {SPOTS.map((spot, i) => (
+                  <CourtSlot
+                    key={`yours-${spot.pos}`}
+                    side="yours"
+                    index={i}
+                    spot={spot}
+                    player={yours[i]}
+                    pulsing={false}
+                    onRemove={guardedTap(() => remove("yours", i))}
+                  />
+                ))}
+                {SPOTS.map((spot, i) => (
+                  <CourtSlot
+                    key={`opps-${spot.pos}`}
+                    side="opps"
+                    index={i}
+                    spot={spot}
+                    player={opps[i]}
+                    pulsing={hasOpp}
+                    onRemove={guardedTap(() => remove("opps", i))}
+                  />
+                ))}
+
+                {!hasOpp && (
+                  <div className="absolute top-1/2 right-[6%] max-w-[150px] -translate-y-1/2 text-center font-plex text-[9px] leading-[1.8] tracking-[0.08em] text-[#b5b0a1]">
+                    DROP ANYONE ON THIS HALF
+                    <br />
+                    TO START A MATCHUP
+                  </div>
+                )}
+              </div>
+
+              {/* Tape + read */}
+              <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3">
+                <div className="rounded-[14px] border border-[#e5e2da] bg-white px-[18px] py-3.5">
+                  <div className="mb-3 flex items-center justify-between">
+                    <span className="font-plex text-[9px] tracking-[0.12em] text-[#8a8577]">
+                      {hasOpp ? "TALE OF THE TAPE" : "LINEUP COMPOSITION"}
+                    </span>
+                    <span className="font-plex text-[8.5px] text-[#b5b0a1]">
+                      {hasOpp ? "YOU ← → THEM" : "YOUR FIVE ONLY"}
                     </span>
                   </div>
-
-                  {/* Gradient overlay at bottom */}
-                  <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
-
-                  {/* Info section - positioned at bottom of image */}
-                  <div className="absolute bottom-0 left-0 right-0 p-2 z-10">
-                    <div className="min-w-0">
-                      <p className="font-bold text-[9px] text-white truncate drop-shadow-sm">
-                        {activePlayer.name}
-                      </p>
-                      <p className="text-[8px] text-white/80 truncate">
-                        {activePlayer.team}
-                      </p>
-                    </div>
+                  <div className="flex flex-col gap-[9px]">
+                    {tape.map((t) => (
+                      <div key={t.label} className="grid grid-cols-[34px_1fr_84px_1fr_34px] items-center gap-2">
+                        <span className="text-right font-plex text-[10.5px] font-bold" style={{ color: t.aC }}>
+                          {t.aText}
+                        </span>
+                        <div className="relative h-1.5 rounded-full bg-[#f1efe8]">
+                          <div
+                            className="absolute top-0 right-0 h-full rounded-full transition-[width] duration-350"
+                            style={{ width: t.aW, background: t.aBar }}
+                          />
+                        </div>
+                        <span className="text-center font-plex text-[7.5px] tracking-[0.06em] text-[#8a8577]">
+                          {t.label}
+                        </span>
+                        <div className="relative h-1.5 rounded-full bg-[#f1efe8]">
+                          <div
+                            className="absolute top-0 left-0 h-full rounded-full transition-[width] duration-350"
+                            style={{ width: t.bW, background: t.bBar }}
+                          />
+                        </div>
+                        <span className="font-plex text-[10.5px] font-bold" style={{ color: t.bC }}>
+                          {t.bText}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-        </DragOverlay>
 
-        {/* Player Info Modal */}
-        <PlayerInfoModal
-          player={modalPlayer}
-          open={isModalOpen}
-          onOpenChange={setIsModalOpen}
-        />
+                <div className="rounded-[14px] border border-[#e5e2da] bg-white px-[18px] py-3.5">
+                  <div className="mb-3 font-plex text-[9px] tracking-[0.12em] text-[#8a8577]">
+                    {hasOpp ? "THE MATCHUP READ" : "THE COACH'S READ"}
+                  </div>
+                  <div className="flex flex-col gap-[9px]">
+                    {reads.map((r) => (
+                      <div key={r.tag + r.t} className="flex gap-2.5 text-[12.5px] leading-[1.55]">
+                        <span
+                          className="shrink-0 pt-0.5 font-plex text-[9px] font-bold"
+                          style={{ color: r.c }}
+                        >
+                          {r.tag}
+                        </span>
+                        <span className="text-[#57534a]">{r.t}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
 
-        {/* Share Lineup Modal */}
-        <ShareLineupModal
-          open={isShareModalOpen}
-          onOpenChange={setIsShareModalOpen}
-          lineup1={orderedLineup1}
-          lineup2={orderedLineup2}
-          lineup1Name={lineup1Name}
-          lineup2Name={lineup2Name}
-          showLineup2={showLineup2}
-        />
+              {/* Duels */}
+              {hasOpp && duels.length > 0 && (
+                <div className="mt-3 overflow-hidden rounded-[14px] border border-[#e5e2da] bg-white animate-[rise-in_300ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
+                  <div className="flex items-center justify-between border-b border-[#f1efe8] px-[18px] py-[11px]">
+                    <span className="font-plex text-[9px] tracking-[0.12em] text-[#8a8577]">
+                      THE DUELS — WHO GUARDS WHO
+                    </span>
+                    <span className="font-plex text-[8.5px] text-[#b5b0a1]">DEFAULT: BY POSITION</span>
+                  </div>
+                  {duels.map((d) => (
+                    <div
+                      key={d.pos}
+                      className="flex flex-wrap items-center gap-x-2.5 gap-y-2 border-b border-[#faf8f2] px-[18px] py-[9px]"
+                    >
+                      <span className="w-5 font-plex text-[8.5px] tracking-[0.08em] text-[#b5b0a1]">
+                        {d.pos}
+                      </span>
+                      <span className="text-[12.5px] font-bold">{lastName(d.a.name)}</span>
+                      <span
+                        className={cn(
+                          "inline-flex min-w-[26px] items-center justify-center rounded-[5px] px-1 py-0.5 text-[10px] font-bold text-white",
+                          getRatingClasses(d.a.overall).bg
+                        )}
+                      >
+                        {d.a.overall}
+                      </span>
+                      <span className="font-plex text-[8.5px] text-[#b5b0a1]">VS</span>
+                      <span
+                        className={cn(
+                          "inline-flex min-w-[26px] items-center justify-center rounded-[5px] px-1 py-0.5 text-[10px] font-bold text-white",
+                          getRatingClasses(d.b.overall).bg
+                        )}
+                      >
+                        {d.b.overall}
+                      </span>
+                      <span className="text-[12.5px] font-bold">{lastName(d.b.name)}</span>
+                      <span className="ml-auto font-plex text-[8.5px] font-bold" style={{ color: d.eC }}>
+                        {d.edge}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DragOverlay dropAnimation={null}>
+            {dragging && (
+              <div className="pointer-events-none flex items-center gap-2 rounded-full border-2 border-[#1a1918] bg-white px-2 py-1 shadow-[0_8px_20px_-8px_rgba(26,25,24,0.5)]">
+                <Headshot src={dragging.playerImage} name={dragging.name} size={26} />
+                <span className="text-[11.5px] font-bold">{lastName(dragging.name)}</span>
+                <MiniOvr ovr={dragging.overall} />
+              </div>
+            )}
+          </DragOverlay>
+        </DndContext>
       </div>
-    </DndContext>
+
+      <FooterStrip width="wide" />
+    </div>
+  );
+}
+
+export default function LineupsPage() {
+  return (
+    <Suspense fallback={null}>
+      <Whiteboard />
+    </Suspense>
   );
 }
