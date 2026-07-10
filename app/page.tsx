@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { api } from "../convex/_generated/api";
 import { TopNav } from "@/components/chrome/top-nav";
 import { SiteFooter } from "@/components/chrome/site-footer";
-import { RegistrationDialog } from "@/components/registration-dialog";
+import { KeyDialog } from "@/components/chrome/key-dialog";
 import { getRatingClasses, getRatingTier, getAttributeColor } from "@/lib/rating-colors";
 import { getTeamAbbreviation } from "@/lib/team-abbr";
 import { API_KEY_STORAGE_KEY } from "@/lib/constants";
@@ -633,7 +633,7 @@ export default function Home() {
         <SiteFooter />
       </div>
 
-      <RegistrationDialog
+      <KeyDialog
         open={showRegistration}
         onOpenChange={setShowRegistration}
         onSuccess={handleRegistrationSuccess}

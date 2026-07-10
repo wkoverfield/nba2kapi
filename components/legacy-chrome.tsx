@@ -7,7 +7,7 @@ import { Footer } from "@/components/footer";
 // Routes that have been migrated to the new (paper/editorial) design render
 // their own chrome (TopNav / SiteFooter) inside the page, so the legacy
 // header/footer must not double up on them.
-const RESKINNED_ROUTES = new Set(["/", "/playground", "/teams", "/lineups"]);
+const RESKINNED_ROUTES = new Set(["/", "/playground", "/teams", "/lineups", "/dashboard"]);
 const RESKINNED_PREFIXES = ["/teams/", "/players/"];
 
 function isReskinned(pathname: string) {
