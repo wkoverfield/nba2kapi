@@ -76,15 +76,7 @@ function Board() {
       <TopNav hasApiKey={hasApiKey} width="narrow" />
 
       <div className="mx-auto max-w-[1280px] px-[clamp(20px,4vw,48px)] pt-3.5">
-        <div className="flex flex-wrap items-end justify-between gap-4 animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
-          <div>
-            <h1 className="m-0 font-display text-[clamp(30px,3.4vw,40px)] font-extrabold tracking-[-0.03em]">
-              The board
-            </h1>
-            <p className="mt-1.5 mb-0 font-plex text-[10px] tracking-[0.1em] text-[#8a8577]">
-              EVERY TEAM RANKED BY RATING STRENGTH — NOT STANDINGS
-            </p>
-          </div>
+        <div className="flex justify-end animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
           <div className="flex gap-[3px] rounded-full border border-[#e5e2da] bg-white p-1">
             {ERA_TABS.map((t) => (
               <button

@@ -526,18 +526,7 @@ function Whiteboard() {
       <TopNav hasApiKey={hasApiKey} width="wide" />
 
       <div className="mx-auto max-w-[1440px] px-[clamp(20px,4vw,48px)] pt-2 pb-12">
-        {/* Header */}
-        <div className="flex flex-wrap items-end justify-between gap-3.5 animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
-          <div>
-            <h1 className="m-0 font-display text-[clamp(28px,3.2vw,38px)] font-extrabold tracking-[-0.03em]">
-              The whiteboard
-            </h1>
-            <p className="mt-1.5 mb-0 font-plex text-[10px] tracking-[0.1em] text-[#8a8577]">
-              {hasOpp
-                ? "MATCHUP MODE — THE LAYER WOKE WHEN YOU ADDED AN OPPONENT"
-                : "BUILDING — DRAG OR TAP PLAYERS FROM THE POOL ONTO THE COURT"}
-            </p>
-          </div>
+        <div className="flex justify-end animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
           <div className="flex items-center gap-2.5">
             {hasOpp && (
               <button
