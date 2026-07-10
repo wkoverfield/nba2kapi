@@ -1263,21 +1263,7 @@ app.get("/api/teams/:teamName/roster",
         rosterArgs.teamType = teamType;
       }
 
-      let roster = await c.env.runQuery(api.players.getPlayersByTeam, rosterArgs);
-
-      // Also accept team slugs ("los-angeles-lakers") alongside exact names
-      if (roster.length === 0 && /^[a-z0-9-]+$/.test(teamName)) {
-        const teamInfo = await c.env.runQuery(api.teams.getTeamBySlug, {
-          slug: teamName,
-          teamType: teamType ?? "curr",
-        });
-        if (teamInfo) {
-          roster = await c.env.runQuery(api.players.getPlayersByTeam, {
-            team: teamInfo.name,
-            teamType: teamType ?? "curr",
-          });
-        }
-      }
+      const roster = await c.env.runQuery(api.players.getPlayersByTeam, rosterArgs);
 
       if (roster.length === 0) {
         return c.json(errorResponse(

@@ -101,40 +101,6 @@ export function getTeamConference(team: string): "EAST" | "WEST" | null {
 }
 
 /**
- * Compact display name for board rows and cycling pills: current teams keep
- * their full name; classic "1995-96 Chicago Bulls" reads "'95-'96 Bulls";
- * all-time reads "All-Time Bulls".
- */
-export function formatTeamShortName(
-  team: string,
-  teamType: "curr" | "class" | "allt"
-): string {
-  if (teamType === "class") {
-    const m = team.match(/^\d{2}(\d{2})-(\d{2})\s+(.*)$/);
-    if (m) {
-      const nickname = m[3].split(" ").slice(-1)[0];
-      return `'${m[1]}-'${m[2]} ${nickname}`;
-    }
-  }
-  if (teamType === "allt") {
-    const nickname = team.replace(/^All-Time\s+/, "").split(" ").slice(-1)[0];
-    return `All-Time ${nickname}`;
-  }
-  return team;
-}
-
-/** Nickname only ("Lakers", "'95-'96 Bulls", "A-T Bulls") for tight chrome. */
-export function formatTeamNickname(
-  team: string,
-  teamType: "curr" | "class" | "allt"
-): string {
-  if (teamType === "curr") return team.split(" ").slice(-1)[0];
-  if (teamType === "allt")
-    return `A-T ${team.replace(/^All-Time\s+/, "").split(" ").slice(-1)[0]}`;
-  return formatTeamShortName(team, teamType);
-}
-
-/**
  * Abbreviate any team name, including classic ("'96 Chicago Bulls") and
  * all-time ("All-Time Chicago Bulls") variants, by matching the modern
  * franchise name inside the string. Falls back to first 3 letters.

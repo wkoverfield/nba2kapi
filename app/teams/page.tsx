@@ -10,7 +10,7 @@ import { TopNav } from "@/components/chrome/top-nav";
 import { FooterStrip } from "@/components/chrome/footer-strip";
 import { Headshot } from "@/components/ui/headshot";
 import { getRatingClasses } from "@/lib/rating-colors";
-import { getTeamAbbreviation, getTeamConference, formatTeamShortName } from "@/lib/team-abbr";
+import { getTeamAbbreviation, getTeamConference } from "@/lib/team-abbr";
 import { API_KEY_STORAGE_KEY } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +21,26 @@ const ERA_TABS: { label: string; param: TeamType }[] = [
   { label: "Classic", param: "class" },
   { label: "All-Time", param: "allt" },
 ];
+
+/**
+ * Board display name: current teams keep their full name; classic
+ * "1995-96 Chicago Bulls" reads "'95-'96 Bulls"; all-time keeps
+ * "All-Time <nickname>".
+ */
+function boardName(team: string, teamType: TeamType): string {
+  if (teamType === "class") {
+    const m = team.match(/^\d{2}(\d{2})-(\d{2})\s+(.*)$/);
+    if (m) {
+      const nickname = m[3].split(" ").slice(-1)[0];
+      return `'${m[1]}-'${m[2]} ${nickname}`;
+    }
+  }
+  if (teamType === "allt") {
+    const nickname = team.replace(/^All-Time\s+/, "").split(" ").slice(-1)[0];
+    return `All-Time ${nickname}`;
+  }
+  return team;
+}
 
 function TeamLogo({ src, team }: { src: string | null; team: string }) {
   const [errored, setErrored] = useState(false);
@@ -140,7 +160,7 @@ function Board() {
                       </span>
                       <TeamLogo src={t.logo} team={t.team} />
                       <span className="overflow-hidden text-[14.5px] font-semibold text-ellipsis whitespace-nowrap">
-                        {formatTeamShortName(t.team, era)}
+                        {boardName(t.team, era)}
                       </span>
                       <span className="font-plex text-[9px] text-[#b5b0a1]">
                         {getTeamConference(t.team) ?? "—"}
