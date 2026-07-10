@@ -5,6 +5,7 @@
 
 import { mutation, query, internalMutation, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
+import { CURRENT_GAME_VERSION } from "./gameVersion";
 import { Id } from "./_generated/dataModel";
 
 // Badge tier ranking for comparison
@@ -142,7 +143,7 @@ async function upsertWithHistoryHelper(
 ) {
   const { scrapeJobId, ...playerData } = args;
   const now = new Date().toISOString();
-  const gameVersion = args.gameVersion || "2K26";
+  const gameVersion = args.gameVersion || CURRENT_GAME_VERSION;
 
   // Check if player exists by slug, teamType, and team
   const existing = await ctx.db
@@ -454,7 +455,7 @@ export const createWeeklySnapshots = internalMutation({
         await ctx.db.insert("playerSnapshots", {
           playerId: player._id,
           snapshotDate,
-          gameVersion: player.gameVersion || "2K26",
+          gameVersion: player.gameVersion || CURRENT_GAME_VERSION,
           overall: player.overall,
           attributes: player.attributes,
           badges: player.badges,
@@ -570,7 +571,7 @@ export const migrateExistingPlayersToHistory = internalMutation({
         await ctx.db.insert("playerRatingHistory", {
           playerId: player._id,
           scrapedAt: player.createdAt || now,
-          gameVersion: player.gameVersion || "2K26",
+          gameVersion: player.gameVersion || CURRENT_GAME_VERSION,
           newOverall: player.overall,
           changeType: "initial",
           fullAttributes: player.attributes,
@@ -582,7 +583,7 @@ export const migrateExistingPlayersToHistory = internalMutation({
         await ctx.db.insert("playerSnapshots", {
           playerId: player._id,
           snapshotDate: now.split("T")[0],
-          gameVersion: player.gameVersion || "2K26",
+          gameVersion: player.gameVersion || CURRENT_GAME_VERSION,
           overall: player.overall,
           attributes: player.attributes,
           badges: player.badges,
