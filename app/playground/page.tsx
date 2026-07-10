@@ -240,11 +240,23 @@ function Playground() {
     setHasApiKey(!!localStorage.getItem(API_KEY_STORAGE_KEY));
   }, []);
 
-  // URL mirror
+  // Two-way URL sync. lastSyncedRef remembers the last string either side
+  // agreed on, so an externally-changed URL (back/forward, in-app link) is
+  // adopted into state instead of being clobbered by a stale mirror write.
+  const lastSyncedRef = useRef(searchParams.toString());
   useEffect(() => {
-    const qs = paramsFromState(q);
-    if (qs !== searchParams.toString()) {
-      router.replace(`/playground?${qs}`, { scroll: false });
+    const urlNow = searchParams.toString();
+    const stateNow = paramsFromState(q);
+    if (urlNow === stateNow) {
+      lastSyncedRef.current = urlNow;
+      return;
+    }
+    if (urlNow !== lastSyncedRef.current) {
+      lastSyncedRef.current = urlNow;
+      setQ(stateFromParams(new URLSearchParams(urlNow)));
+    } else {
+      lastSyncedRef.current = stateNow;
+      router.replace(`/playground?${stateNow}`, { scroll: false });
     }
   }, [q, router, searchParams]);
 
@@ -270,11 +282,17 @@ function Playground() {
     | { players: TablePlayer[]; totalCount: number; hasMore: boolean }
     | undefined;
 
-  // Keep the previous page rendered while the next loads (no flash)
-  const lastResult = useRef(result);
-  if (result) lastResult.current = result;
-  const data = result ?? lastResult.current;
-  const updating = result === undefined && lastResult.current !== undefined;
+  // Keep the previous page rendered while the next loads (no flash). The
+  // page number is cached WITH the result so stale rows keep their own
+  // ranks/footer instead of borrowing the incoming page's.
+  const lastGood = useRef<{ data: NonNullable<typeof result>; page: number } | undefined>(
+    undefined
+  );
+  if (result) lastGood.current = { data: result, page: q.page };
+  const shown = result ? { data: result, page: q.page } : lastGood.current;
+  const data = shown?.data;
+  const shownPage = shown?.page ?? 0;
+  const updating = result === undefined && lastGood.current !== undefined;
 
   const requestUrl = `/api/players?${paramsFromState(q)}`;
   const totalPages = data ? Math.max(1, Math.ceil(data.totalCount / PAGE_SIZE)) : 1;
@@ -648,7 +666,7 @@ function Playground() {
         >
           <PlayerTable
             players={data?.players ?? []}
-            rankOffset={q.page * PAGE_SIZE}
+            rankOffset={shownPage * PAGE_SIZE}
             queriedKey={q.filter?.key ?? null}
             sortKey={q.sortKey}
             sortDir={q.sortDir}
@@ -675,7 +693,7 @@ function Playground() {
               </button>
               <span className="font-plex text-[8.5px] text-[#8a8577]">
                 {data
-                  ? `SHOWING ${data.totalCount === 0 ? 0 : q.page * PAGE_SIZE + 1}–${Math.min((q.page + 1) * PAGE_SIZE, data.totalCount)} OF ${data.totalCount} · PAGE ${Math.min(q.page + 1, totalPages)}/${totalPages}`
+                  ? `SHOWING ${data.totalCount === 0 ? 0 : shownPage * PAGE_SIZE + 1}–${Math.min((shownPage + 1) * PAGE_SIZE, data.totalCount)} OF ${data.totalCount} · PAGE ${Math.min(shownPage + 1, totalPages)}/${totalPages}`
                   : "…"}
               </span>
               <button
