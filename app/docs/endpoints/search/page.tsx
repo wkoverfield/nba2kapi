@@ -65,7 +65,7 @@ export default function SearchEndpointPage() {
   return (
     <DocColumns
       rail={
-        <CodeRail samples={SAMPLES} response={RESPONSE} playgroundHref="/playground?search=lebron" />
+        <CodeRail samples={SAMPLES} response={RESPONSE} />
       }
     >
       <EndpointHeader path="/api/players/search" title="Search players">
@@ -74,7 +74,7 @@ export default function SearchEndpointPage() {
           type-to-search UIs, and Discord bot commands.
         </p>
       </EndpointHeader>
-      <AuthPill>REQUIRES X-API-KEY HEADER · 100 REQ/HR FREE</AuthPill>
+      <AuthPill>REQUIRES X-API-KEY HEADER · 500 REQ/HR FREE</AuthPill>
 
       <DocLabel>QUERY PARAMETERS</DocLabel>
       <ParamsTable

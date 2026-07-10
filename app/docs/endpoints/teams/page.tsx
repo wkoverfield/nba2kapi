@@ -81,7 +81,7 @@ export default function TeamsEndpointPage() {
           rosters.
         </p>
       </EndpointHeader>
-      <AuthPill>REQUIRES X-API-KEY HEADER · 100 REQ/HR FREE</AuthPill>
+      <AuthPill>REQUIRES X-API-KEY HEADER · 500 REQ/HR FREE</AuthPill>
 
       <DocLabel>QUERY PARAMETERS</DocLabel>
       <ParamsTable

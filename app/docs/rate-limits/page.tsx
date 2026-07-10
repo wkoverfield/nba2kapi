@@ -10,9 +10,9 @@ import {
   ParamsTable,
 } from "@/components/docs/kit";
 
-const HEADERS_SAMPLE = `X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 95
-X-RateLimit-Reset: 1642521600`;
+const HEADERS_SAMPLE = `X-RateLimit-Limit: 500
+X-RateLimit-Remaining: 463
+X-RateLimit-Reset: 2026-01-15T01:00:00.000Z`;
 
 const RESPONSE_429 = `{
   "success": false,
@@ -21,7 +21,7 @@ const RESPONSE_429 = `{
       Please try again in 45 seconds",
     "code": "RATE_LIMIT_EXCEEDED",
     "details": {
-      "limit": 100,
+      "limit": 500,
       "reset": "2025-01-15T00:45:00.000Z",
       "retryAfter": 45
     },
@@ -58,22 +58,22 @@ export default function RateLimitsPage() {
     >
       <DocH1>Rate limits</DocH1>
       <DocP>
-        Limits apply per API key across two windows. Blow either one and you get a{" "}
-        <code>429</code> until it resets.
+        One window: requests per API key per hour. Blow through it and you get a{" "}
+        <code>429</code> until the hour resets.
       </DocP>
 
       <DocLabel>CURRENT LIMITS</DocLabel>
       <ParamsTable
         rows={[
           {
-            name: "100 / hour",
+            name: "500 / hour",
             type: "per API key",
-            desc: <>Maximum requests allowed per API key per hour.</>,
-          },
-          {
-            name: "20 / minute",
-            type: "per API key",
-            desc: <>Maximum requests allowed per API key per minute.</>,
+            desc: (
+              <>
+                Free-tier default, set per key at creation — the dashboard and{" "}
+                <code>X-RateLimit-Limit</code> always show your key&apos;s real number.
+              </>
+            ),
           },
         ]}
       />
@@ -95,8 +95,13 @@ export default function RateLimitsPage() {
             },
             {
               name: "X-RateLimit-Reset",
-              type: "unix timestamp",
-              desc: <>When the current window resets.</>,
+              type: "ISO-8601 string",
+              desc: (
+                <>
+                  When the current window resets, e.g.{" "}
+                  <code>2026-01-15T01:00:00.000Z</code>.
+                </>
+              ),
             },
           ]}
         />

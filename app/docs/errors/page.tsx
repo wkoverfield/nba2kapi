@@ -89,12 +89,24 @@ export default function ErrorsPage() {
             ),
           },
           {
-            name: "INVALID_PARAMETERS",
+            name: "INVALID_PARAMETER",
             type: "400",
             desc: (
               <>
-                A query parameter is out of range, e.g. <code>limit</code> must be 1–100.{" "}
-                <code>details</code> names the offending parameter and constraint.
+                A parameter value is invalid, e.g. an unknown <code>sort</code> field or an
+                attribute bound outside 0–99. <code>details</code> names the constraint. Note:
+                values rejected by schema validation (bad enum, <code>limit</code> outside 1–100)
+                currently return a raw validation object rather than this envelope.
+              </>
+            ),
+          },
+          {
+            name: "UNKNOWN_PARAMETERS",
+            type: "400",
+            desc: (
+              <>
+                A query parameter this endpoint doesn&apos;t know. The response suggests the
+                closest valid parameter or endpoint.
               </>
             ),
           },
