@@ -431,42 +431,42 @@ function TeamPage() {
 
                 {bench.length > 0 && (
                   <div
-                    className="mt-3 overflow-hidden rounded-[14px] border border-[#e5e2da] bg-white animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
+                    className="mt-4 animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
                     style={{ animationDelay: "260ms" }}
                   >
-                    <div className="flex items-center justify-between border-b border-[#f1efe8] px-[18px] py-[10px]">
+                    <div className="mb-2.5 flex items-center justify-between">
                       <span className="font-plex text-[9px] tracking-[0.12em] text-[#8a8577]">
-                        THE BENCH — HIGHEST TO LOWEST
+                        THE BENCH — LEFT TO RIGHT, HIGHEST TO LOWEST
                       </span>
                       <span className="font-plex text-[8.5px] text-[#b5b0a1]">
                         POSITIONS ARE TAGS, NOT SLOTS
                       </span>
                     </div>
-                    {bench.map((p, i) => (
-                      <Link
-                        key={`${p.slug}-${i}`}
-                        href={`/players/${p.slug}?type=${era}&team=${encodeURIComponent(teamInfo?.name ?? "")}`}
-                        className="flex items-center gap-3 border-b border-[#faf8f2] px-[18px] py-[8px] text-[#1a1918] no-underline transition-colors duration-100 last:border-b-0 hover:bg-[#faf8f2]"
-                      >
-                        <span className="w-5 font-plex text-[10px] text-[#b5b0a1]">{i + 1}</span>
-                        <Headshot src={p.playerImage} name={p.name} size={28} />
-                        <span className="min-w-0 flex-1 overflow-hidden text-[13px] font-semibold text-ellipsis whitespace-nowrap">
-                          {p.name}
-                        </span>
-                        <span
-                          className="font-plex text-[7.5px] tracking-[0.08em]"
-                          style={{ color: i === 0 ? "#9a6700" : "#b5b0a1" }}
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(225px,1fr))] gap-1.5">
+                      {bench.map((p, i) => (
+                        <Link
+                          key={`${p.slug}-${i}`}
+                          href={`/players/${p.slug}?type=${era}&team=${encodeURIComponent(teamInfo?.name ?? "")}`}
+                          className="flex items-center gap-[9px] rounded-[11px] border border-[#e5e2da] bg-white px-2.5 py-2 text-[#1a1918] no-underline transition-[border-color,transform] duration-150 hover:border-[#1a1918] active:scale-[0.98] motion-reduce:transition-none"
                         >
-                          {i === 0 ? "6TH MAN" : (p.positions ?? []).join("/")}
-                        </span>
-                        {i === 0 && (
-                          <span className="font-plex text-[7.5px] tracking-[0.08em] text-[#b5b0a1]">
-                            {(p.positions ?? []).join("/")}
-                          </span>
-                        )}
-                        <OvrChip ovr={p.overall} />
-                      </Link>
-                    ))}
+                          <Headshot src={p.playerImage} name={p.name} size={30} />
+                          <div className="min-w-0 flex-1">
+                            <p className="m-0 overflow-hidden text-[12.5px] font-semibold text-ellipsis whitespace-nowrap">
+                              {p.name}
+                            </p>
+                            <p
+                              className="mt-px mb-0 font-plex text-[7.5px] tracking-[0.06em]"
+                              style={{ color: i === 0 ? "#9a6700" : "#8a8577" }}
+                            >
+                              {i === 0
+                                ? `6TH MAN · ${(p.positions ?? []).join("/")}`
+                                : (p.positions ?? []).join("/")}
+                            </p>
+                          </div>
+                          <OvrChip ovr={p.overall} />
+                        </Link>
+                      ))}
+                    </div>
                   </div>
                 )}
               </>
