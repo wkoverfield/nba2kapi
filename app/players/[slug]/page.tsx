@@ -13,6 +13,7 @@ import { getRatingClasses, getRatingTier, getAttributeColor } from "@/lib/rating
 import { getTeamAbbreviation, formatTeamNickname } from "@/lib/team-abbr";
 import { ATTRIBUTE_CATEGORIES } from "@/convex/attributeCategories";
 import { getAttributeDisplayName } from "@/lib/attribute-normalizer";
+import { depthOrder } from "@/lib/depth-chart";
 import { API_KEY_STORAGE_KEY } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -101,6 +102,7 @@ function PlayerDossier() {
     typeParam === "curr" || typeParam === "class" || typeParam === "allt" ? typeParam : undefined;
 
   const [hasApiKey, setHasApiKey] = useState(false);
+  const [endpointCopied, setEndpointCopied] = useState(false);
   const dossier = useQuery(api.dossier.getDossier, {
     slug,
     teamType: requestedType,
@@ -114,19 +116,19 @@ function PlayerDossier() {
   const player = dossier?.player;
   const era = (player?.teamType ?? requestedType ?? "curr") as TeamType;
 
-  // Roster cycling
-  const rosterIndex = useMemo(() => {
-    if (!dossier) return -1;
-    return dossier.roster.findIndex((p) => p.slug === slug);
-  }, [dossier, slug]);
+  // Roster cycling follows the depth chart: starters PG→C, then bench by OVR
+  const cycleOrder = useMemo(
+    () => (dossier ? depthOrder(dossier.roster) : []),
+    [dossier]
+  );
+  const rosterIndex = useMemo(
+    () => cycleOrder.findIndex((p) => p.slug === slug),
+    [cycleOrder, slug]
+  );
   const prevPlayer =
-    dossier && rosterIndex >= 0
-      ? dossier.roster[(rosterIndex - 1 + dossier.roster.length) % dossier.roster.length]
-      : null;
+    rosterIndex >= 0 ? cycleOrder[(rosterIndex - 1 + cycleOrder.length) % cycleOrder.length] : null;
   const nextPlayer =
-    dossier && rosterIndex >= 0
-      ? dossier.roster[(rosterIndex + 1) % dossier.roster.length]
-      : null;
+    rosterIndex >= 0 ? cycleOrder[(rosterIndex + 1) % cycleOrder.length] : null;
 
   const teamQuery = player ? `&team=${encodeURIComponent(player.team)}` : "";
 
@@ -162,7 +164,7 @@ function PlayerDossier() {
     if (!dossier) return { pros: [], cons: [] };
     const entries = Object.entries(dossier.attrStats)
       .filter(([key]) => !SIGNATURE_EXCLUDE.has(key))
-      .sort((a, b) => b[1].pct - a[1].pct);
+      .sort((a, b) => b[1].pct - a[1].pct || b[1].value - a[1].value);
     const pos = dossier.primaryPosition ?? "position";
     const line = ([key, s]: (typeof entries)[number]) =>
       `${getAttributeDisplayName(key)} ${s.value} — ${ordinal(s.pct)} percentile among ${pos}s.`;
@@ -233,7 +235,7 @@ function PlayerDossier() {
 
   const badgeShelf = useMemo(() => {
     if (!dossier) return [];
-    const byTier = new Map<string, { name: string; slug: string }[]>();
+    const byTier = new Map<string, (typeof dossier.badges)[number][]>();
     for (const b of dossier.badges) {
       if (!byTier.has(b.tier)) byTier.set(b.tier, []);
       byTier.get(b.tier)!.push(b);
@@ -303,43 +305,37 @@ function PlayerDossier() {
           )}
           <div className="flex flex-wrap items-center gap-2">
             {prevPlayer && (
-              <Link href={`/players/${prevPlayer.slug}?type=${era}${teamQuery}`} className={cn(pillClass, "py-1.5 pr-3.5 pl-2.5")}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#8a8577" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="m15 18-6-6 6-6" />
-                </svg>
+              <Link href={`/players/${prevPlayer.slug}?type=${era}${teamQuery}`} className={cn(pillClass, "py-1.5 pr-3.5 pl-2")}>
+                <span className="flex h-[18px] w-[18px] items-center justify-center rounded-[4px] border border-[#d9d4c7] bg-[#faf9f5] font-plex text-[9px] leading-none text-[#57534a]">←</span>
                 <span className="font-plex text-[10px] tracking-[0.06em] text-[#57534a]">
                   {shortPlayerLabel(prevPlayer.name)} · {prevPlayer.overall}
                 </span>
               </Link>
             )}
             {nextPlayer && (
-              <Link href={`/players/${nextPlayer.slug}?type=${era}${teamQuery}`} className={cn(pillClass, "py-1.5 pr-2.5 pl-3.5")}>
+              <Link href={`/players/${nextPlayer.slug}?type=${era}${teamQuery}`} className={cn(pillClass, "py-1.5 pr-2 pl-3.5")}>
                 <span className="font-plex text-[10px] tracking-[0.06em] text-[#57534a]">
                   {shortPlayerLabel(nextPlayer.name)} · {nextPlayer.overall}
                 </span>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#8a8577" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="m9 18 6-6-6-6" />
-                </svg>
+                <span className="flex h-[18px] w-[18px] items-center justify-center rounded-[4px] border border-[#d9d4c7] bg-[#faf9f5] font-plex text-[9px] leading-none text-[#57534a]">→</span>
               </Link>
             )}
-            <span className="font-plex text-[9px] tracking-[0.08em] text-[#b5b0a1]">
-              CYCLE THE ROSTER · ← →
-            </span>
           </div>
         </div>
 
         {/* Tier card + right column */}
         <div className="mt-[18px] grid grid-cols-[repeat(auto-fit,minmax(min(100%,320px),1fr))] items-stretch gap-[22px]">
           {/* MyTeam tier card */}
+          <div className="flex max-w-[420px] flex-col gap-2.5">
           <div
-            className={cn(
-              "relative min-h-[460px] max-w-[420px] overflow-hidden rounded-[22px] shadow-[0_30px_50px_-24px_rgba(26,25,24,0.45)] animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none",
-              player ? getRatingClasses(player.overall).bg : "bg-[#f1efe8]"
-            )}
+            className="relative min-h-[460px] flex-1 overflow-hidden rounded-[22px] bg-[#1a1918] shadow-[0_30px_50px_-24px_rgba(26,25,24,0.45)] animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
             style={{ animationDelay: "60ms" }}
           >
             {player && (
               <>
+                <div
+                  className={cn("absolute top-0 right-0 left-0 z-[3] h-1.5", getRatingClasses(player.overall).bg)}
+                />
                 <div className="absolute top-5 left-[22px] z-[2]">
                   <div className="font-plex text-[9.5px] tracking-[0.14em] text-white/85">
                     {tier.toUpperCase()} · {player.positions.join("/")} · {abbr}
@@ -369,6 +365,27 @@ function PlayerDossier() {
                 </div>
               </>
             )}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              navigator.clipboard
+                .writeText(`https://api.nba2kapi.com/api/players/slug/${slug}`)
+                .then(() => {
+                  setEndpointCopied(true);
+                  setTimeout(() => setEndpointCopied(false), 1400);
+                });
+            }}
+            title="Copy the full request URL"
+            className="flex cursor-pointer items-center justify-between gap-2.5 rounded-full border border-[#e5e2da] bg-white px-4 py-2.5 font-plex text-[10px] text-[#57534a] transition-[border-color,transform] duration-150 hover:border-[#1a1918] active:scale-[0.98] motion-reduce:transition-none"
+          >
+            <span className="overflow-hidden text-ellipsis whitespace-nowrap">
+              GET /api/players/slug/{slug}
+            </span>
+            <span className="shrink-0 font-bold text-[#8a8577]">
+              {endpointCopied ? "COPIED ✓" : "COPY"}
+            </span>
+          </button>
           </div>
 
           {/* Right column */}
@@ -424,10 +441,10 @@ function PlayerDossier() {
               </div>
             </div>
 
-            {/* Endpoint + actions */}
+            {/* Actions */}
             <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-[14px] border border-[#e5e2da] bg-white px-[18px] py-3">
-              <span className="font-plex text-[10px] text-[#57534a]">
-                GET /api/players/slug/{slug}
+              <span className="font-plex text-[9.5px] tracking-[0.12em] text-[#8a8577]">
+                TAKE HIM SOMEWHERE
               </span>
               <div className="flex gap-2">
                 <Link
@@ -681,9 +698,19 @@ function PlayerDossier() {
                     {row.chips.map((c) => (
                       <span
                         key={c.slug}
-                        className="rounded-full border border-[#e5e2da] bg-[#faf9f5] px-3 py-1 text-[12px] font-semibold text-[#1a1918]"
+                        className="group relative inline-flex items-center gap-1.5 rounded-full border border-[#e5e2da] bg-[#faf9f5] py-1 pr-3 pl-2 text-[12px] font-semibold text-[#1a1918]"
                       >
+                        {c.imageUrl && (
+                          <span className="relative h-4 w-4 shrink-0">
+                            <Image src={c.imageUrl} alt="" fill sizes="16px" className="object-contain" />
+                          </span>
+                        )}
                         {c.name}
+                        {c.description && (
+                          <span className="pointer-events-none absolute -top-[30px] left-0 z-10 hidden max-w-[280px] rounded-[6px] bg-[#1a1918] px-2.5 py-1.5 font-plex text-[8px] leading-[1.5] font-normal whitespace-normal text-[#faf9f5] shadow-[0_8px_16px_-8px_rgba(26,25,24,0.5)] group-hover:block">
+                            {c.description}
+                          </span>
+                        )}
                       </span>
                     ))}
                   </div>
@@ -716,9 +743,11 @@ function PlayerDossier() {
                     {rows.map(({ key, stat }) => (
                       <div
                         key={key}
-                        title={`${dossier!.primaryPosition ?? "League"} avg ${stat!.avg} · ${ordinal(stat!.pct)} percentile`}
-                        className="-mx-1 flex cursor-default items-center justify-between gap-1.5 rounded-[6px] px-1 py-px transition-colors duration-100 hover:bg-[#faf8f2]"
+                        className="group relative -mx-1 flex cursor-default items-center justify-between gap-1.5 rounded-[6px] px-1 py-px transition-colors duration-100 hover:bg-[#faf8f2]"
                       >
+                        <span className="pointer-events-none absolute -top-[26px] right-0 z-10 hidden rounded-[6px] bg-[#1a1918] px-2 py-1 font-plex text-[8px] whitespace-nowrap text-[#faf9f5] shadow-[0_8px_16px_-8px_rgba(26,25,24,0.5)] group-hover:block">
+                          {dossier!.primaryPosition ?? "LEAGUE"} AVG {stat!.avg} · {ordinal(stat!.pct).toUpperCase()} PCTL
+                        </span>
                         <span className="font-plex text-[9px] text-[#8a8577]">
                           {getAttributeDisplayName(key).toUpperCase()}
                         </span>

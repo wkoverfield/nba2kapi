@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Search } from "lucide-react";
@@ -25,7 +26,7 @@ type PoolPlayer = {
 
 type Result =
   | { kind: "player"; key: string; name: string; meta: string; href: string; player: PoolPlayer }
-  | { kind: "team"; key: string; name: string; meta: string; href: string; abbr: string }
+  | { kind: "team"; key: string; name: string; meta: string; href: string; abbr: string; logo: string | null }
   | { kind: "query"; key: string; name: string; meta: string; href: string };
 
 type Group = { label: string; items: Result[] };
@@ -40,6 +41,22 @@ function playerResult(p: PoolPlayer): Result {
     href: `/players/${p.slug}?type=${p.teamType}&team=${encodeURIComponent(p.team)}`,
     player: p,
   };
+}
+
+function TeamIcon({ logo, abbr, name }: { logo: string | null; abbr: string; name: string }) {
+  const [errored, setErrored] = useState(false);
+  if (!logo || errored) {
+    return (
+      <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-[#f1efe8] font-display text-[10px] font-extrabold text-[#57534a]">
+        {abbr}
+      </span>
+    );
+  }
+  return (
+    <span className="relative h-[30px] w-[30px] shrink-0">
+      <Image src={logo} alt={name} fill sizes="30px" className="object-contain" onError={() => setErrored(true)} />
+    </span>
+  );
 }
 
 export function CommandPalette({
@@ -68,6 +85,9 @@ export function CommandPalette({
     api.players.getPlaygroundPlayers,
     everOpened ? {} : "skip"
   ) as PoolPlayer[] | undefined;
+  const logoMap = useQuery(api.teams.getTeamLogoMap, everOpened ? {} : "skip") as
+    | Record<string, string>
+    | undefined;
 
   const teams = useMemo(() => {
     if (!players) return [];
@@ -101,9 +121,10 @@ export function CommandPalette({
         meta: `#${rank.get(`${t.team}:${t.teamType}`)}${conf ? ` · ${conf}` : ""} · ${t.avg.toFixed(1)} AVG${t.teamType === "curr" ? "" : t.teamType === "class" ? " · CLASSIC" : " · ALL-TIME"}`,
         href: `/teams/${t.team.toLowerCase().replace(/[^a-z0-9]+/g, "-")}?type=${t.teamType}`,
         abbr: getTeamAbbreviation(t.team),
+        logo: logoMap?.[t.team] ?? null,
       };
     });
-  }, [players]);
+  }, [players, logoMap]);
 
   const groups: Group[] = useMemo(() => {
     const query = q.trim().toLowerCase();
@@ -231,9 +252,7 @@ export function CommandPalette({
                       {item.kind === "player" ? (
                         <Headshot src={item.player.playerImage} name={item.name} size={30} />
                       ) : item.kind === "team" ? (
-                        <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-[#f1efe8] font-display text-[10px] font-extrabold text-[#57534a]">
-                          {item.abbr}
-                        </span>
+                        <TeamIcon logo={item.logo} abbr={item.abbr} name={item.name} />
                       ) : (
                         <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg bg-[#1a1918]">
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#faf9f5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

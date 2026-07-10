@@ -75,7 +75,12 @@ export const getDossier = query({
       .collect();
     const roster = rosterDocs
       .sort((a, b) => b.overall - a.overall)
-      .map((p) => ({ name: p.name, slug: p.slug, overall: p.overall }));
+      .map((p) => ({
+        name: p.name,
+        slug: p.slug,
+        overall: p.overall,
+        positions: p.positions ?? [],
+      }));
 
     // Cohort: same era, same primary position
     const primaryPosition = player.positions?.[0] ?? null;
@@ -174,9 +179,17 @@ export const getDossier = query({
     const badges = badgeLinks
       .map((l, i) => {
         const b = badgeDocs[i];
-        return b ? { name: b.name, slug: b.slug, tier: l.tier } : null;
+        return b
+          ? {
+              name: b.name,
+              slug: b.slug,
+              tier: l.tier,
+              imageUrl: b.imageUrl ?? null,
+              description: b.description ?? null,
+            }
+          : null;
       })
-      .filter((b): b is { name: string; slug: string; tier: string } => b !== null);
+      .filter((b): b is NonNullable<typeof b> => b !== null);
 
     return {
       player: {
