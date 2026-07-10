@@ -12,6 +12,7 @@ import { HonoWithConvex, HttpRouterWithHono } from "convex-helpers/server/hono";
 import { ActionCtx } from "./_generated/server";
 import { api } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
+import { CURRENT_GAME_VERSION } from "./gameVersion";
 import {
   detectUnknownParams,
   formatUnknownParamsError,
@@ -1188,7 +1189,7 @@ app.get("/api/players/:id/versions",
         playerId,
         name: player.name,
         slug: player.slug,
-        currentVersion: player.gameVersion || "2K26",
+        currentVersion: player.gameVersion || CURRENT_GAME_VERSION,
         currentOverall: player.overall,
         ratingHistory: player.ratingHistory || [],
       }));

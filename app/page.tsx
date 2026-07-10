@@ -13,6 +13,7 @@ import { KeyDialog } from "@/components/chrome/key-dialog";
 import { getRatingClasses, getRatingTier, getAttributeColor } from "@/lib/rating-colors";
 import { getTeamAbbreviation } from "@/lib/team-abbr";
 import { API_KEY_STORAGE_KEY } from "@/lib/constants";
+import { CURRENT_GAME_VERSION } from "@/convex/gameVersion";
 import { cn } from "@/lib/utils";
 
 const RISE_IN =
@@ -172,7 +173,7 @@ export default function Home() {
         <div className="mx-auto grid max-w-[1360px] grid-cols-[repeat(auto-fit,minmax(min(100%,460px),1fr))] items-start gap-[clamp(32px,5vw,72px)] px-[clamp(20px,4vw,48px)] pt-[clamp(32px,5vw,60px)] pb-[72px]">
           <div className="pt-5">
             <div className={cn(MONO_LABEL, "mb-6", RISE_IN)}>
-              FREE REST API — NBA 2K26 RATINGS
+              FREE REST API — NBA {CURRENT_GAME_VERSION} RATINGS
             </div>
             <h1
               className={cn(
@@ -248,7 +249,7 @@ export default function Home() {
           >
             <div className="flex items-center justify-between border-b border-[#efece4] px-5 py-3.5">
               <span className="font-plex text-[11px] tracking-[0.12em] text-[#8a8577]">
-                TOP OVERALL — 2K26 · WEEK {weekOfYear(new Date())}
+                TOP OVERALL — {CURRENT_GAME_VERSION} · WEEK {weekOfYear(new Date())}
               </span>
               <span className="font-plex text-[11px] text-[#b5b0a1]">LIVE</span>
             </div>

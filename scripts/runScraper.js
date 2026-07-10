@@ -5,6 +5,7 @@
 
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api.js";
+import { CURRENT_GAME_VERSION } from "../convex/gameVersion.js";
 import { scrapeTeamLinks, scrapeTeamRoster } from '../scraper/teamScraper.js';
 import { scrapePlayerDetails } from '../scraper/playerScraper.js';
 import { initBrowser, createPage } from '../scraper/utils.js';
@@ -22,7 +23,7 @@ async function runScraper(options = {}) {
     teamType = 'curr',
     teams = null,
     jobId = `scrape_${teamType}_${Date.now()}`,
-    gameVersion = '2K26',
+    gameVersion = CURRENT_GAME_VERSION,
   } = options;
 
   if (!ADMIN_API_KEY) {

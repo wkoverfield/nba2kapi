@@ -5,6 +5,7 @@
 
 import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { CURRENT_GAME_VERSION } from "./gameVersion";
 import { Id } from "./_generated/dataModel";
 
 /**
@@ -381,7 +382,7 @@ export const syncBadgesFromPlayers = internalMutation({
           name: badge.name,
           slug,
           category: badge.category,
-          gameVersion: "2K26",
+          gameVersion: CURRENT_GAME_VERSION,
           lastUpdated: now,
           createdAt: now,
         });
