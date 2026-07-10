@@ -10,7 +10,10 @@ import { api } from "@/convex/_generated/api";
 import { TopNav } from "@/components/chrome/top-nav";
 import { FooterStrip } from "@/components/chrome/footer-strip";
 import { Headshot } from "@/components/ui/headshot";
-import { getRatingClasses, getAttributeColor } from "@/lib/rating-colors";
+import { PlayerTable, type TablePlayer } from "@/components/ui/player-table";
+import { buildDepthColumns, depthStarters, depthBench, DEPTH_POSITIONS } from "@/lib/depth-chart";
+import { ATTRIBUTE_CATEGORIES } from "@/convex/attributeCategories";
+import { getRatingClasses } from "@/lib/rating-colors";
 import {
   formatTeamNickname,
   formatTeamShortName,
@@ -39,38 +42,6 @@ type RosterPlayer = {
   attributes?: Record<string, number>;
   badges?: { total?: number; hallOfFame?: number; gold?: number; silver?: number; bronze?: number };
 };
-
-/**
- * Assign a roster to five position columns. Primary position wins; an empty
- * column steals the best bench player who can play it.
- */
-function buildDepthChart(roster: RosterPlayer[]) {
-  const sorted = [...roster].sort((a, b) => b.overall - a.overall);
-  const columns: Record<string, RosterPlayer[]> = { PG: [], SG: [], SF: [], PF: [], C: [] };
-  for (const p of sorted) {
-    const primary = p.positions?.find((pos) => pos in columns);
-    columns[primary ?? "SF"].push(p);
-  }
-  for (const pos of POSITIONS) {
-    if (columns[pos].length > 0) continue;
-    // Steal the strongest bench player able to play this spot.
-    let candidate: { from: string; index: number } | null = null;
-    for (const from of POSITIONS) {
-      columns[from].forEach((p, index) => {
-        if (index === 0) return; // never steal a starter
-        if (!p.positions?.includes(pos)) return;
-        if (!candidate || p.overall > columns[candidate.from][candidate.index].overall) {
-          candidate = { from, index };
-        }
-      });
-    }
-    if (candidate !== null) {
-      const c: { from: string; index: number } = candidate;
-      columns[pos].push(columns[c.from].splice(c.index, 1)[0]);
-    }
-  }
-  return columns;
-}
 
 /** Data-driven strength / neutral / weakness reads. */
 function teamReads(roster: RosterPlayer[]) {
@@ -162,21 +133,6 @@ function TeamLogo({ src, team, size }: { src: string | null; team: string; size:
   );
 }
 
-function attr(p: RosterPlayer, key: string): number | null {
-  return typeof p.attributes?.[key] === "number" ? p.attributes[key] : null;
-}
-
-function AttrCell({ value }: { value: number | null }) {
-  return (
-    <span
-      className="text-center text-[12.5px] font-bold tabular-nums"
-      style={{ color: value === null ? "#b5b0a1" : getAttributeColor(value) }}
-    >
-      {value ?? "—"}
-    </span>
-  );
-}
-
 function TeamPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -216,25 +172,28 @@ function TeamPage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [prevTeam, nextTeam, era, router]);
 
-  const depth = useMemo(() => (roster ? buildDepthChart(roster) : null), [roster]);
-
-  // Exactly one 6th man: the single best bench player (reference identity —
-  // OVR ties and duplicate names must not multiply the tag).
-  const sixthMan = useMemo(() => {
-    if (!depth) return null;
-    let best: RosterPlayer | null = null;
-    for (const pos of POSITIONS) {
-      for (const p of depth[pos].slice(1)) {
-        if (!best || p.overall > best.overall) best = p;
-      }
-    }
-    return best;
-  }, [depth]);
+  const depth = useMemo(() => (roster ? buildDepthColumns(roster) : null), [roster]);
+  const starters = useMemo(() => (depth ? depthStarters(depth) : []), [depth]);
+  const bench = useMemo(() => (depth ? depthBench(depth) : []), [depth]);
   const reads = useMemo(() => (roster ? teamReads(roster) : []), [roster]);
-  const tableRows = useMemo(
-    () => (roster ? [...roster].sort((a, b) => b.overall - a.overall) : []),
-    [roster]
-  );
+  const [tableSort, setTableSort] = useState<{ key: string; dir: "asc" | "desc" }>({
+    key: "overall",
+    dir: "desc",
+  });
+  const tableRows = useMemo(() => {
+    if (!roster) return [];
+    const sign = tableSort.dir === "asc" ? 1 : -1;
+    const value = (p: RosterPlayer) =>
+      tableSort.key === "overall" ? p.overall : (p.attributes?.[tableSort.key] ?? null);
+    return [...roster].sort((a, b) => {
+      const av = value(a);
+      const bv = value(b);
+      if (av === null && bv === null) return b.overall - a.overall;
+      if (av === null) return 1;
+      if (bv === null) return -1;
+      return sign * (av - bv) || b.overall - a.overall;
+    });
+  }, [roster, tableSort]);
 
   const logo = useMemo(() => {
     const withLogo = roster?.find((p) => (p as RosterPlayer & { teamImg?: string }).teamImg);
@@ -247,7 +206,8 @@ function TeamPage() {
 
   const exportCsv = () => {
     if (!roster || !teamInfo) return;
-    const header = "name,slug,positions,height,overall,three_ball,speed,driving_dunk,perimeter_defense,badges";
+    const attrKeys = Object.values(ATTRIBUTE_CATEGORIES).flat();
+    const header = ["name", "slug", "positions", "height", "overall", ...attrKeys, "badges"].join(",");
     const lines = tableRows.map((p) =>
       [
         `"${p.name.replace(/"/g, '""')}"`,
@@ -255,10 +215,7 @@ function TeamPage() {
         `"${(p.positions ?? []).join("/")}"`,
         p.height ?? "",
         p.overall,
-        attr(p, "threePointShot") ?? "",
-        attr(p, "speed") ?? "",
-        attr(p, "drivingDunk") ?? "",
-        attr(p, "perimeterDefense") ?? "",
+        ...attrKeys.map((k) => p.attributes?.[k] ?? ""),
         p.badges?.total ?? "",
       ].join(",")
     );
@@ -269,7 +226,7 @@ function TeamPage() {
     link.download = `${slug}-roster.csv`;
     link.click();
     URL.revokeObjectURL(url);
-    toast.success(`Exported ${tableRows.length} players`);
+    toast.success(`Exported ${tableRows.length} players — every attribute included`);
   };
 
   const notFoundState = teamInfo === null;
@@ -389,7 +346,7 @@ function TeamPage() {
             >
               <span className="font-plex text-[9.5px] tracking-[0.12em] text-[#8a8577]">
                 {view === "depth"
-                  ? "DEPTH CHART — TOP CARD IS THE STARTER, ROWS BELOW ARE THE DEPTH IN ORDER"
+                  ? "STARTERS BY POSITION — THE BENCH RUNS FLAT, HIGHEST TO LOWEST"
                   : "FULL ROSTER — EVERY COLUMN MAPS TO AN API FIELD"}
               </span>
               <div className="flex gap-[3px] rounded-full border border-[#e5e2da] bg-white p-1">
@@ -409,160 +366,134 @@ function TeamPage() {
               </div>
             </div>
 
-            {/* Depth chart */}
+            {/* Depth chart: positional starters, then the bench flat by OVR */}
             {view === "depth" && (
-              <div className="mt-3.5 grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
-                {POSITIONS.map((pos, ci) => {
-                  const players = depth?.[pos] ?? [];
-                  const starter = players[0];
-                  return (
-                    <div
-                      key={pos}
-                      className="animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
-                      style={{ animationDelay: `${140 + ci * 45}ms` }}
-                    >
-                      <div className="mb-2.5 rounded-full bg-[#f1efe8] py-[5px] text-center font-plex text-[9.5px] tracking-[0.12em] text-[#8a8577]">
-                        {POSITION_LABELS[pos]}
-                      </div>
-                      {starter ? (
-                        <Link
-                          href={`/players/${starter.slug}?type=${era}&team=${encodeURIComponent(teamInfo?.name ?? "")}`}
-                          className="relative block overflow-hidden rounded-[14px] border border-[#e5e2da] bg-white text-[#1a1918] no-underline transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-[#1a1918] hover:shadow-[0_14px_28px_-18px_rgba(26,25,24,0.3)] active:scale-[0.98] motion-reduce:transition-none"
-                        >
-                          <div className="relative h-[118px] bg-[#f1efe8]">
-                            {starter.playerImage && (
-                              <Image
-                                src={starter.playerImage}
-                                alt={starter.name}
-                                fill
-                                sizes="220px"
-                                className="object-cover object-top"
-                              />
-                            )}
-                            {starter.overall === bestOverall && (
-                              <span className="absolute top-2 left-2 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[linear-gradient(135deg,#f5c518,#b8860b)] text-[11px] text-white shadow-[0_2px_6px_rgba(0,0,0,0.25)]">
-                                ★
-                              </span>
-                            )}
-                            <span
-                              className={cn(
-                                "absolute top-2 right-2 inline-flex min-w-[34px] items-center justify-center rounded-[7px] px-[5px] py-1 text-[14px] font-bold text-white tabular-nums",
-                                getRatingClasses(starter.overall).bg
-                              )}
-                            >
-                              {starter.overall}
-                            </span>
-                          </div>
-                          <div className="px-3 py-2.5">
-                            <p className="m-0 overflow-hidden text-[13.5px] font-bold text-ellipsis whitespace-nowrap">
-                              {starter.name}
-                            </p>
-                            <p className="mt-[3px] mb-0 font-plex text-[8px] tracking-[0.08em] text-[#8a8577]">
-                              STARTER{starter.height ? ` · ${starter.height}` : ""}
-                            </p>
-                          </div>
-                        </Link>
-                      ) : (
-                        <div className="rounded-[14px] border border-dashed border-[#e5e2da] py-10 text-center font-plex text-[9px] text-[#b5b0a1]">
-                          {roster ? "NO PLAYER" : "…"}
+              <>
+                <div className="mt-3.5 grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+                  {DEPTH_POSITIONS.map((pos, ci) => {
+                    const starter = depth?.[pos][0];
+                    return (
+                      <div
+                        key={pos}
+                        className="animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
+                        style={{ animationDelay: `${140 + ci * 45}ms` }}
+                      >
+                        <div className="mb-2.5 rounded-full bg-[#f1efe8] py-[5px] text-center font-plex text-[9.5px] tracking-[0.12em] text-[#8a8577]">
+                          {POSITION_LABELS[pos]}
                         </div>
-                      )}
-                      {players.slice(1).map((p, i) => {
-                        const isSixth = p === sixthMan;
-                        return (
+                        {starter ? (
                           <Link
-                            key={`${p.slug}-${i}`}
-                            href={`/players/${p.slug}?type=${era}&team=${encodeURIComponent(teamInfo?.name ?? "")}`}
-                            className={cn(
-                              "mt-1.5 flex items-center gap-[9px] rounded-[11px] border border-[#e5e2da] bg-white text-[#1a1918] no-underline transition-[border-color,transform] duration-150 hover:border-[#1a1918] active:scale-[0.98] motion-reduce:transition-none",
-                              i === 0 ? "px-2.5 py-2" : "px-2.5 py-1.5"
-                            )}
+                            href={`/players/${starter.slug}?type=${era}&team=${encodeURIComponent(teamInfo?.name ?? "")}`}
+                            className="relative block overflow-hidden rounded-[14px] border border-[#e5e2da] bg-white text-[#1a1918] no-underline transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-[#1a1918] hover:shadow-[0_14px_28px_-18px_rgba(26,25,24,0.3)] active:scale-[0.98] motion-reduce:transition-none"
                           >
-                            <Headshot src={p.playerImage} name={p.name} size={i === 0 ? 30 : 24} />
-                            <div className="min-w-0 flex-1">
-                              <p
+                            <div className="relative h-[118px] bg-[#f1efe8]">
+                              {starter.playerImage && (
+                                <Image
+                                  src={starter.playerImage}
+                                  alt={starter.name}
+                                  fill
+                                  sizes="220px"
+                                  className="object-cover object-top"
+                                />
+                              )}
+                              {starter.overall === bestOverall && (
+                                <span className="absolute top-2 left-2 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[linear-gradient(135deg,#f5c518,#b8860b)] text-[11px] text-white shadow-[0_2px_6px_rgba(0,0,0,0.25)]">
+                                  ★
+                                </span>
+                              )}
+                              <span
                                 className={cn(
-                                  "m-0 overflow-hidden font-semibold text-ellipsis whitespace-nowrap",
-                                  i === 0 ? "text-[12.5px]" : "text-[11.5px]"
+                                  "absolute top-2 right-2 inline-flex min-w-[34px] items-center justify-center rounded-[7px] px-[5px] py-1 text-[14px] font-bold text-white tabular-nums",
+                                  getRatingClasses(starter.overall).bg
                                 )}
                               >
-                                {p.name}
+                                {starter.overall}
+                              </span>
+                            </div>
+                            <div className="px-3 py-2.5">
+                              <p className="m-0 overflow-hidden text-[13.5px] font-bold text-ellipsis whitespace-nowrap">
+                                {starter.name}
                               </p>
-                              <p
-                                className="mt-px mb-0 font-plex text-[7.5px] tracking-[0.06em]"
-                                style={{ color: isSixth ? "#9a6700" : "#8a8577" }}
-                              >
-                                {isSixth ? "6TH MAN" : i === 0 ? "2ND UNIT" : "DEPTH"}
+                              <p className="mt-[3px] mb-0 font-plex text-[8px] tracking-[0.08em] text-[#8a8577]">
+                                STARTER{starter.height ? ` · ${starter.height}` : ""}
                               </p>
                             </div>
-                            <OvrChip ovr={p.overall} />
                           </Link>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                        ) : (
+                          <div className="rounded-[14px] border border-dashed border-[#e5e2da] py-10 text-center font-plex text-[9px] text-[#b5b0a1]">
+                            {roster ? "NO PLAYER" : "…"}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
 
-            {/* Table */}
-            {view === "table" && (
-              <div className="mt-3.5 overflow-hidden rounded-[14px] border border-[#e5e2da] bg-white animate-[rise-in_300ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
-                <div className="overflow-x-auto">
-                  <div className="min-w-[760px]">
-                    <div className={cn(tableGrid, "border-b border-[#e5e2da] bg-[#faf9f5] py-2.5")}>
-                      <span className="font-plex text-[8.5px] tracking-[0.08em] text-[#b5b0a1]">#</span>
-                      <span />
-                      <span className="font-plex text-[8.5px] tracking-[0.08em] text-[#b5b0a1]">PLAYER</span>
-                      <span className="font-plex text-[8.5px] tracking-[0.08em] text-[#b5b0a1]">POS</span>
-                      <span className="font-plex text-[8.5px] tracking-[0.08em] text-[#b5b0a1]">HT</span>
-                      <span className="font-plex text-[8.5px] font-bold tracking-[0.08em] text-[#1a1918]">OVR ↓</span>
-                      {["3PT", "SPD", "DNK", "DEF"].map((h) => (
-                        <span key={h} className="text-center font-plex text-[8.5px] tracking-[0.08em] text-[#b5b0a1]">
-                          {h}
-                        </span>
-                      ))}
-                      <span className="text-right font-plex text-[8.5px] tracking-[0.08em] text-[#b5b0a1]">BADGES</span>
+                {bench.length > 0 && (
+                  <div
+                    className="mt-3 overflow-hidden rounded-[14px] border border-[#e5e2da] bg-white animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
+                    style={{ animationDelay: "260ms" }}
+                  >
+                    <div className="flex items-center justify-between border-b border-[#f1efe8] px-[18px] py-[10px]">
+                      <span className="font-plex text-[9px] tracking-[0.12em] text-[#8a8577]">
+                        THE BENCH — HIGHEST TO LOWEST
+                      </span>
+                      <span className="font-plex text-[8.5px] text-[#b5b0a1]">
+                        POSITIONS ARE TAGS, NOT SLOTS
+                      </span>
                     </div>
-                    {tableRows.map((p, i) => (
+                    {bench.map((p, i) => (
                       <Link
                         key={`${p.slug}-${i}`}
                         href={`/players/${p.slug}?type=${era}&team=${encodeURIComponent(teamInfo?.name ?? "")}`}
-                        className={cn(
-                          tableGrid,
-                          "border-b border-[#faf8f2] py-2 text-[#1a1918] no-underline transition-colors duration-100 hover:bg-[#faf8f2]"
-                        )}
+                        className="flex items-center gap-3 border-b border-[#faf8f2] px-[18px] py-[8px] text-[#1a1918] no-underline transition-colors duration-100 last:border-b-0 hover:bg-[#faf8f2]"
                       >
-                        <span className="font-plex text-[10px] text-[#b5b0a1]">{i + 1}</span>
+                        <span className="w-5 font-plex text-[10px] text-[#b5b0a1]">{i + 1}</span>
                         <Headshot src={p.playerImage} name={p.name} size={28} />
-                        <span className="overflow-hidden text-[13px] font-semibold text-ellipsis whitespace-nowrap">
+                        <span className="min-w-0 flex-1 overflow-hidden text-[13px] font-semibold text-ellipsis whitespace-nowrap">
                           {p.name}
                         </span>
-                        <span className="font-plex text-[10px] text-[#57534a]">
-                          {(p.positions ?? []).join("/")}
-                        </span>
-                        <span className="font-plex text-[10px] text-[#57534a]">{p.height ?? "—"}</span>
                         <span
-                          className={cn(
-                            "inline-flex w-[34px] items-center justify-center rounded-[6px] py-[3px] text-[12px] font-bold text-white tabular-nums",
-                            getRatingClasses(p.overall).bg
-                          )}
+                          className="font-plex text-[7.5px] tracking-[0.08em]"
+                          style={{ color: i === 0 ? "#9a6700" : "#b5b0a1" }}
                         >
-                          {p.overall}
+                          {i === 0 ? "6TH MAN" : (p.positions ?? []).join("/")}
                         </span>
-                        <AttrCell value={attr(p, "threePointShot")} />
-                        <AttrCell value={attr(p, "speed")} />
-                        <AttrCell value={attr(p, "drivingDunk")} />
-                        <AttrCell value={attr(p, "perimeterDefense")} />
-                        <span className="text-right font-plex text-[10.5px] text-[#57534a]">
-                          {p.badges?.total ?? "—"}
-                        </span>
+                        {i === 0 && (
+                          <span className="font-plex text-[7.5px] tracking-[0.08em] text-[#b5b0a1]">
+                            {(p.positions ?? []).join("/")}
+                          </span>
+                        )}
+                        <OvrChip ovr={p.overall} />
                       </Link>
                     ))}
                   </div>
-                </div>
-                <div className="flex flex-wrap items-center justify-between gap-2 bg-[#faf9f5] px-[18px] py-[9px]">
-                  <span className="font-plex text-[8.5px] text-[#b5b0a1]">CLICK A ROW → DOSSIER</span>
+                )}
+              </>
+            )}
+
+            {/* Table: every attribute, sticky player column */}
+            {view === "table" && (
+              <div className="mt-3.5 overflow-hidden rounded-[14px] border border-[#e5e2da] bg-white animate-[rise-in_300ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
+                <PlayerTable
+                  players={tableRows.map((p) => ({ ...p, team: teamInfo?.name ?? "", teamType: era })) as TablePlayer[]}
+                  sortKey={tableSort.key}
+                  sortDir={tableSort.dir}
+                  onSort={(key) =>
+                    setTableSort((t) => ({
+                      key,
+                      dir: t.key === key ? (t.dir === "desc" ? "asc" : "desc") : "desc",
+                    }))
+                  }
+                  playerHref={(p) =>
+                    `/players/${p.slug}?type=${era}&team=${encodeURIComponent(teamInfo?.name ?? "")}`
+                  }
+                  loading={!roster}
+                />
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#f1efe8] bg-[#faf9f5] px-[18px] py-[9px]">
+                  <span className="font-plex text-[8.5px] text-[#b5b0a1]">
+                    CLICK ANY COLUMN TO SORT · CLICK A PLAYER → DOSSIER
+                  </span>
                   <button
                     type="button"
                     onClick={exportCsv}
