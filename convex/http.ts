@@ -16,6 +16,7 @@ import {
   detectUnknownParams,
   formatUnknownParamsError,
   VALID_PARAMS_BY_ENDPOINT,
+  ATTRIBUTE_PARAM_ALIASES,
 } from "./_validation";
 
 const app: HonoWithConvex<ActionCtx> = new Hono();
@@ -671,15 +672,33 @@ app.get("/api/admin/scrape/:jobId",
 // ============================================================================
 
 // GET /api/players - List players with filtering and pagination
+// Position groups accepted by ?position= alongside exact positions (PG..C).
+const POSITION_GROUPS: Record<string, string[]> = {
+  guard: ["PG", "SG"],
+  wing: ["SG", "SF"],
+  big: ["PF", "C"],
+};
+
+// Top-level player fields that ?fields= may project.
+const PROJECTABLE_FIELDS = new Set([
+  "name", "slug", "team", "teamType", "overall", "positions",
+  "height", "weight", "wingspan", "archetype", "college",
+  "playerImage", "teamImg", "attributes", "badges", "lastUpdated",
+]);
+
 app.get("/api/players",
   authMiddleware,
   rejectUnknownParams("/api/players"),
   zValidator("query", z.object({
     teamType: z.enum(["curr", "class", "allt"]).default("curr"),
+    // era supersedes teamType; "all" merges current + classic + all-time.
+    era: z.enum(["all", "curr", "class", "allt"]).optional(),
     team: z.string().optional(),
     minRating: z.coerce.number().min(0).max(99).optional(),
     maxRating: z.coerce.number().min(0).max(99).optional(),
     position: z.string().optional(),
+    sort: z.string().optional(),
+    fields: z.string().optional(),
     cursor: z.string().optional(),
     limit: z.coerce.number().min(1).max(100).default(50),
   })),
@@ -698,19 +717,83 @@ app.get("/api/players",
 
       // Build query args, only including defined values
       const queryArgs: any = {
-        teamType: params.teamType,
         sortBy: "overall-desc",
         limit: params.limit,
         offset: offset,
       };
 
+      // era=all means no teamType filter at all
+      const era = params.era ?? params.teamType;
+      if (era !== "all") queryArgs.teamType = era;
+
       if (params.team) queryArgs.teams = [params.team];
       if (params.minRating !== undefined) queryArgs.minOverall = params.minRating;
       if (params.maxRating !== undefined) queryArgs.maxOverall = params.maxRating;
-      if (params.position) queryArgs.positions = [params.position];
+      if (params.position) {
+        const group = POSITION_GROUPS[params.position.toLowerCase()];
+        queryArgs.positions = group ?? [params.position.toUpperCase()];
+      }
+
+      // Per-attribute range filters: <alias>_gte / <alias>_lte
+      const attributeFilters = new Map<string, { key: string; gte?: number; lte?: number }>();
+      const url = new URL(c.req.url);
+      for (const [key, value] of url.searchParams.entries()) {
+        const match = key.match(/^(.+)_(gte|lte)$/);
+        if (!match) continue;
+        const attrKey = ATTRIBUTE_PARAM_ALIASES[match[1]];
+        if (!attrKey) continue; // unknown aliases already rejected upstream
+        const num = Number(value);
+        if (!Number.isFinite(num) || num < 0 || num > 99) {
+          return c.json(errorResponse(
+            `Invalid value for '${key}': expected a number between 0 and 99`,
+            "INVALID_PARAMETER"
+          ), 400);
+        }
+        const entry = attributeFilters.get(attrKey) ?? { key: attrKey };
+        entry[match[2] as "gte" | "lte"] = num;
+        attributeFilters.set(attrKey, entry);
+      }
+      if (attributeFilters.size > 0) {
+        queryArgs.attributeFilters = [...attributeFilters.values()];
+      }
+
+      // sort=<field>:<dir> where field is overall, name, or an attribute alias
+      if (params.sort) {
+        const [field, dirRaw] = params.sort.split(":");
+        const dir = dirRaw === "asc" ? "asc" : "desc";
+        if (field === "overall" || field === "name") {
+          queryArgs.sortBy = `${field}-${dir}`;
+        } else {
+          const attrKey = ATTRIBUTE_PARAM_ALIASES[field];
+          if (!attrKey) {
+            return c.json(errorResponse(
+              `Invalid sort field '${field}'. Use overall, name, or an attribute like three_ball, speed, driving_dunk, perimeter_defense.`,
+              "INVALID_PARAMETER"
+            ), 400);
+          }
+          queryArgs.sortByAttribute = { key: attrKey, dir };
+        }
+      }
 
       // Use optimized getAllFiltered which filters at database level
       const result = await c.env.runQuery(api.players.getAllFiltered, queryArgs);
+
+      // ?fields= projection (top-level fields only)
+      let players: any[] = result.players;
+      if (params.fields) {
+        const requested = params.fields.split(",").map((f: string) => f.trim()).filter(Boolean);
+        const unknown = requested.filter((f: string) => !PROJECTABLE_FIELDS.has(f));
+        if (unknown.length > 0) {
+          return c.json(errorResponse(
+            `Unknown field(s) in ?fields=: ${unknown.join(", ")}`,
+            "INVALID_PARAMETER",
+            { allowedFields: [...PROJECTABLE_FIELDS] }
+          ), 400);
+        }
+        players = players.map((p: any) =>
+          Object.fromEntries(requested.map((f: string) => [f, p[f]]))
+        );
+      }
 
       // Calculate next cursor
       const nextCursor = result.hasMore ? (offset + params.limit).toString() : undefined;
@@ -718,11 +801,11 @@ app.get("/api/players",
       // Add caching headers - player data cached for 1 hour
       c.header("Cache-Control", "public, max-age=3600");
 
-      return c.json(successResponse(result.players, {
+      return c.json(successResponse(players, {
         pagination: {
           hasMore: result.hasMore,
           nextCursor: nextCursor,
-          count: result.players.length,
+          count: players.length,
           limit: params.limit,
           total: result.totalCount,
         },

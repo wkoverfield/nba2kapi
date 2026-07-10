@@ -137,17 +137,82 @@ export const PARAM_SUGGESTIONS: Record<string, ParamSuggestion> = {
 };
 
 /**
+ * Canonical player attribute keys (as stored in players.attributes).
+ * Kept in sync with lib/attribute-normalizer.ts ATTRIBUTE_NAME_MAP values.
+ */
+export const CANONICAL_ATTRIBUTES = [
+  "closeShot",
+  "drivingLayup",
+  "drivingDunk",
+  "standingDunk",
+  "postHook",
+  "postFade",
+  "postControl",
+  "midRangeShot",
+  "threePointShot",
+  "freeThrow",
+  "shotIQ",
+  "offensiveConsistency",
+  "drawFoul",
+  "hands",
+  "passAccuracy",
+  "ballHandle",
+  "speedWithBall",
+  "passIQ",
+  "passVision",
+  "passPerception",
+  "interiorDefense",
+  "perimeterDefense",
+  "steal",
+  "block",
+  "defensiveConsistency",
+  "defensiveRebound",
+  "lateralQuickness",
+  "helpDefenseIQ",
+  "speed",
+  "acceleration",
+  "agility",
+  "vertical",
+  "strength",
+  "stamina",
+  "hustle",
+  "durability",
+  "offensiveRebound",
+  "passing",
+  "postMoves",
+] as const;
+
+const toSnake = (key: string) => key.replace(/([A-Z])/g, "_$1").toLowerCase();
+
+/**
+ * Query-param spelling → canonical attribute key. Accepts snake_case of every
+ * canonical attribute plus a few friendly aliases used across the product
+ * (e.g. three_ball_gte=85, sort=three_ball:desc).
+ */
+export const ATTRIBUTE_PARAM_ALIASES: Record<string, string> = {
+  ...Object.fromEntries(CANONICAL_ATTRIBUTES.map((key) => [toSnake(key), key])),
+  three_ball: "threePointShot",
+  dunk: "drivingDunk",
+  defense: "perimeterDefense",
+};
+
+/**
  * Valid parameters for each endpoint
  */
 export const VALID_PARAMS_BY_ENDPOINT: Record<string, Set<string>> = {
   "/api/players": new Set([
     "teamType",
+    "era",
     "team",
     "minRating",
     "maxRating",
     "position",
+    "sort",
+    "fields",
     "cursor",
     "limit",
+    // Per-attribute range filters (three_ball_gte, speed_lte, …) are
+    // appended programmatically below the map.
   ]),
   "/api/public/players": new Set([
     "teamType",
@@ -180,6 +245,13 @@ export const VALID_PARAMS_BY_ENDPOINT: Record<string, Set<string>> = {
   "/api/badges/:slug/players": new Set(["tier", "limit"]),
   "/api/dashboard/usage": new Set([]),
 };
+
+// Register every attribute range filter (<alias>_gte / <alias>_lte) as a valid
+// /api/players param.
+for (const alias of Object.keys(ATTRIBUTE_PARAM_ALIASES)) {
+  VALID_PARAMS_BY_ENDPOINT["/api/players"].add(`${alias}_gte`);
+  VALID_PARAMS_BY_ENDPOINT["/api/players"].add(`${alias}_lte`);
+}
 
 /**
  * Detected unknown parameter with suggestion

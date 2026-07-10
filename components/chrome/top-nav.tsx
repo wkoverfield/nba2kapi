@@ -58,13 +58,15 @@ type TopNavProps = {
   onCtaClick?: () => void;
   /** Swaps the CTA label for returning users who already hold a key. */
   hasApiKey?: boolean;
+  /** Data-dense pages (Playground, Board, Whiteboard) run a 1440px shell. */
+  wide?: boolean;
 };
 
 /**
  * Shared chrome for reskinned (paper/editorial) pages: wordmark, pill nav,
  * search pill, GitHub star chip, and the primary API-key CTA.
  */
-export function TopNav({ onCtaClick, hasApiKey = false }: TopNavProps) {
+export function TopNav({ onCtaClick, hasApiKey = false, wide = false }: TopNavProps) {
   const ctaLabel = hasApiKey ? "View dashboard" : "Get an API key";
   const pathname = usePathname();
   const router = useRouter();
@@ -92,7 +94,12 @@ export function TopNav({ onCtaClick, hasApiKey = false }: TopNavProps) {
     "rounded-full bg-[#1a1918] px-5 py-2.5 text-[13.5px] font-semibold text-[#faf9f5] no-underline transition-[background,transform] duration-150 ease-out hover:bg-[#333] active:scale-[0.97] motion-reduce:transition-none";
 
   return (
-    <div className="mx-auto flex w-full max-w-[1360px] flex-wrap items-center justify-between gap-3 px-[clamp(20px,4vw,48px)] py-5">
+    <div
+      className={cn(
+        "mx-auto flex w-full flex-wrap items-center justify-between gap-3 px-[clamp(20px,4vw,48px)] py-5",
+        wide ? "max-w-[1440px]" : "max-w-[1360px]"
+      )}
+    >
       <Link
         href="/"
         className="font-display text-[22px] font-extrabold tracking-[-0.02em] text-[#1a1918] no-underline"

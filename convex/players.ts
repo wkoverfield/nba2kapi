@@ -720,6 +720,24 @@ export const getAllFiltered = query({
       v.literal("name-asc"),
       v.literal("name-desc")
     )),
+    // Range filters on players.attributes keys, e.g. { key: "threePointShot", gte: 85 }
+    attributeFilters: v.optional(
+      v.array(
+        v.object({
+          key: v.string(),
+          gte: v.optional(v.number()),
+          lte: v.optional(v.number()),
+        })
+      )
+    ),
+    // Sort by an attributes key; takes precedence over sortBy when present.
+    // Players missing the attribute sort last; ties break by overall desc.
+    sortByAttribute: v.optional(
+      v.object({
+        key: v.string(),
+        dir: v.union(v.literal("asc"), v.literal("desc")),
+      })
+    ),
     limit: v.optional(v.number()),
     offset: v.optional(v.number()),
   },
@@ -781,16 +799,43 @@ export const getAllFiltered = query({
       players = players.filter((p) => p.overall <= args.maxOverall!);
     }
 
+    // Filter by attribute ranges
+    if (args.attributeFilters && args.attributeFilters.length > 0) {
+      players = players.filter((p) =>
+        args.attributeFilters!.every((f) => {
+          const value = p.attributes?.[f.key];
+          if (value === undefined) return false;
+          if (f.gte !== undefined && value < f.gte) return false;
+          if (f.lte !== undefined && value > f.lte) return false;
+          return true;
+        })
+      );
+    }
+
     // Sort players
-    const sortBy = args.sortBy || "overall-desc";
-    if (sortBy === "overall-desc") {
-      players.sort((a, b) => b.overall - a.overall);
-    } else if (sortBy === "overall-asc") {
-      players.sort((a, b) => a.overall - b.overall);
-    } else if (sortBy === "name-asc") {
-      players.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (sortBy === "name-desc") {
-      players.sort((a, b) => b.name.localeCompare(a.name));
+    if (args.sortByAttribute) {
+      const { key, dir } = args.sortByAttribute;
+      const sign = dir === "asc" ? 1 : -1;
+      players.sort((a, b) => {
+        const av = a.attributes?.[key];
+        const bv = b.attributes?.[key];
+        if (av === undefined && bv === undefined) return b.overall - a.overall;
+        if (av === undefined) return 1;
+        if (bv === undefined) return -1;
+        const d = sign * (av - bv);
+        return d !== 0 ? d : b.overall - a.overall;
+      });
+    } else {
+      const sortBy = args.sortBy || "overall-desc";
+      if (sortBy === "overall-desc") {
+        players.sort((a, b) => b.overall - a.overall);
+      } else if (sortBy === "overall-asc") {
+        players.sort((a, b) => a.overall - b.overall);
+      } else if (sortBy === "name-asc") {
+        players.sort((a, b) => a.name.localeCompare(b.name));
+      } else if (sortBy === "name-desc") {
+        players.sort((a, b) => b.name.localeCompare(a.name));
+      }
     }
 
     // Get total count before pagination
@@ -806,6 +851,31 @@ export const getAllFiltered = query({
       totalCount,
       hasMore: offset + limit < totalCount,
     };
+  },
+});
+
+/**
+ * Lightweight projection of every player for the Playground's client-side
+ * sentence-query engine: filtering/sorting happens in the browser, so this
+ * returns one slim row per player instead of full documents.
+ */
+export const getPlaygroundPlayers = query({
+  args: {},
+  handler: async (ctx) => {
+    const players = await ctx.db.query("players").collect();
+    return players.map((p) => ({
+      name: p.name,
+      slug: p.slug,
+      team: p.team,
+      teamType: p.teamType,
+      positions: p.positions ?? [],
+      overall: p.overall,
+      playerImage: p.playerImage ?? null,
+      threePointShot: p.attributes?.threePointShot ?? null,
+      speed: p.attributes?.speed ?? null,
+      drivingDunk: p.attributes?.drivingDunk ?? null,
+      perimeterDefense: p.attributes?.perimeterDefense ?? null,
+    }));
   },
 });
 
