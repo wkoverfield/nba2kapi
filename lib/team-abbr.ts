@@ -34,6 +34,14 @@ export const TEAM_ABBREVIATIONS: Record<string, string> = {
   "Toronto Raptors": "TOR",
   "Utah Jazz": "UTA",
   "Washington Wizards": "WAS",
+  // Historical franchise names that appear in classic-era rosters
+  "Seattle SuperSonics": "SEA",
+  "Seattle Supersonics": "SEA",
+  "New Jersey Nets": "NJN",
+  "Vancouver Grizzlies": "VAN",
+  "Washington Bullets": "WAS",
+  "Charlotte Bobcats": "CHA",
+  "New Orleans Hornets": "NOH",
 };
 
 /** Franchise → conference. Same includes-matching as abbreviations. */
@@ -69,6 +77,14 @@ export const TEAM_CONFERENCES: Record<string, "EAST" | "WEST"> = {
   "Toronto Raptors": "EAST",
   "Utah Jazz": "WEST",
   "Washington Wizards": "EAST",
+  // Historical franchise names that appear in classic-era rosters
+  "Seattle SuperSonics": "WEST",
+  "Seattle Supersonics": "WEST",
+  "New Jersey Nets": "EAST",
+  "Vancouver Grizzlies": "WEST",
+  "Washington Bullets": "EAST",
+  "Charlotte Bobcats": "EAST",
+  "New Orleans Hornets": "WEST",
 };
 
 /**
