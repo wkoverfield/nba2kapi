@@ -30,6 +30,7 @@ build/
 .convex/
 convex/_generated/
 convex/*.d.ts
+!convex/gameVersion.d.ts
 convex/*.d.ts.map
 PRD.md
 
