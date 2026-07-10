@@ -83,6 +83,12 @@ export default defineSchema({
     ),
 
     // Cross-version historical ratings (from 2kratings.com)
+    // In-season rating movement as 2kratings charts it: fixed milestones
+    // (launch, biweekly dates, All-Star, playoff rounds) filled in over the
+    // season. Only milestones with a rating are stored.
+    seasonMovement: v.optional(
+      v.array(v.object({ label: v.string(), overall: v.number() }))
+    ),
     ratingHistory: v.optional(
       v.array(
         v.object({

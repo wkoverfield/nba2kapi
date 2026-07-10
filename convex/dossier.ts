@@ -160,15 +160,14 @@ export const getDossier = query({
         playerImage: p.playerImage ?? null,
       }));
 
-    // Weekly rating history from snapshots
-    const snaps = await ctx.db
-      .query("playerSnapshots")
-      .withIndex("by_playerId", (q) => q.eq("playerId", player._id))
-      .collect();
-    const history = snaps
-      .sort((a, b) => a.snapshotDate.localeCompare(b.snapshotDate))
-      .map((s) => ({ date: s.snapshotDate, overall: s.overall }))
-      .slice(-20);
+    // In-season movement (milestones filled in over the season)
+    const seasonMovement = player.seasonMovement ?? [];
+
+    // Game-to-game rating history, exactly as 2kratings tracks it
+    // (scraped onto the player doc; oldest game first for charting).
+    const history = [...(player.ratingHistory ?? [])]
+      .sort((a, b) => a.gameVersion.localeCompare(b.gameVersion))
+      .map((h) => ({ gameVersion: h.gameVersion, overall: h.overall }));
 
     // Named badges by tier
     const badgeLinks = await ctx.db
@@ -216,6 +215,7 @@ export const getDossier = query({
       overallPct,
       similar,
       history,
+      seasonMovement,
       badges,
     };
   },

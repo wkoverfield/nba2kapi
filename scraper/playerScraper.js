@@ -389,6 +389,50 @@ export async function scrapePlayerDetails(page, basicPlayer) {
         details.ratingHistory[i].delta = details.ratingHistory[i].overall - details.ratingHistory[i + 1].overall;
       }
 
+      // ========================================
+      // Extract In-Season Rating Movement
+      // ========================================
+      // 2kratings renders "…Rating Season Movement" as a Chart.js line chart
+      // whose config lives in an inline script: labels are fixed season
+      // milestones, data fills in as the season progresses (null = future).
+      const movementScript = Array.from(document.querySelectorAll('script:not([src])'))
+        .map((el) => el.textContent || '')
+        .find((t) => t.includes('chartjs-dashboard-line-player'));
+      if (movementScript) {
+        try {
+          // Anchor past the canvas id so another chart's config in the same
+          // script tag can never be mistaken for the movement chart's.
+          const afterMarker = movementScript.slice(
+            movementScript.indexOf('chartjs-dashboard-line-player')
+          );
+          const labelsMatch = afterMarker.match(/labels:\s*(\[[^\]]*\])/);
+          const dataMatch = afterMarker.match(/data:\s*(\[[^\]]*\])/);
+          if (labelsMatch && dataMatch) {
+            // Labels are quoted strings; the data array is JS with elisions
+            // ("[ 89, , , ]") and trailing commas, so token-parse rather
+            // than JSON.parse.
+            const labels = (labelsMatch[1].match(/"([^"]*)"|'([^']*)'/g) || []).map((q) =>
+              q.slice(1, -1)
+            );
+            const values = dataMatch[1]
+              .slice(1, -1)
+              .split(',')
+              .map((tok) => {
+                const n = Number(tok.trim());
+                return tok.trim() !== '' && Number.isFinite(n) ? n : null;
+              });
+            const movement = labels
+              .map((label, i) => ({ label: String(label), overall: values[i] }))
+              .filter((m) => typeof m.overall === 'number');
+            if (movement.length > 0) {
+              details.seasonMovement = movement;
+            }
+          }
+        } catch {
+          // Chart markup changed — skip quietly; the field is best-effort.
+        }
+      }
+
       return details;
     });
 
@@ -406,6 +450,7 @@ export async function scrapePlayerDetails(page, basicPlayer) {
       badges: playerDetails.badges,
       hotZones: playerDetails.hotZones,
       ratingHistory: playerDetails.ratingHistory,
+      seasonMovement: playerDetails.seasonMovement,
       lastUpdated: new Date().toISOString()
     };
 

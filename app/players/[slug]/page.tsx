@@ -14,6 +14,7 @@ import { getTeamAbbreviation, formatTeamNickname } from "@/lib/team-abbr";
 import { ATTRIBUTE_CATEGORIES } from "@/convex/attributeCategories";
 import { getAttributeDisplayName } from "@/lib/attribute-normalizer";
 import { depthOrder } from "@/lib/depth-chart";
+import { CURRENT_GAME_VERSION } from "@/convex/gameVersion";
 import { API_KEY_STORAGE_KEY } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -82,6 +83,18 @@ function shortPlayerLabel(name: string) {
 
 function pctColor(pct: number) {
   return pct >= 85 ? "#0a7f3f" : pct >= 50 ? "#9a6700" : "#c03a2b";
+}
+
+/** "NBA 2K27 Launch Rating" → "LAUNCH", "Nov. 5, 2026" → "NOV 5", playoff rounds compressed. */
+function shortMilestone(label: string): string {
+  if (/launch/i.test(label)) return "LAUNCH";
+  if (/all-star/i.test(label)) return "ALL-STAR";
+  if (/playoffs rd 1/i.test(label)) return "PLAYOFFS";
+  if (/semifinals/i.test(label)) return "SEMIS";
+  if (/conference finals/i.test(label)) return "CONF F";
+  if (/finals/i.test(label)) return "FINALS";
+  const m = label.match(/^([A-Za-z]{3})\.?\s+(\d{1,2})/);
+  return m ? `${m[1].toUpperCase()} ${m[2]}` : label.toUpperCase().slice(0, 8);
 }
 
 function ordinal(n: number) {
@@ -174,24 +187,31 @@ function PlayerDossier() {
     };
   }, [dossier]);
 
-  // History chart geometry
+  // History chart: in-season movement when 2kratings has charted it
+  // (2+ milestones), otherwise their game-to-game overalls.
   const historyChart = useMemo(() => {
-    if (!dossier || dossier.history.length < 2) return null;
-    const values = dossier.history.map((h) => h.overall);
+    if (!dossier) return null;
+    const movement = dossier.seasonMovement ?? [];
+    const useMovement = movement.length >= 2;
+    const source = useMovement
+      ? movement.map((m) => ({ label: shortMilestone(m.label), overall: m.overall }))
+      : dossier.history.map((h) => ({ label: h.gameVersion, overall: h.overall }));
+    if (source.length < 2) return null;
+    const values = source.map((h) => h.overall);
     const min = Math.min(...values) - 0.5;
     const max = Math.max(...values) + 0.5;
     const sx = (i: number) => 24 + (i / (values.length - 1)) * 372;
     const sy = (v: number) => 130 - ((v - min) / (max - min)) * 105;
     const cutoff = TIER_CUTOFFS.find((c) => c > min && c <= max + 0.5) ?? null;
-    const labelIdx = [0, Math.floor((values.length - 1) / 2), values.length - 1];
+    // At most 4 tick labels so milestone names never collide
+    const tickIdx = [...new Set([0, Math.floor((source.length - 1) / 3), Math.floor(((source.length - 1) * 2) / 3), source.length - 1])];
     return {
+      mode: useMovement ? ("season" as const) : ("games" as const),
+      count: source.length,
       line: values.map((v, i) => `${sx(i).toFixed(1)},${sy(v).toFixed(1)}`).join(" "),
       dots: values.map((v, i) => ({ x: sx(i), y: sy(v) })),
       band: cutoff !== null ? { y: sy(cutoff), label: `${cutoff} — ${getRatingTier(cutoff).toUpperCase()}` } : null,
-      ticks: [...new Set(labelIdx)].map((i) => ({
-        x: sx(i),
-        label: dossier.history[i].date.slice(5).replace("-", "/"),
-      })),
+      ticks: tickIdx.map((i) => ({ x: sx(i), label: source[i].label })),
       delta: values[values.length - 1] - values[0],
     };
   }, [dossier]);
@@ -541,7 +561,11 @@ function PlayerDossier() {
 
           {/* Rating history */}
           <div className="rounded-[14px] border border-[#e5e2da] bg-white px-[18px] py-3.5">
-            <div className={cn(CARD_LABEL, "mb-1.5")}>OVERALL — WEEKLY SCRAPES</div>
+            <div className={cn(CARD_LABEL, "mb-1.5")}>
+              {historyChart?.mode === "season"
+                ? `OVERALL — THE ${CURRENT_GAME_VERSION} SEASON`
+                : "OVERALL — GAME TO GAME"}
+            </div>
             {historyChart ? (
               <>
                 <svg viewBox="0 0 396 150" className="block h-auto w-full overflow-visible">
@@ -592,13 +616,16 @@ function PlayerDossier() {
                 </svg>
                 <div className="mt-1.5 font-plex text-[8px] text-[#b5b0a1]">
                   {historyChart.delta >= 0 ? "+" : ""}
-                  {historyChart.delta} OVER {dossier!.history.length} SNAPSHOTS · GET
-                  /api/players/:id/history
+                  {historyChart.delta}{" "}
+                  {historyChart.mode === "season"
+                    ? `ACROSS ${historyChart.count} MILESTONES THIS SEASON`
+                    : `ACROSS ${historyChart.count} GAMES`}{" "}
+                  · GET /api/players/slug/{slug}
                 </div>
               </>
             ) : (
               <div className="flex h-[150px] items-center justify-center font-plex text-[9px] text-[#b5b0a1]">
-                {dossier ? "HISTORY ACCRUES WEEKLY — NOT ENOUGH SNAPSHOTS YET" : "…"}
+                {dossier ? "ONE GAME OF DATA — HISTORY BUILDS EACH 2K RELEASE" : "…"}
               </div>
             )}
           </div>
