@@ -726,7 +726,7 @@ function PlayerDossier() {
           style={{ animationDelay: "320ms" }}
         >
           <div className={cn(CARD_LABEL, "mb-3")}>
-            FULL ATTRIBUTE MATRIX — 40+ FIELDS, ALL FROM ONE CALL · HOVER FOR THE POSITION AVERAGE
+            FULL ATTRIBUTE MATRIX — 40+ FIELDS, ALL FROM ONE CALL
           </div>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3.5">
             {Object.entries(ATTRIBUTE_CATEGORIES).map(([cat, keys]) => {

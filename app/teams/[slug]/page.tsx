@@ -344,11 +344,7 @@ function TeamPage() {
               className="mt-[26px] flex flex-wrap items-center justify-between gap-3 animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
               style={{ animationDelay: "120ms" }}
             >
-              <span className="font-plex text-[9.5px] tracking-[0.12em] text-[#8a8577]">
-                {view === "depth"
-                  ? "STARTERS BY POSITION — THE BENCH RUNS FLAT, HIGHEST TO LOWEST"
-                  : "FULL ROSTER — EVERY COLUMN MAPS TO AN API FIELD"}
-              </span>
+              <span />
               <div className="flex gap-[3px] rounded-full border border-[#e5e2da] bg-white p-1">
                 {(["depth", "table"] as const).map((v) => (
                   <button
@@ -434,13 +430,8 @@ function TeamPage() {
                     className="mt-4 animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
                     style={{ animationDelay: "260ms" }}
                   >
-                    <div className="mb-2.5 flex items-center justify-between">
-                      <span className="font-plex text-[9px] tracking-[0.12em] text-[#8a8577]">
-                        THE BENCH — LEFT TO RIGHT, HIGHEST TO LOWEST
-                      </span>
-                      <span className="font-plex text-[8.5px] text-[#b5b0a1]">
-                        POSITIONS ARE TAGS, NOT SLOTS
-                      </span>
+                    <div className="mb-2.5 font-plex text-[9px] tracking-[0.12em] text-[#8a8577]">
+                      THE BENCH
                     </div>
                     <div className="grid grid-cols-[repeat(auto-fill,minmax(225px,1fr))] gap-1.5">
                       {bench.map((p, i) => (
