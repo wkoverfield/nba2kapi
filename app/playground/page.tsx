@@ -171,15 +171,16 @@ type QueryState = {
   sortKey: SortKey;
   sortDir: -1 | 1;
   team: string | null;
+  search: string | null;
 };
 
 function stateFromParams(sp: URLSearchParams): QueryState {
   // Pristine /playground gets the design's showcase defaults. A URL that
   // carries any query param is a deep link — unspecified slots must stay
   // wide open ("anyone" / "any era" / "any 3PT") so the link isn't narrowed.
-  const isDeepLink = ["position", "era", "three_ball_gte", "sort", "team"].some((k) => sp.has(k));
+  const isDeepLink = ["position", "era", "three_ball_gte", "sort", "team", "search"].some((k) => sp.has(k));
   if (!isDeepLink) {
-    return { pos: 0, era: 0, three: 1, sortKey: "overall", sortDir: -1, team: null };
+    return { pos: 0, era: 0, three: 1, sortKey: "overall", sortDir: -1, team: null, search: null };
   }
   const posIdx = POS_SLOTS.findIndex((s) => s.param === sp.get("position"));
   const eraIdx = ERA_SLOTS.findIndex((s) => s.param === sp.get("era"));
@@ -197,6 +198,7 @@ function stateFromParams(sp: URLSearchParams): QueryState {
     sortKey,
     sortDir: sortDir === "asc" ? 1 : -1,
     team: sp.get("team"),
+    search: sp.get("search"),
   };
 }
 
@@ -207,6 +209,7 @@ function paramsFromState(s: QueryState): string {
   params.set("era", ERA_SLOTS[s.era].param);
   if (THREE_SLOTS[s.three].v > 0) params.set("three_ball_gte", String(THREE_SLOTS[s.three].v));
   if (s.team) params.set("team", s.team);
+  if (s.search) params.set("search", s.search);
   params.set("sort", `${SORT_URL_NAMES[s.sortKey]}:${s.sortDir === -1 ? "desc" : "asc"}`);
   return params.toString();
 }
@@ -248,6 +251,7 @@ function Playground() {
         if (era !== "all" && p.teamType !== era) return false;
         if (minThree > 0 && (p.threePointShot === null || p.threePointShot < minThree)) return false;
         if (q.team && p.team !== q.team) return false;
+        if (q.search && !p.name.toLowerCase().includes(q.search.toLowerCase())) return false;
         return true;
       })
       .sort((a, b) => {
@@ -338,7 +342,7 @@ function Playground() {
   };
 
   const applySaved = (s: (typeof SAVED_QUERIES)[number]) =>
-    setQ({ pos: s.pos, era: s.era, three: s.three, sortKey: s.sortKey, sortDir: -1, team: s.team });
+    setQ({ pos: s.pos, era: s.era, three: s.three, sortKey: s.sortKey, sortDir: -1, team: s.team, search: null });
 
   const monoHead = "font-plex text-[8.5px] tracking-[0.08em]";
   const rowGrid =
@@ -397,6 +401,16 @@ function Playground() {
               title="Clear team filter"
             >
               TEAM: {q.team.toUpperCase()} ✕
+            </button>
+          )}
+          {q.search && (
+            <button
+              type="button"
+              onClick={() => setQ((s) => ({ ...s, search: null }))}
+              className="cursor-pointer rounded-full border border-[#e5e2da] bg-white px-2.5 py-0.5 font-plex text-[9px] tracking-[0.08em] text-[#57534a] hover:border-[#1a1918]"
+              title="Clear name search"
+            >
+              NAME: &quot;{q.search.toUpperCase()}&quot; ✕
             </button>
           )}
         </span>
