@@ -60,6 +60,8 @@ type TopNavProps = {
   hasApiKey?: boolean;
   /** Page shell width: narrow 1280 (Board), default 1360, wide 1440 (Playground). */
   width?: "narrow" | "default" | "wide";
+  /** Signed-in chip: masked key ("2k_••••xB7q") shown next to the CTA. */
+  maskedKey?: string | null;
 };
 
 export const SHELL_WIDTHS = {
@@ -72,7 +74,12 @@ export const SHELL_WIDTHS = {
  * Shared chrome for reskinned (paper/editorial) pages: wordmark, pill nav,
  * search pill, GitHub star chip, and the primary API-key CTA.
  */
-export function TopNav({ onCtaClick, hasApiKey = false, width = "default" }: TopNavProps) {
+export function TopNav({
+  onCtaClick,
+  hasApiKey = false,
+  width = "default",
+  maskedKey = null,
+}: TopNavProps) {
   const ctaLabel = hasApiKey ? "View dashboard" : "Get an API key";
   const pathname = usePathname();
   const router = useRouter();
@@ -156,6 +163,12 @@ export function TopNav({ onCtaClick, hasApiKey = false, width = "default" }: Top
           {stars ?? "★"}
         </a>
 
+        {maskedKey && (
+          <span className="inline-flex items-center gap-[7px] rounded-full border border-[#e5e2da] bg-white px-3.5 py-2 font-plex text-[10px] text-[#57534a]">
+            <span className="h-[7px] w-[7px] rounded-full bg-[#0a7f3f]" />
+            {maskedKey}
+          </span>
+        )}
         {onCtaClick ? (
           <button type="button" onClick={onCtaClick} className={cn(ctaClasses, "cursor-pointer")}>
             {ctaLabel}

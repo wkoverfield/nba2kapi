@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { api } from "../convex/_generated/api";
 import { TopNav } from "@/components/chrome/top-nav";
 import { SiteFooter } from "@/components/chrome/site-footer";
-import { RegistrationDialog } from "@/components/registration-dialog";
+import { KeyDialog } from "@/components/chrome/key-dialog";
 import { getRatingClasses, getRatingTier, getAttributeColor } from "@/lib/rating-colors";
 import { getTeamAbbreviation } from "@/lib/team-abbr";
 import { API_KEY_STORAGE_KEY } from "@/lib/constants";
@@ -151,10 +151,10 @@ export default function Home() {
     }
   };
 
+  // Don't close the dialog or navigate here: the key is shown in full exactly
+  // once on the dialog's second step, and its own buttons navigate onward.
   const handleRegistrationSuccess = () => {
     setHasApiKey(true);
-    setShowRegistration(false);
-    router.push("/dashboard");
   };
 
   const copyTeaserUrl = () => {
@@ -633,7 +633,7 @@ export default function Home() {
         <SiteFooter />
       </div>
 
-      <RegistrationDialog
+      <KeyDialog
         open={showRegistration}
         onOpenChange={setShowRegistration}
         onSuccess={handleRegistrationSuccess}

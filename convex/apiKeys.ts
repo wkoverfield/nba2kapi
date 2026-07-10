@@ -323,8 +323,10 @@ export const getApiKeyStats = query({
       .withIndex("by_key", (q) => q.eq("key", args.key))
       .first();
 
-    if (!apiKey) {
-      throw new Error("API key not found");
+    // Stale or regenerated-away keys return null (never throw): the dashboard
+    // clears the browser copy and shows the signup state instead of crashing.
+    if (!apiKey || !apiKey.isActive) {
+      return null;
     }
 
     // Use atomic counter for current hour requests
