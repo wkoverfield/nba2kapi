@@ -400,8 +400,13 @@ export async function scrapePlayerDetails(page, basicPlayer) {
         .find((t) => t.includes('chartjs-dashboard-line-player'));
       if (movementScript) {
         try {
-          const labelsMatch = movementScript.match(/labels:\s*(\[[^\]]*\])/);
-          const dataMatch = movementScript.match(/data:\s*(\[[^\]]*\])/);
+          // Anchor past the canvas id so another chart's config in the same
+          // script tag can never be mistaken for the movement chart's.
+          const afterMarker = movementScript.slice(
+            movementScript.indexOf('chartjs-dashboard-line-player')
+          );
+          const labelsMatch = afterMarker.match(/labels:\s*(\[[^\]]*\])/);
+          const dataMatch = afterMarker.match(/data:\s*(\[[^\]]*\])/);
           if (labelsMatch && dataMatch) {
             // Labels are quoted strings; the data array is JS with elisions
             // ("[ 89, , , ]") and trailing commas, so token-parse rather
