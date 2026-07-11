@@ -186,11 +186,11 @@ function Comparison() {
   const badgeScore = (badges: NonNullable<typeof dossier1>["badges"]) => badges.reduce((sum, badge) => sum + (tierWeight[badge.tier] ?? 0), 0);
   const score1 = dossier1 ? badgeScore(dossier1.badges) : 0;
   const score2 = dossier2 ? badgeScore(dossier2.badges) : 0;
+  const maxBadgeScore = Math.max(score1, score2, 1);
   const wins = dossier1?.categories.reduce((acc, category) => { const b = category2.get(category.key)?.score ?? 0; if ((category.score ?? 0) > b) acc[0]++; else if ((category.score ?? 0) < b) acc[1]++; return acc; }, [0, 0]) ?? [0, 0];
   const verdict = p1 && p2 ? wins[0] === wins[1] ? `EVEN PROFILE · ${wins[0]} CATEGORY WINS EACH` : `${wins[0] > wins[1] ? p1.name : p2.name} HOLDS THE OVERALL EDGE · ${Math.max(...wins)}–${Math.min(...wins)} IN CATEGORY WINS` : "PICK TWO PLAYERS TO OPEN THE MATCHUP";
   const radar1 = dossier1?.categories.map((category) => category.score ?? 0) ?? [];
   const radar2 = dossier2?.categories.map((category) => category.score ?? 0) ?? [];
-  const signatureKeys = p1 && p2 ? [...new Set([...Object.keys(p1.attributes), ...Object.keys(p2.attributes)])].filter((key) => !["stamina", "durability", "hustle", "hands", "offensiveConsistency", "defensiveConsistency"].includes(key)).sort((a, b) => Math.max(p2.attributes[b] ?? 0, p1.attributes[b] ?? 0) - Math.max(p2.attributes[a] ?? 0, p1.attributes[a] ?? 0)).slice(0, 5) : [];
 
   return (
     <div className="min-h-screen bg-[linear-gradient(to_bottom,#fffdf8,#faf9f5_420px)] font-body text-[#1a1918]">
@@ -210,8 +210,6 @@ function Comparison() {
                 {dossier1.categories.map((category) => { const other = category2.get(category.key); const a = category.score ?? 0; const b = other?.score ?? 0; const tie = a === b; return <div key={category.key} className="grid grid-cols-[minmax(70px,1fr)_105px_minmax(70px,1fr)] items-center gap-3"><div className="flex items-center justify-end gap-2"><b className={cn("text-[12px] tabular-nums", a < b && "text-[#b5b0a1]")}>{a}</b><span className={cn("h-1.5 rounded-full", tie ? "bg-[#b58a3d]" : a > b ? "bg-[#1a1918]" : "bg-[#dedad0]")} style={{ width: `${Math.max(4, a)}%` }} /></div><span className="text-center font-plex text-[8px] text-[#8a8577]">{CATEGORY_LABELS[category.key]?.toUpperCase()}</span><div className="flex items-center gap-2"><span className={cn("h-1.5 rounded-full", tie ? "bg-[#b58a3d]" : b > a ? "bg-[#1a1918]" : "bg-[#dedad0]")} style={{ width: `${Math.max(4, b)}%` }} /><b className={cn("text-[12px] tabular-nums", b < a && "text-[#b5b0a1]")}>{b}</b></div></div>; })}
               </div>
             </section>
-
-            <section className="grid gap-3 lg:grid-cols-3"><div className="rounded-[14px] border border-[#e5e2da] bg-white p-4"><p className="mb-3 font-plex text-[8.5px] tracking-[.12em] text-[#8a8577]">SIGNATURE STATS</p>{signatureKeys.map((key) => <div key={key} className="grid grid-cols-[28px_1fr_28px] border-b border-[#f1efe8] py-1.5 text-[10px]"><b>{p1.attributes[key] ?? "—"}</b><span className="text-center text-[#57534a]">{getAttributeDisplayName(key)}</span><b className="text-right text-[#188fff]">{p2.attributes[key] ?? "—"}</b></div>)}</div><div className="rounded-[14px] border border-[#e5e2da] bg-white p-4"><div className="flex justify-between"><p className="font-plex text-[8.5px] tracking-[.12em] text-[#8a8577]">WEIGHTED BADGES</p><span className="font-plex text-[7px] text-[#b5b0a1]">HOF×4 · GOLD×3 · SILVER×2 · BRONZE×1</span></div><div className="mt-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3"><div className="h-2 rounded-full bg-[#1a1918]" /><b className="font-display text-[20px]">{score1} / {score2}</b><div className="h-2 rounded-full bg-[#188fff]" /></div><p className="mt-4 text-center font-plex text-[8px] text-[#8a8577]">{dossier1.badges.length} BADGES · {shared.length} SHARED · {dossier2.badges.length} BADGES</p></div><div className="rounded-[14px] border border-[#e5e2da] bg-white p-4"><p className="font-plex text-[8.5px] tracking-[.12em] text-[#8a8577]">THE TAKE</p><h3 className="mt-3 font-display text-[21px] leading-[1.05] font-bold">{wins[0] === wins[1] ? "Different strengths, even shape." : `${wins[0] > wins[1] ? p1.name : p2.name} wins more dimensions.`}</h3><p className="mt-2 text-[11px] leading-[1.5] text-[#57534a]">{verdict}</p></div></section>
 
             <section className="overflow-hidden rounded-[16px] border border-[#e5e2da] bg-white">
               <div className="grid grid-cols-[minmax(64px,130px)_minmax(150px,1fr)_minmax(64px,130px)] items-end border-b border-[#e5e2da] bg-[#faf9f5] px-4 py-3 sm:px-6">
@@ -245,7 +243,18 @@ function Comparison() {
             </section>
 
             <section className="rounded-[16px] border border-[#e5e2da] bg-white p-5">
-              <p className="mb-4 font-plex text-[9px] tracking-[.12em] text-[#8a8577]">BADGE BREAKDOWN</p>
+              <div className="mb-5 border-b border-[#e5e2da] pb-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-plex text-[9px] tracking-[.12em] text-[#8a8577]">BADGE BREAKDOWN</p>
+                  <span className="font-plex text-[7px] text-[#b5b0a1]">LEGENDARY×5 · HOF×4 · GOLD×3 · SILVER×2 · BRONZE×1</span>
+                </div>
+                <div className="mt-3 grid grid-cols-[minmax(60px,1fr)_auto_minmax(60px,1fr)] items-center gap-3">
+                  <div className="flex justify-end"><span className="h-2 rounded-full bg-[#1a1918]" style={{ width: `${Math.max(6, (score1 / maxBadgeScore) * 100)}%` }} /></div>
+                  <div className="text-center"><b className="font-display text-[22px] tabular-nums">{score1} / {score2}</b><p className="font-plex text-[7px] text-[#8a8577]">WEIGHTED SCORE</p></div>
+                  <div><span className="block h-2 rounded-full bg-[#188fff]" style={{ width: `${Math.max(6, (score2 / maxBadgeScore) * 100)}%` }} /></div>
+                </div>
+                <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-3 font-plex text-[7.5px] text-[#8a8577]"><span>{dossier1.badges.length} TOTAL · {only1.length} EXCLUSIVE</span><span>{shared.length} SHARED</span><span className="text-right">{only2.length} EXCLUSIVE · {dossier2.badges.length} TOTAL</span></div>
+              </div>
               <div className="grid gap-4 lg:grid-cols-3">
                 <div>
                   <p className="mb-2 border-b border-[#e5e2da] pb-2 font-plex text-[8px]">{p1.name.toUpperCase()} ONLY · {only1.length}</p>
