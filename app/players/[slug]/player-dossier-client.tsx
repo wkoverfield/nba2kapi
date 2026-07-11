@@ -482,7 +482,7 @@ function PlayerDossier({
                   href="/lineups"
                   className="rounded-full bg-[#1a1918] px-3 py-1.5 text-[11.5px] font-semibold text-[#faf9f5] no-underline transition-[background,transform] duration-150 hover:bg-[#333] active:scale-[0.97] motion-reduce:transition-none"
                 >
-                  → Whiteboard
+                  → Lineup Builder
                 </Link>
               </div>
             </div>

@@ -474,7 +474,7 @@ export default function Home() {
         {/* Triptych */}
         <div className="mx-auto max-w-[1360px] border-t border-[#e5e2da] px-[clamp(20px,4vw,48px)] py-[clamp(48px,6vw,80px)]">
           <div className="mb-8">
-            <SectionHeading eyebrow="THREE WAYS TO EXPLORE" title="One dataset. Three lenses." />
+            <SectionHeading eyebrow="EXPLORE THE DATA" title="One dataset. Three tools." />
           </div>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-4">
             <Link
@@ -496,11 +496,10 @@ export default function Home() {
               </div>
               <div className="px-[18px] py-4">
                 <h3 className="m-0 font-display text-[19px] font-bold tracking-[-0.02em]">
-                  The Playground
+                  Playground
                 </h3>
                 <p className="mt-1.5 mb-0 text-[13px] leading-[1.5] text-[#57534a]">
-                  Build a query by writing a sentence — filter any attribute, mix eras, and read the
-                  exact API call back.
+                  Filter players by any attribute or era, then copy the exact API request.
                 </p>
               </div>
             </Link>
@@ -528,11 +527,11 @@ export default function Home() {
               </div>
               <div className="px-[18px] py-4">
                 <h3 className="m-0 font-display text-[19px] font-bold tracking-[-0.02em]">
-                  The Board
+                  Rosters
                 </h3>
                 <p className="mt-1.5 mb-0 text-[13px] leading-[1.5] text-[#57534a]">
-                  Every team ranked by roster strength — open one to see the depth chart, or flip
-                  through the league.
+                  Browse every current, classic, and all-time roster. Open a team for ratings and
+                  its depth chart.
                 </p>
               </div>
             </Link>
@@ -567,11 +566,10 @@ export default function Home() {
               </div>
               <div className="px-[18px] py-4">
                 <h3 className="m-0 font-display text-[19px] font-bold tracking-[-0.02em]">
-                  The Whiteboard
+                  Lineup Builder
                 </h3>
                 <p className="mt-1.5 mb-0 text-[13px] leading-[1.5] text-[#57534a]">
-                  Drop any five on the court, add an opponent, and read the tale of the tape matchup
-                  by matchup.
+                  Build one lineup and analyze its fit, or add an opponent to compare two lineups.
                 </p>
               </div>
             </Link>
