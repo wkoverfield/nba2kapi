@@ -359,9 +359,21 @@ function PlayerDossier({
             {player && (
               <>
                 <div
-                  className={cn("absolute top-0 right-0 left-0 z-[3] h-1.5", getRatingClasses(player.overall).bg)}
+                  className={cn("absolute top-0 right-0 left-0 z-[4] h-1.5", getRatingClasses(player.overall).bg)}
                 />
-                <div className="absolute top-5 left-[22px] z-[2]">
+                {player.playerImage && (
+                  <Image
+                    src={player.playerImage}
+                    alt={player.name}
+                    fill
+                    sizes="(min-width: 1024px) 420px, 100vw"
+                    className="z-[1] object-cover object-[center_42%]"
+                    priority
+                  />
+                )}
+                <div className="absolute inset-x-0 top-0 z-[2] h-[48%] bg-[linear-gradient(to_bottom,rgba(10,10,14,0.9)_0%,rgba(10,10,14,0.52)_42%,rgba(10,10,14,0)_100%)]" />
+                <div className="absolute inset-x-0 bottom-0 z-[2] h-[42%] bg-[linear-gradient(to_top,rgba(10,10,14,0.94)_0%,rgba(10,10,14,0.65)_46%,rgba(10,10,14,0)_100%)]" />
+                <div className="absolute top-5 left-[22px] z-[3]">
                   <div className="font-plex text-[9.5px] tracking-[0.14em] text-white/85">
                     {tier.toUpperCase()} · {player.positions.join("/")} · {abbr}
                   </div>
@@ -369,16 +381,7 @@ function PlayerDossier({
                     {player.overall}
                   </div>
                 </div>
-                {player.playerImage && (
-                  <Image
-                    src={player.playerImage}
-                    alt={player.name}
-                    width={560}
-                    height={410}
-                    className="absolute bottom-[74px] left-1/2 z-[1] h-auto w-[130%] max-w-none -translate-x-1/2"
-                  />
-                )}
-                <div className="absolute right-0 bottom-0 left-0 z-[2] bg-[linear-gradient(to_top,rgba(10,10,14,0.88),rgba(10,10,14,0))] px-[22px] pt-[18px] pb-4">
+                <div className="absolute right-0 bottom-0 left-0 z-[3] px-[22px] pt-[18px] pb-4">
                   <div className="font-display text-[24px] leading-[1.05] font-bold tracking-[-0.02em] text-white">
                     {player.name}
                   </div>
