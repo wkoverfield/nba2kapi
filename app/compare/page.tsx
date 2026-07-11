@@ -214,8 +214,34 @@ function Comparison() {
             <section className="grid gap-3 lg:grid-cols-3"><div className="rounded-[14px] border border-[#e5e2da] bg-white p-4"><p className="mb-3 font-plex text-[8.5px] tracking-[.12em] text-[#8a8577]">SIGNATURE STATS</p>{signatureKeys.map((key) => <div key={key} className="grid grid-cols-[28px_1fr_28px] border-b border-[#f1efe8] py-1.5 text-[10px]"><b>{p1.attributes[key] ?? "—"}</b><span className="text-center text-[#57534a]">{getAttributeDisplayName(key)}</span><b className="text-right text-[#188fff]">{p2.attributes[key] ?? "—"}</b></div>)}</div><div className="rounded-[14px] border border-[#e5e2da] bg-white p-4"><div className="flex justify-between"><p className="font-plex text-[8.5px] tracking-[.12em] text-[#8a8577]">WEIGHTED BADGES</p><span className="font-plex text-[7px] text-[#b5b0a1]">HOF×4 · GOLD×3 · SILVER×2 · BRONZE×1</span></div><div className="mt-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3"><div className="h-2 rounded-full bg-[#1a1918]" /><b className="font-display text-[20px]">{score1} / {score2}</b><div className="h-2 rounded-full bg-[#188fff]" /></div><p className="mt-4 text-center font-plex text-[8px] text-[#8a8577]">{dossier1.badges.length} BADGES · {shared.length} SHARED · {dossier2.badges.length} BADGES</p></div><div className="rounded-[14px] border border-[#e5e2da] bg-white p-4"><p className="font-plex text-[8.5px] tracking-[.12em] text-[#8a8577]">THE TAKE</p><h3 className="mt-3 font-display text-[21px] leading-[1.05] font-bold">{wins[0] === wins[1] ? "Different strengths, even shape." : `${wins[0] > wins[1] ? p1.name : p2.name} wins more dimensions.`}</h3><p className="mt-2 text-[11px] leading-[1.5] text-[#57534a]">{verdict}</p></div></section>
 
             <section className="overflow-hidden rounded-[16px] border border-[#e5e2da] bg-white">
-              <div className="border-b border-[#e5e2da] px-5 py-3"><span className="font-plex text-[9.5px] tracking-[.12em] text-[#8a8577]">EVERY ATTRIBUTE</span></div>
-              {(Object.entries(ATTRIBUTE_CATEGORIES) as [string, readonly string[]][]).map(([category, keys]) => <div key={category} className="border-b border-[#e5e2da] p-5 last:border-0"><h3 className="mb-3 font-display text-[20px] font-bold">{CATEGORY_LABELS[category] ?? category}</h3><div className="grid gap-x-7 gap-y-2 lg:grid-cols-2">{keys.map((key) => { const a = p1.attributes[key]; const b = p2.attributes[key]; const delta = (a ?? 0) - (b ?? 0); return <div key={key} className="grid grid-cols-[34px_1fr_34px] items-center gap-2 border-b border-[#f1efe8] py-1.5"><b className={cn("tabular-nums", delta > 0 && "text-[#0a7f3f]")}>{a ?? "—"}</b><span className="truncate text-center text-[11.5px] text-[#57534a]">{getAttributeDisplayName(key)}</span><b className={cn("text-right tabular-nums", delta < 0 && "text-[#b58a3d]")}>{b ?? "—"}</b></div>; })}</div></div>)}
+              <div className="grid grid-cols-[minmax(64px,130px)_minmax(150px,1fr)_minmax(64px,130px)] items-end border-b border-[#e5e2da] bg-[#faf9f5] px-4 py-3 sm:px-6">
+                <span className="truncate font-plex text-[8px] font-bold tracking-[.08em]">{p1.name.split(" ").at(-1)?.toUpperCase()}</span>
+                <span className="text-center font-plex text-[9px] tracking-[.12em] text-[#8a8577]">FULL ATTRIBUTE LEDGER</span>
+                <span className="truncate text-right font-plex text-[8px] font-bold tracking-[.08em] text-[#188fff]">{p2.name.split(" ").at(-1)?.toUpperCase()}</span>
+              </div>
+              {(Object.entries(ATTRIBUTE_CATEGORIES) as [string, readonly string[]][]).map(([category, keys]) => (
+                <div key={category} className="border-b border-[#e5e2da] last:border-0">
+                  <div className="flex items-center justify-between bg-[#f7f5ef] px-4 py-2.5 sm:px-6">
+                    <h3 className="font-display text-[16px] font-bold">{CATEGORY_LABELS[category] ?? category}</h3>
+                    <span className="font-plex text-[7.5px] text-[#b5b0a1]">{keys.length} ATTRIBUTES</span>
+                  </div>
+                  <div>
+                    {keys.map((key) => {
+                      const a = p1.attributes[key];
+                      const b = p2.attributes[key];
+                      const aWins = a !== undefined && b !== undefined && a > b;
+                      const bWins = a !== undefined && b !== undefined && b > a;
+                      return (
+                        <div key={key} className="grid grid-cols-[minmax(64px,130px)_minmax(150px,1fr)_minmax(64px,130px)] items-center border-t border-[#f1efe8] px-4 py-2 sm:px-6">
+                          <b className={cn("text-[13px] tabular-nums", aWins ? "text-[#0a7f3f]" : "text-[#57534a]")}>{a ?? "—"}</b>
+                          <span className="text-center text-[11.5px] text-[#57534a]">{getAttributeDisplayName(key)}</span>
+                          <b className={cn("text-right text-[13px] tabular-nums", bWins ? "text-[#188fff]" : "text-[#57534a]")}>{b ?? "—"}</b>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </section>
 
             <section className="rounded-[16px] border border-[#e5e2da] bg-white p-5"><p className="mb-4 font-plex text-[9px] tracking-[.12em] text-[#8a8577]">BADGE BREAKDOWN</p><div className="grid gap-4 lg:grid-cols-3"><div><p className="mb-2 border-b border-[#e5e2da] pb-2 font-plex text-[8px]">{p1.name.toUpperCase()} ONLY · {only1.length}</p><div className="flex flex-wrap gap-1.5">{only1.map((slug) => { const badge = badges1.get(slug)!; return <Link key={slug} href={`/badges?badge=${slug}&tier=${encodeURIComponent(badge.tier)}`} className={cn("rounded-full px-2.5 py-1 font-plex text-[7px] text-white no-underline", TIER_CLASS[badge.tier])}>{badge.name}</Link>; })}</div></div><div className="border-x-0 border-[#e5e2da] lg:border-x lg:px-4"><p className="mb-2 border-b border-[#e5e2da] pb-2 font-plex text-[8px]">SHARED · {shared.length}</p><div className="space-y-1.5">{shared.map((slug) => { const a = badges1.get(slug)!; const b = badges2.get(slug)!; return <Link key={slug} href={`/badges?badge=${slug}`} className="grid grid-cols-[auto_1fr_auto] items-center gap-2 text-[#1a1918] no-underline"><span className={cn("rounded px-1.5 py-0.5 font-plex text-[6px] text-white", TIER_CLASS[a.tier])}>{a.tier === "Hall of Fame" ? "HOF" : a.tier.toUpperCase()}</span><span className="truncate text-center text-[9px] font-semibold">{a.name}</span><span className={cn("rounded px-1.5 py-0.5 font-plex text-[6px] text-white", TIER_CLASS[b.tier])}>{b.tier === "Hall of Fame" ? "HOF" : b.tier.toUpperCase()}</span></Link>; })}</div></div><div><p className="mb-2 border-b border-[#e5e2da] pb-2 font-plex text-[8px] text-right">{p2.name.toUpperCase()} ONLY · {only2.length}</p><div className="flex flex-wrap justify-end gap-1.5">{only2.map((slug) => { const badge = badges2.get(slug)!; return <Link key={slug} href={`/badges?badge=${slug}&tier=${encodeURIComponent(badge.tier)}`} className={cn("rounded-full px-2.5 py-1 font-plex text-[7px] text-white no-underline", TIER_CLASS[badge.tier])}>{badge.name}</Link>; })}</div></div></div>
