@@ -528,7 +528,7 @@ function Whiteboard() {
   const reads = useMemo(() => {
     if (yoursFilled.length === 0) {
       return [
-        { tag: "START", c: "#8a8577", t: "Open the player picker and seat your five — mixing eras is the whole point." },
+        { tag: "START", c: "#8a8577", t: "Drag or tap from the player pool to seat your five — mixing eras is the whole point." },
         { tag: "TIP", c: "#8a8577", t: "Use position, era, and rating filters to find the right fit; the analysis builds as you go." },
       ];
     }
@@ -625,13 +625,6 @@ function Whiteboard() {
             </h1>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2.5">
-            <button
-              type="button"
-              onClick={() => { setPickerSide("yours"); setPickerOpen(true); }}
-              className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#1a1918] bg-white px-3.5 py-[7px] text-[11.5px] font-semibold transition-[background,transform] hover:bg-[#f1efe8] active:scale-[0.97]"
-            >
-              <Search className="h-3.5 w-3.5" /> Add player
-            </button>
             {!matchupMode ? (
               <button
                 type="button"
@@ -640,15 +633,7 @@ function Whiteboard() {
               >
                 <UsersRound className="h-3.5 w-3.5" /> Add opponent
               </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => { setPickerSide("opps"); setPickerOpen(true); }}
-                className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#e5e2da] bg-white px-3.5 py-[7px] text-[11.5px] font-semibold transition-[border-color,transform] hover:border-[#1a1918] active:scale-[0.97]"
-              >
-                <Search className="h-3.5 w-3.5" /> Add opponent player
-              </button>
-            )}
+            ) : null}
             {matchupMode && (
               <button
                 type="button"
@@ -689,10 +674,10 @@ function Whiteboard() {
             lastDragEndRef.current = Date.now();
           }}
         >
-          <div className="mt-4 grid items-start gap-3.5">
+          <div className="mt-4 grid items-start gap-3.5 lg:grid-cols-[minmax(260px,0.72fr)_minmax(0,2fr)]">
             {/* Player pool */}
             <div
-              className="hidden overflow-hidden rounded-[14px] border border-[#e5e2da] bg-white"
+              className="overflow-hidden rounded-[14px] border border-[#e5e2da] bg-white animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
               style={{ animationDelay: "60ms" }}
             >
               <div className="border-b border-[#f1efe8] px-4 pt-[11px] pb-3">
@@ -700,13 +685,10 @@ function Whiteboard() {
                   <span className="font-plex text-[9px] tracking-[0.1em] text-[#8a8577]">
                     PLAYER POOL — ANY ERA
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setSortF((s) => (s === "ovr" ? "az" : "ovr"))}
-                    className="cursor-pointer font-plex text-[8.5px] text-[#57534a] transition-colors duration-150 select-none hover:text-[#1a1918]"
-                  >
-                    SORT: {sortF === "ovr" ? "OVR" : "A–Z"} ⇅
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => setSortF((s) => (s === "ovr" ? "az" : "ovr"))} className="cursor-pointer font-plex text-[8.5px] text-[#57534a] hover:text-[#1a1918]">{sortF === "ovr" ? "OVR ↓" : "A–Z"}</button>
+                    <button type="button" onClick={() => setPickerOpen(true)} className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-[#d9d4c7] bg-[#faf9f5] px-2 py-1 font-plex text-[8px] font-bold text-[#57534a] hover:border-[#1a1918]"><SlidersHorizontal className="h-3 w-3" /> FILTER</button>
+                  </div>
                 </div>
                 <div className="mb-[9px] flex items-center gap-2 rounded-full border border-[#e5e2da] bg-[#faf9f5] px-3 py-2">
                   <Search className="h-[13px] w-[13px] text-[#8a8577]" strokeWidth={2} />
@@ -734,9 +716,18 @@ function Whiteboard() {
                     </button>
                   ))}
                 </div>
+                {matchupMode && (
+                  <div className="mt-2.5 flex items-center justify-between border-t border-[#f1efe8] pt-2.5">
+                    <span className="font-plex text-[8px] text-[#8a8577]">TAP TARGET</span>
+                    <div className="flex rounded-full border border-[#e5e2da] bg-[#faf9f5] p-0.5">
+                      <button type="button" onClick={() => setPickerSide("yours")} className={cn("cursor-pointer rounded-full px-2 py-0.5 font-plex text-[7.5px] font-bold", pickerSide === "yours" ? "bg-[#1a1918] text-white" : "text-[#8a8577]")}>YOUR FIVE</button>
+                      <button type="button" onClick={() => setPickerSide("opps")} className={cn("cursor-pointer rounded-full px-2 py-0.5 font-plex text-[7.5px] font-bold", pickerSide === "opps" ? "bg-[#1a1918] text-white" : "text-[#8a8577]")}>THEIRS</button>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="max-h-[520px] overflow-y-auto">
+              <div className="max-h-[500px] overflow-y-auto">
                 {players
                   ? pool.map((p) => (
                       <PoolRow
@@ -768,14 +759,13 @@ function Whiteboard() {
             <div className="min-w-0">
               <div
                 className={cn(
-                  "relative mx-auto overflow-hidden rounded-2xl border border-[#d9c49a] bg-[#f4e4c3] shadow-[0_22px_55px_-38px_rgba(81,59,29,0.7)] transition-[max-width,aspect-ratio] duration-500 ease-out animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:transition-none motion-reduce:animate-none",
-                  matchupMode ? "aspect-[94/50] w-full max-w-none" : "aspect-[47/50] w-full max-w-[680px]"
+                  "relative mx-auto aspect-[94/50] w-full overflow-hidden rounded-2xl border border-[#d9c49a] bg-[#f4e4c3] shadow-[0_22px_55px_-38px_rgba(81,59,29,0.7)] animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
                 )}
                 style={{ animationDelay: "100ms" }}
               >
-                <CourtDiagram matchupMode={matchupMode} guardLines={guardLines} />
+                <CourtDiagram matchupMode={true} guardLines={matchupMode ? guardLines : []} />
 
-                <span className={cn("absolute top-2.5 font-plex text-[8.5px] tracking-[0.1em] text-[#b5b0a1]", matchupMode ? "left-3.5" : "left-1/2 -translate-x-1/2")}>
+                <span className="absolute top-2.5 left-3.5 font-plex text-[8.5px] tracking-[0.1em] text-[#967d58]">
                   YOUR FIVE · {yoursFilled.length}/5
                   {yourOvr !== null && (
                     <>
@@ -802,7 +792,7 @@ function Whiteboard() {
                     index={i}
                     spot={spot}
                     player={yours[i]}
-                    compareMode={matchupMode}
+                    compareMode={true}
                     pulsing={false}
                     onRemove={guardedTap(() => remove("yours", i))}
                   />
@@ -820,11 +810,6 @@ function Whiteboard() {
                   />
                 ))}
 
-                {!matchupMode && yoursFilled.length === 0 && (
-                  <button type="button" onClick={() => { setPickerSide("yours"); setPickerOpen(true); }} className="absolute bottom-[8%] left-1/2 -translate-x-1/2 cursor-pointer rounded-full bg-[#1a1918] px-4 py-2 text-[11px] font-semibold text-white shadow-lg">
-                    Choose your first player
-                  </button>
-                )}
               </div>
 
               {/* Tape + read */}
@@ -935,18 +920,19 @@ function Whiteboard() {
 
           {pickerOpen && (
             <div
-              className="pointer-events-none fixed inset-0 z-50 flex items-end justify-center bg-[#1a1918]/35 backdrop-blur-[2px] lg:items-stretch lg:justify-end lg:bg-transparent lg:backdrop-blur-none"
+              className="fixed inset-0 z-50 flex items-end justify-center bg-[#1a1918]/35 p-0 backdrop-blur-[2px] sm:items-center sm:p-6"
               role="dialog"
               aria-modal="true"
-              aria-label={`Choose a player for ${pickerSide === "yours" ? "your lineup" : "the opponent"}`}
+              aria-label="Advanced player filters"
+              onMouseDown={(e) => { if (e.target === e.currentTarget) setPickerOpen(false); }}
             >
-              <div className="pointer-events-auto flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-[22px] border border-[#d9d4c7] bg-[#fffdf8] shadow-[0_30px_80px_-24px_rgba(26,25,24,0.55)] lg:my-3 lg:mr-3 lg:max-h-none lg:w-[440px] lg:rounded-[22px]">
+              <div className="flex max-h-[90vh] w-full max-w-[640px] flex-col overflow-hidden rounded-t-[22px] border border-[#d9d4c7] bg-[#fffdf8] shadow-[0_30px_80px_-24px_rgba(26,25,24,0.55)] sm:rounded-[22px]">
                 <div className="flex items-start justify-between gap-4 border-b border-[#e5e2da] px-5 py-4">
                   <div>
                     <div className="font-plex text-[9px] tracking-[0.12em] text-[#8a8577]">
-                      {pickerSide === "yours" ? "YOUR FIVE" : "OPPONENT"} · PLAYER PICKER
+                      PLAYER POOL · ADVANCED FILTERS
                     </div>
-                    <h2 className="mt-1 mb-0 font-display text-[24px] font-bold tracking-[-0.025em]">Find the right player</h2>
+                    <h2 className="mt-1 mb-0 font-display text-[24px] font-bold tracking-[-0.025em]">Narrow the pool</h2>
                   </div>
                   <button type="button" onClick={() => setPickerOpen(false)} className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-[#e5e2da] bg-white hover:border-[#1a1918]" aria-label="Close player picker">
                     <X className="h-4 w-4" />
@@ -954,12 +940,7 @@ function Whiteboard() {
                 </div>
 
                 <div className="border-b border-[#e5e2da] bg-white px-5 py-4">
-                  <div className="flex items-center gap-2 rounded-full border border-[#d9d4c7] bg-[#faf9f5] px-4 py-3">
-                    <Search className="h-4 w-4 text-[#8a8577]" />
-                    <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search any player or legend…" className="min-w-0 flex-1 border-0 bg-transparent text-[14px] outline-none placeholder:text-[#b5b0a1]" />
-                    <span className="font-plex text-[8px] text-[#b5b0a1]">{pool.length} SHOWN</span>
-                  </div>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     <div>
                       <div className="mb-1.5 flex items-center gap-1.5 font-plex text-[8px] tracking-[0.08em] text-[#8a8577]"><SlidersHorizontal className="h-3 w-3" /> POSITION</div>
                       <div className="flex flex-wrap gap-1.5">
@@ -1015,17 +996,12 @@ function Whiteboard() {
                   </div>
                   <div className="mt-3 flex items-center justify-between">
                     <button type="button" onClick={() => { setQ(""); setPosF("ALL"); setEraF("all"); setMinOvr(0); setMaxOvr(99); setRatingTierF("all"); setAttributeF("all"); setAttributeMin(80); setBadgeF("all"); setBadgeTierF("all"); }} className="cursor-pointer border-0 bg-transparent font-plex text-[8px] text-[#8a8577] underline underline-offset-4">CLEAR FILTERS</button>
-                    <button type="button" onClick={() => setSortF((s) => s === "ovr" ? "az" : "ovr")} className="cursor-pointer border-0 bg-transparent font-plex text-[8px] text-[#57534a]">SORT · {sortF === "ovr" ? "OVR ↓" : "A–Z"}</button>
+                    <div className="flex items-center gap-3">
+                      <span className="font-plex text-[8px] text-[#8a8577]">{pool.length} MATCH</span>
+                      <button type="button" onClick={() => setPickerOpen(false)} className="cursor-pointer rounded-full bg-[#1a1918] px-4 py-2 text-[10px] font-semibold text-white">SHOW PLAYERS</button>
+                    </div>
                   </div>
                 </div>
-
-                <div className="min-h-0 flex-1 overflow-y-auto bg-white">
-                  {players ? pool.map((p) => (
-                    <PoolRow key={`${p.slug}:${p.teamType}:${p.team}`} p={p} placed={placedKeys.has(`${p.slug}:${p.teamType}:${p.team}`)} onTap={guardedTap(() => tapPlace(p))} />
-                  )) : Array.from({ length: 8 }, (_, i) => <div key={i} className="h-12 animate-pulse border-b border-[#faf8f2] bg-[#f1efe8]" />)}
-                  {players && pool.length === 0 && <div className="px-5 py-16 text-center font-plex text-[9px] tracking-[0.08em] text-[#b5b0a1]">NO MATCHES · TRY WIDENING THE FILTERS</div>}
-                </div>
-                <div className="border-t border-[#e5e2da] bg-[#faf9f5] px-5 py-3 font-plex text-[8px] text-[#8a8577]">DRAG ONTO A COURT SLOT · TAP TO AUTO-PLACE · VERSIONS STAY SEPARATE BY ERA + TEAM</div>
               </div>
             </div>
           )}
