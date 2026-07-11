@@ -74,11 +74,6 @@ const ENDPOINTS = [
   { path: "GET /api/teams/:team/roster", note: "full team rosters", href: "/docs/endpoints/teams" },
 ];
 
-function weekOfYear(d: Date) {
-  const start = new Date(d.getFullYear(), 0, 1);
-  return Math.ceil(((d.getTime() - start.getTime()) / 86400000 + 1) / 7);
-}
-
 function timeAgo(iso: string) {
   const hours = Math.floor((Date.now() - new Date(iso).getTime()) / 3600000);
   if (hours < 1) return "just now";
@@ -285,7 +280,7 @@ export default function Home() {
           >
             <div className="flex items-center justify-between border-b border-[#efece4] px-5 py-3.5">
               <span className="font-plex text-[11px] tracking-[0.12em] text-[#8a8577]">
-                TOP OVERALL — {CURRENT_GAME_VERSION} · WEEK {weekOfYear(new Date())}
+                TOP OVERALL · NBA {CURRENT_GAME_VERSION}
               </span>
               <span className="font-plex text-[11px] text-[#b5b0a1]">LIVE</span>
             </div>
