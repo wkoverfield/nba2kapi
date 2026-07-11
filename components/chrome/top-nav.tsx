@@ -11,7 +11,6 @@ const NAV_LINKS = [
   { label: "Playground", href: "/playground" },
   { label: "Teams", href: "/teams" },
   { label: "Lineups", href: "/lineups" },
-  { label: "Badges", href: "/badges" },
   { label: "Docs", href: "/docs" },
 ];
 

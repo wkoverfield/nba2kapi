@@ -735,8 +735,9 @@ function PlayerDossier({
                   </span>
                   <div className="flex flex-wrap items-center gap-1.5">
                     {row.chips.map((c) => (
-                      <span
+                      <Link
                         key={c.slug}
+                        href={`/badges?badge=${c.slug}&tier=${encodeURIComponent(row.tier)}`}
                         className="group relative inline-flex items-center gap-1.5 rounded-full border border-[#e5e2da] bg-[#faf9f5] py-1 pr-3 pl-2 text-[12px] font-semibold text-[#1a1918]"
                       >
                         {c.imageUrl && (
@@ -750,7 +751,7 @@ function PlayerDossier({
                             {c.description}
                           </span>
                         )}
-                      </span>
+                      </Link>
                     ))}
                   </div>
                 </div>
