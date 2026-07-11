@@ -565,9 +565,9 @@ MIT License - see LICENSE file for details
 
 **Growth history:**
 
-- **Feb 2026 baseline:** 48 API keys, 1,842 authenticated requests
-- **Jun 2026:** 168 API keys (146 active), approximately 45,700 authenticated requests — about 25× request growth in four months
-- **Jul 11, 2026:** 188 API keys (162 active), 48,158 authenticated requests — about 26× the February baseline
+- **Feb 2026 baseline:** 48 API keys, at least 1,842 recorded authenticated requests
+- **Jun 2026:** 168 API keys (146 active), at least approximately 45,700 recorded authenticated requests — about 25× the February recorded baseline
+- **Jul 11, 2026:** 188 API keys (162 active), at least 48,158 recorded authenticated requests — about 26× the February recorded baseline
 
 **Current activity as of July 11, 2026:**
 
@@ -575,7 +575,7 @@ MIT License - see LICENSE file for details
 - 98.8% of authenticated requests returned 2xx responses in the last 7 days
 - 732 site views from 129 unique visitors in the last 7 days
 
-Authenticated-request totals come from per-key counters and do not include traffic to the unauthenticated public endpoint. Site traffic is measured separately.
+These are recorded minimums, not a claim of exact lifetime traffic. The counters include admitted authenticated requests that were successfully written to Convex; they exclude unauthenticated public-endpoint traffic, rate-limited attempts, and any activity during periods when Convex limits prevented complete storage or visibility. Site traffic is measured separately.
 
 ## Disclaimer
 
