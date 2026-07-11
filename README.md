@@ -563,19 +563,9 @@ MIT License - see LICENSE file for details
 
 ## Analytics
 
-**Growth history:**
-
-- **Feb 2026 baseline:** 48 API keys, at least 1,842 recorded authenticated requests
-- **Jun 2026:** 168 API keys (146 active), at least approximately 45,700 recorded authenticated requests — about 25× the February recorded baseline
-- **Jul 11, 2026:** 188 API keys (162 active), at least approximately 48,200 recorded authenticated requests — the preserved June 29 snapshot plus 2,491 subsequently recorded requests, and about 26× the February recorded baseline
-
-**Current activity as of July 11, 2026:**
-
-- 11,379 authenticated requests in the last 30 days; 1,845 in the last 7 days
-- 98.8% of authenticated requests returned 2xx responses in the last 7 days
-- 732 site views from 129 unique visitors in the last 7 days
-
-These are recorded minimums, not a claim of exact lifetime traffic. July extends the historical June snapshot with post-snapshot request logs instead of replacing it with the current per-key counter sum. The records exclude unauthenticated public-endpoint traffic, rate-limited attempts, and any activity during periods when Convex limits prevented complete storage or visibility. Site traffic is measured separately.
+- **Feb 2026:** 48 API keys · 1,842 cumulative requests
+- **Jun 2026:** 168 API keys · 45,700+ cumulative requests
+- **Jul 2026:** 188 API keys · 48,200+ cumulative requests
 
 ## Disclaimer
 
