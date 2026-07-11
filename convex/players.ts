@@ -6,6 +6,7 @@
 import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { ATTRIBUTE_CATEGORIES } from "./attributeCategories";
+import type { Doc } from "./_generated/dataModel";
 
 /**
  * Insert a single player into the database
@@ -548,7 +549,7 @@ export const searchPlayers = query({
   },
   handler: async (ctx, args) => {
     // Use index if teamType is provided for better performance
-    let players;
+    let players: Doc<"players">[];
     if (args.teamType !== undefined) {
       players = await ctx.db
         .query("players")
@@ -739,12 +740,14 @@ export const getAllFiltered = query({
         dir: v.union(v.literal("asc"), v.literal("desc")),
       })
     ),
+    badgeSlug: v.optional(v.string()),
+    badgeTier: v.optional(v.string()),
     limit: v.optional(v.number()),
     offset: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     // Use database indexes for better performance when possible
-    let players;
+    let players: Doc<"players">[];
 
     // Optimize query based on available filters
     if (args.teams && args.teams.length === 1 && args.teamType !== undefined) {
@@ -811,6 +814,26 @@ export const getAllFiltered = query({
           return true;
         })
       );
+    }
+
+    // Badge filters use the normalized relationship index. Badge tier is
+    // intentionally optional so `?badge=deadeye` means any tier.
+    if (args.badgeSlug) {
+      const badge = await ctx.db
+        .query("badges")
+        .withIndex("by_slug", (q) => q.eq("slug", args.badgeSlug!))
+        .first();
+      if (!badge) {
+        players = [];
+      } else {
+        let links = await ctx.db
+          .query("playerBadges")
+          .withIndex("by_badgeId", (q) => q.eq("badgeId", badge._id))
+          .collect();
+        if (args.badgeTier) links = links.filter((link) => link.tier === args.badgeTier);
+        const playerIds = new Set(links.map((link) => String(link.playerId)));
+        players = players.filter((player) => playerIds.has(String(player._id)));
+      }
     }
 
     // Sort players

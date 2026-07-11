@@ -333,6 +333,89 @@ export const getBadgeCategories = query({
   },
 });
 
+/** Badge almanac projection with real player and tier counts. */
+export const getBadgeDirectory = query({
+  args: {},
+  handler: async (ctx) => {
+    const [badges, links] = await Promise.all([
+      ctx.db.query("badges").collect(),
+      ctx.db.query("playerBadges").collect(),
+    ]);
+    const byBadge = new Map<string, { players: Set<string>; tiers: Record<string, number> }>();
+    for (const link of links) {
+      const key = String(link.badgeId);
+      const aggregate = byBadge.get(key) ?? { players: new Set<string>(), tiers: {} };
+      aggregate.players.add(String(link.playerId));
+      aggregate.tiers[link.tier] = (aggregate.tiers[link.tier] ?? 0) + 1;
+      byBadge.set(key, aggregate);
+    }
+    return badges
+      .map((badge) => {
+        const aggregate = byBadge.get(String(badge._id));
+        return {
+          name: badge.name,
+          slug: badge.slug,
+          category: badge.category,
+          description: badge.description ?? null,
+          imageUrl: badge.imageUrl ?? null,
+          playerCount: aggregate?.players.size ?? 0,
+          tierCounts: aggregate?.tiers ?? {},
+        };
+      })
+      .sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
+  },
+});
+
+/** One badge, its distribution, and the strongest player examples. */
+export const getBadgeDetail = query({
+  args: { slug: v.string() },
+  handler: async (ctx, args) => {
+    const badge = await ctx.db
+      .query("badges")
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .first();
+    if (!badge) return null;
+    const links = await ctx.db
+      .query("playerBadges")
+      .withIndex("by_badgeId", (q) => q.eq("badgeId", badge._id))
+      .collect();
+    const players = (
+      await Promise.all(
+        links.map(async (link) => {
+          const player = await ctx.db.get(link.playerId);
+          return player
+            ? {
+                name: player.name,
+                slug: player.slug,
+                team: player.team,
+                teamType: player.teamType,
+                overall: player.overall,
+                positions: player.positions ?? [],
+                playerImage: player.playerImage ?? null,
+                tier: link.tier,
+              }
+            : null;
+        })
+      )
+    ).filter((player) => player !== null);
+    players.sort((a, b) => b.overall - a.overall || a.name.localeCompare(b.name));
+    const tierCounts: Record<string, number> = {};
+    for (const player of players) tierCounts[player.tier] = (tierCounts[player.tier] ?? 0) + 1;
+    return {
+      badge: {
+        name: badge.name,
+        slug: badge.slug,
+        category: badge.category,
+        description: badge.description ?? null,
+        imageUrl: badge.imageUrl ?? null,
+      },
+      playerCount: new Set(players.map((player) => `${player.slug}:${player.teamType}:${player.team}`)).size,
+      tierCounts,
+      players,
+    };
+  },
+});
+
 /**
  * Sync badges from player data (for migration)
  * Extracts unique badges from all players and creates badge records

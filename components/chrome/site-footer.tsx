@@ -40,6 +40,9 @@ export function SiteFooter() {
               <Link href="/lineups" className={FOOTER_LINK}>
                 Lineups
               </Link>
+              <Link href="/badges" className={FOOTER_LINK}>
+                Badge explorer
+              </Link>
               <Link href="/playground" className={FOOTER_LINK}>
                 Player dossiers
               </Link>

@@ -12,6 +12,8 @@ const STATIC_ROUTES: Array<{
   { path: "/playground", changeFrequency: "weekly", priority: 0.9 },
   { path: "/teams", changeFrequency: "weekly", priority: 0.9 },
   { path: "/lineups", changeFrequency: "monthly", priority: 0.8 },
+  { path: "/compare", changeFrequency: "monthly", priority: 0.7 },
+  { path: "/badges", changeFrequency: "weekly", priority: 0.8 },
   { path: "/docs", changeFrequency: "weekly", priority: 0.9 },
   { path: "/docs/quickstart", changeFrequency: "monthly", priority: 0.8 },
   { path: "/docs/authentication", changeFrequency: "monthly", priority: 0.8 },
@@ -47,6 +49,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: updated(team.lastUpdated),
       changeFrequency: "weekly" as const,
       priority: team.teamType === "curr" ? 0.8 : 0.7,
+    })),
+    ...entities.badges.map((badge) => ({
+      url: `${SITE_URL}/badges/${badge.slug}`,
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
     })),
   ];
 }

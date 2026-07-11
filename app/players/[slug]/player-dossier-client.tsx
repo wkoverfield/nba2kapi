@@ -359,30 +359,44 @@ function PlayerDossier({
             {player && (
               <>
                 <div
-                  className={cn("absolute top-0 right-0 left-0 z-[3] h-1.5", getRatingClasses(player.overall).bg)}
+                  className={cn("absolute top-0 right-0 left-0 z-[4] h-1.5", getRatingClasses(player.overall).bg)}
                 />
-                <div className="absolute top-5 left-[22px] z-[2]">
-                  <div className="font-plex text-[9.5px] tracking-[0.14em] text-white/85">
-                    {tier.toUpperCase()} · {player.positions.join("/")} · {abbr}
-                  </div>
-                  <div className="mt-1.5 font-display text-[76px] leading-none font-extrabold text-white [text-shadow:0_3px_16px_rgba(0,0,0,0.35)]">
-                    {player.overall}
-                  </div>
-                </div>
                 {player.playerImage && (
                   <Image
                     src={player.playerImage}
                     alt={player.name}
-                    width={560}
-                    height={410}
-                    className="absolute bottom-[74px] left-1/2 z-[1] h-auto w-[130%] max-w-none -translate-x-1/2"
+                    fill
+                    sizes="(min-width: 1024px) 420px, 100vw"
+                    className="z-[1] object-cover object-[center_42%]"
+                    priority
                   />
                 )}
-                <div className="absolute right-0 bottom-0 left-0 z-[2] bg-[linear-gradient(to_top,rgba(10,10,14,0.88),rgba(10,10,14,0))] px-[22px] pt-[18px] pb-4">
+                <div className="absolute inset-x-0 top-0 z-[2] h-[24%] bg-[linear-gradient(to_bottom,rgba(10,10,14,0.46)_0%,rgba(10,10,14,0)_100%)]" />
+                <div className="absolute inset-x-0 bottom-0 z-[2] h-[22%] bg-[linear-gradient(to_top,rgba(10,10,14,0.34)_0%,rgba(10,10,14,0)_100%)]" />
+                <div className="absolute top-5 left-[18px] z-[3]">
+                  <div className="inline-flex rounded-full border border-white/15 bg-black/70 px-2.5 py-1.5 font-plex text-[10px] font-medium tracking-[0.12em] text-white shadow-sm backdrop-blur-md">
+                    {tier.toUpperCase()} · {player.positions.join("/")} · {abbr}
+                  </div>
+                  <div className="mt-1.5 font-display text-[76px] leading-none font-extrabold text-white [text-shadow:0_3px_18px_rgba(0,0,0,0.62)]">
+                    {player.overall}
+                  </div>
+                </div>
+                {player.teamImg && (
+                  <div className="absolute top-[18px] right-[18px] z-[3] flex h-12 w-12 items-center justify-center rounded-full border border-white/60 bg-white/90 p-1.5 shadow-[0_8px_22px_rgba(0,0,0,0.2)] backdrop-blur-sm">
+                    <Image
+                      src={player.teamImg}
+                      alt={`${player.team} logo`}
+                      width={38}
+                      height={38}
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                )}
+                <div className="absolute right-[14px] bottom-[14px] left-[14px] z-[3] rounded-[14px] border border-white/15 bg-black/76 px-4 py-3.5 shadow-[0_12px_28px_rgba(0,0,0,0.24)] backdrop-blur-md">
                   <div className="font-display text-[24px] leading-[1.05] font-bold tracking-[-0.02em] text-white">
                     {player.name}
                   </div>
-                  <div className="mt-[7px] font-plex text-[9.5px] tracking-[0.1em] text-white/75">
+                  <div className="mt-2 font-plex text-[10.5px] font-medium tracking-[0.08em] text-white/90">
                     {[player.height, player.weight, player.wingspan ? `${player.wingspan} WS` : null, `${badgesTotal} BADGES`]
                       .filter(Boolean)
                       .join(" · ")}
@@ -473,7 +487,7 @@ function PlayerDossier({
               </span>
               <div className="flex gap-2">
                 <Link
-                  href={`/playground?era=${era === "curr" ? "curr" : era === "class" ? "class" : "all"}`}
+                  href={`/compare?player1=${player!.slug}&type1=${era}&team1=${encodeURIComponent(player!.team)}`}
                   className="rounded-full border border-[#e5e2da] bg-white px-3 py-1.5 text-[11.5px] font-semibold text-[#1a1918] no-underline transition-[border-color,transform] duration-150 hover:border-[#1a1918] active:scale-[0.97] motion-reduce:transition-none"
                 >
                   Compare
@@ -482,7 +496,7 @@ function PlayerDossier({
                   href="/lineups"
                   className="rounded-full bg-[#1a1918] px-3 py-1.5 text-[11.5px] font-semibold text-[#faf9f5] no-underline transition-[background,transform] duration-150 hover:bg-[#333] active:scale-[0.97] motion-reduce:transition-none"
                 >
-                  → Whiteboard
+                  → Lineup Builder
                 </Link>
               </div>
             </div>
@@ -735,8 +749,9 @@ function PlayerDossier({
                   </span>
                   <div className="flex flex-wrap items-center gap-1.5">
                     {row.chips.map((c) => (
-                      <span
+                      <Link
                         key={c.slug}
+                        href={`/badges?badge=${c.slug}&tier=${encodeURIComponent(row.tier)}`}
                         className="group relative inline-flex items-center gap-1.5 rounded-full border border-[#e5e2da] bg-[#faf9f5] py-1 pr-3 pl-2 text-[12px] font-semibold text-[#1a1918]"
                       >
                         {c.imageUrl && (
@@ -750,7 +765,7 @@ function PlayerDossier({
                             {c.description}
                           </span>
                         )}
-                      </span>
+                      </Link>
                     ))}
                   </div>
                 </div>

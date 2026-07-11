@@ -74,11 +74,6 @@ const ENDPOINTS = [
   { path: "GET /api/teams/:team/roster", note: "full team rosters", href: "/docs/endpoints/teams" },
 ];
 
-function weekOfYear(d: Date) {
-  const start = new Date(d.getFullYear(), 0, 1);
-  return Math.ceil(((d.getTime() - start.getTime()) / 86400000 + 1) / 7);
-}
-
 function timeAgo(iso: string) {
   const hours = Math.floor((Date.now() - new Date(iso).getTime()) / 3600000);
   if (hours < 1) return "just now";
@@ -226,10 +221,9 @@ export default function Home() {
               className={cn("mb-[34px] max-w-[460px] text-[18px] leading-[1.6] text-[#57534a]", RISE_IN)}
               style={{ animationDelay: "120ms" }}
             >
-              Access comprehensive player attributes, team rosters, and ratings data —{" "}
-              {stats?.totalPlayers ? `${stats.totalPlayers.toLocaleString()}` : "1,900+"} players
-              across current, classic, and all-time rosters, updated weekly. Build with real NBA 2K
-              data in minutes.
+              Access comprehensive attributes, ratings, and team rosters for the complete current,
+              classic, and all-time NBA 2K player pool, updated weekly. Build with real NBA 2K data
+              in minutes.
             </p>
             <div
               className={cn("mb-10 flex flex-wrap items-center gap-[18px]", RISE_IN)}
@@ -286,7 +280,7 @@ export default function Home() {
           >
             <div className="flex items-center justify-between border-b border-[#efece4] px-5 py-3.5">
               <span className="font-plex text-[11px] tracking-[0.12em] text-[#8a8577]">
-                TOP OVERALL — {CURRENT_GAME_VERSION} · WEEK {weekOfYear(new Date())}
+                TOP OVERALL · NBA {CURRENT_GAME_VERSION}
               </span>
               <span className="font-plex text-[11px] text-[#b5b0a1]">LIVE</span>
             </div>
@@ -475,7 +469,7 @@ export default function Home() {
         {/* Triptych */}
         <div className="mx-auto max-w-[1360px] border-t border-[#e5e2da] px-[clamp(20px,4vw,48px)] py-[clamp(48px,6vw,80px)]">
           <div className="mb-8">
-            <SectionHeading eyebrow="THREE WAYS TO EXPLORE" title="One dataset. Three lenses." />
+            <SectionHeading eyebrow="EXPLORE THE DATA" title="One dataset. Three tools." />
           </div>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-4">
             <Link
@@ -497,11 +491,10 @@ export default function Home() {
               </div>
               <div className="px-[18px] py-4">
                 <h3 className="m-0 font-display text-[19px] font-bold tracking-[-0.02em]">
-                  The Playground
+                  Playground
                 </h3>
                 <p className="mt-1.5 mb-0 text-[13px] leading-[1.5] text-[#57534a]">
-                  Build a query by writing a sentence — filter any attribute, mix eras, and read the
-                  exact API call back.
+                  Filter players by any attribute or era, then copy the exact API request.
                 </p>
               </div>
             </Link>
@@ -529,11 +522,11 @@ export default function Home() {
               </div>
               <div className="px-[18px] py-4">
                 <h3 className="m-0 font-display text-[19px] font-bold tracking-[-0.02em]">
-                  The Board
+                  Rosters
                 </h3>
                 <p className="mt-1.5 mb-0 text-[13px] leading-[1.5] text-[#57534a]">
-                  Every team ranked by roster strength — open one to see the depth chart, or flip
-                  through the league.
+                  Browse every current, classic, and all-time roster. Open a team for ratings and
+                  its depth chart.
                 </p>
               </div>
             </Link>
@@ -568,11 +561,10 @@ export default function Home() {
               </div>
               <div className="px-[18px] py-4">
                 <h3 className="m-0 font-display text-[19px] font-bold tracking-[-0.02em]">
-                  The Whiteboard
+                  Lineup Builder
                 </h3>
                 <p className="mt-1.5 mb-0 text-[13px] leading-[1.5] text-[#57534a]">
-                  Drop any five on the court, add an opponent, and read the tale of the tape matchup
-                  by matchup.
+                  Build one lineup and analyze its fit, or add an opponent to compare two lineups.
                 </p>
               </div>
             </Link>

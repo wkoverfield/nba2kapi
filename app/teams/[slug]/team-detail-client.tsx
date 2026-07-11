@@ -257,7 +257,7 @@ function TeamPage({
               <path d="m12 19-7-7 7-7" />
               <path d="M19 12H5" />
             </svg>
-            BACK TO THE BOARD
+            BACK TO ROSTERS
           </Link>
           <div className="flex flex-wrap items-center gap-2">
             {prevTeam && (
@@ -310,7 +310,7 @@ function TeamPage({
                     {era === "curr" ? "CURRENT" : era === "class" ? "CLASSIC" : "ALL-TIME"} ·{" "}
                     {teamInfo?.name ? (getTeamConference(teamInfo.name) ?? "—") : "—"} ·{" "}
                     <b className="text-[#1a1918]">
-                      {boardIndex >= 0 ? `#${boardIndex + 1} ON THE BOARD` : "ON THE BOARD"}
+                      {boardIndex >= 0 ? `#${boardIndex + 1} ROSTER RANKING` : "ROSTER RANKING"}
                     </b>
                   </p>
                 </div>

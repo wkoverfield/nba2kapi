@@ -132,6 +132,18 @@ export default function PlayersEndpointPage() {
             ),
           },
           {
+            name: "badge / badgeTier",
+            type: "string",
+            isNew: true,
+            desc: (
+              <>
+                Filter by badge slug and optionally its exact tier: <code>badge=deadeye</code>,{" "}
+                <code>badgeTier=Hall%20of%20Fame</code>. Browse valid slugs in the{" "}
+                <Link href="/badges">badge almanac</Link>.
+              </>
+            ),
+          },
+          {
             name: "sort",
             type: "string",
             isNew: true,
