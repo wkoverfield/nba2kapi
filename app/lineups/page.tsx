@@ -751,7 +751,7 @@ function Whiteboard() {
       <div className="mx-auto max-w-[1440px] px-[clamp(20px,4vw,48px)] pt-2 pb-12">
         <div className="flex flex-wrap items-center justify-between gap-3 animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
           <div>
-            <div className="font-plex text-[9px] tracking-[0.12em] text-[#8a8577]">LINEUP LAB</div>
+            <div className="font-plex text-[9px] tracking-[0.12em] text-[#8a8577]">LINEUP BUILDER</div>
             <h1 className="mt-1 mb-0 font-display text-[clamp(24px,3vw,36px)] font-bold tracking-[-0.03em]">
               {matchupMode ? "Build the matchup" : "Build your five"}
             </h1>
