@@ -110,6 +110,104 @@ function shortMeta(p: PoolPlayer) {
   return `${p.positions.join("/")} · ${era}`;
 }
 
+function rating(p: PoolPlayer, key: string) {
+  return p.attributes?.[key] ?? 0;
+}
+
+function hasAnyBadge(p: PoolPlayer, names: string[]) {
+  const wanted = names.map((name) => name.toLowerCase());
+  return (p.badges ?? []).some((badge) => wanted.some((name) => badge.name.toLowerCase().includes(name)));
+}
+
+function grade(score: number) {
+  if (score >= 92) return "A+";
+  if (score >= 87) return "A";
+  if (score >= 82) return "B+";
+  if (score >= 76) return "B";
+  if (score >= 70) return "C+";
+  if (score >= 64) return "C";
+  return "D";
+}
+
+function buildLineupReport(players: PoolPlayer[]) {
+  if (players.length === 0) return null;
+  const mean = (values: number[]) => Math.round(values.reduce((sum, n) => sum + n, 0) / values.length);
+  const topMean = (values: number[], n: number) => mean([...values].sort((a, b) => b - a).slice(0, Math.min(n, values.length)));
+  const count = (test: (p: PoolPlayer) => boolean) => players.filter(test).length;
+  const credibleShooter = (p: PoolPlayer) => rating(p, "threePointShot") >= 85 || hasAnyBadge(p, ["set shot", "deadeye", "shifty shooter"]);
+  const shooters = count(credibleShooter);
+  const creators = count((p) => rating(p, "ballHandle") >= 85 && rating(p, "passAccuracy") >= 78);
+  const secondaryCreators = count((p) => rating(p, "ballHandle") >= 78 && rating(p, "passAccuracy") >= 72);
+  const rimPressure = count((p) => Math.max(rating(p, "drivingLayup"), rating(p, "drivingDunk")) >= 85);
+  const poa = count((p) => rating(p, "perimeterDefense") >= 84 && rating(p, "agility") >= 78 || hasAnyBadge(p, ["on-ball menace", "challenger"]));
+  const rimProtectors = count((p) => Math.max(rating(p, "interiorDefense"), rating(p, "block")) >= 84 || hasAnyBadge(p, ["paint patroller", "high-flying denier"]));
+  const rebounders = count((p) => Math.max(rating(p, "defensiveRebound"), rating(p, "offensiveRebound")) >= 82);
+  const nonShooters = count((p) => !credibleShooter(p) && rating(p, "threePointShot") < 72);
+
+  const spacing = Math.max(25, Math.min(99, mean(players.map((p) => rating(p, "threePointShot"))) + shooters * 3 - nonShooters * 7));
+  const creation = mean(players.map((p) => Math.round((rating(p, "ballHandle") + rating(p, "passAccuracy") + rating(p, "speedWithBall")) / 3)));
+  const pressure = mean(players.map((p) => Math.round((Math.max(rating(p, "drivingLayup"), rating(p, "drivingDunk")) + rating(p, "drawFoul")) / 2)));
+  const offense = Math.round(spacing * 0.35 + creation * 0.35 + pressure * 0.2 + mean(players.map((p) => p.cats.ins ?? 50)) * 0.1);
+  const pointDefense = topMean(players.map((p) => Math.round((rating(p, "perimeterDefense") + rating(p, "agility") + rating(p, "steal")) / 3)), 2);
+  const backline = topMean(players.map((p) => Math.round((rating(p, "interiorDefense") + rating(p, "block") + rating(p, "helpDefenseIQ")) / 3)), 2);
+  const glass = topMean(players.map((p) => Math.max(rating(p, "defensiveRebound"), rating(p, "offensiveRebound"))), 2);
+  const defense = Math.round(pointDefense * 0.45 + backline * 0.4 + glass * 0.15);
+  const roleCoverage = [creators >= 1, shooters >= Math.min(3, players.length), poa >= 1, rimProtectors >= 1, rebounders >= 1].filter(Boolean).length;
+  const fit = Math.max(35, Math.min(99, 55 + roleCoverage * 9 - Math.max(0, nonShooters - 1) * 8 - Math.max(0, creators - 2) * 4));
+  const switchable = count((p) => rating(p, "perimeterDefense") >= 78 && rating(p, "interiorDefense") >= 68 && rating(p, "strength") >= 65);
+  const versatility = Math.min(99, 48 + switchable * 8 + secondaryCreators * 5 + shooters * 4);
+
+  const strengths: string[] = [];
+  const risks: string[] = [];
+  if (shooters >= 4) strengths.push(`${shooters} credible shooters support five-out spacing.`);
+  else if (shooters >= 3) strengths.push(`${shooters} credible shooters preserve driving lanes.`);
+  if (creators >= 2) strengths.push(`${creators} primary-level creators keep the offense alive after help.`);
+  else if (creators === 1 && secondaryCreators >= 2) strengths.push("Clear primary creator with a usable secondary handler.");
+  if (poa >= 1 && rimProtectors >= 1) strengths.push("Point-of-attack resistance is backed by real rim protection.");
+  if (rimPressure >= 2) strengths.push(`${rimPressure} rim-pressure threats can force rotations.`);
+  if (rebounders >= 2) strengths.push(`${rebounders} plus rebounders should finish defensive possessions.`);
+
+  if (creators === 0) risks.push("No reliable primary creator; organized defenses can flatten the offense.");
+  else if (creators === 1 && secondaryCreators < 2) risks.push("One-handler dependency: blitzes can force the ball into weak creation.");
+  if (nonShooters >= 2) risks.push(`${nonShooters} non-shooters let one defender guard two spaces near the paint.`);
+  if (poa === 0) risks.push("No clean point-of-attack stopper for elite guards.");
+  if (rimProtectors === 0) risks.push("No backline rim deterrent; perimeter mistakes become layups.");
+  if (rebounders === 0) risks.push("Weak rebounding coverage may waste otherwise good defensive possessions.");
+
+  const identity = spacing >= 88 && creators >= 2
+    ? "Five-out creation machine"
+    : shooters >= 3 && rimPressure >= 2
+      ? "Drive-and-kick pressure lineup"
+      : defense >= offense && poa >= 1
+        ? "Defense-first transition five"
+        : creators >= 1 && rimProtectors >= 1
+          ? "Balanced pick-and-roll five"
+          : "Talent-rich, role-light lineup";
+  const recommendation = risks[0]
+    ? `First fix: ${risks[0].replace(/^[A-Z]/, (c) => c.toLowerCase())}`
+    : "No critical coverage hole. Optimize for the opponent rather than adding more raw overall.";
+
+  return {
+    identity,
+    grades: [
+      { label: "OFFENSE", value: grade(offense), score: offense },
+      { label: "DEFENSE", value: grade(defense), score: defense },
+      { label: "FIT", value: grade(fit), score: fit },
+      { label: "VERSATILITY", value: grade(versatility), score: versatility },
+    ],
+    coverage: [
+      { label: "CREATORS", value: creators, ok: creators >= 1 },
+      { label: "SHOOTERS", value: shooters, ok: shooters >= Math.min(3, players.length) },
+      { label: "POA", value: poa, ok: poa >= 1 },
+      { label: "RIM", value: rimProtectors, ok: rimProtectors >= 1 },
+      { label: "REBOUND", value: rebounders, ok: rebounders >= 1 },
+    ],
+    strengths: strengths.slice(0, 3),
+    risks: risks.slice(0, 3),
+    recommendation,
+  };
+}
+
 function MiniOvr({ ovr }: { ovr: number }) {
   return (
     <span
@@ -583,6 +681,7 @@ function Whiteboard() {
       },
     ];
   }, [yoursFilled, oppsFilled, hasOpp, yourOvr, oppOvr]);
+  const lineupReport = useMemo(() => buildLineupReport(yoursFilled), [yoursFilled]);
 
   const duels = useMemo(
     () =>
@@ -812,8 +911,62 @@ function Whiteboard() {
 
               </div>
 
-              {/* Tape + read */}
-              <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3">
+              {/* Single-lineup report */}
+              {!hasOpp && lineupReport && (
+                <div className="mt-3 overflow-hidden rounded-[14px] border border-[#e5e2da] bg-white">
+                  <div className="grid gap-3 border-b border-[#f1efe8] px-[18px] py-3 lg:grid-cols-[minmax(220px,1.5fr)_repeat(4,minmax(72px,0.55fr))] lg:items-center">
+                    <div>
+                      <div className="font-plex text-[8px] tracking-[0.12em] text-[#8a8577]">LINEUP IDENTITY · {yoursFilled.length}/5</div>
+                      <div className="mt-1 font-display text-[19px] font-bold tracking-[-0.02em]">{lineupReport.identity}</div>
+                    </div>
+                    {lineupReport.grades.map((item) => (
+                      <div key={item.label} className="flex items-center justify-between gap-2 rounded-[10px] border border-[#efece4] bg-[#faf9f5] px-3 py-2 lg:block">
+                        <span className="font-plex text-[7.5px] tracking-[0.08em] text-[#8a8577]">{item.label}</span>
+                        <div className="font-display text-[22px] leading-none font-bold" title={`Heuristic score ${item.score}/99`}>{item.value}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 border-b border-[#f1efe8] px-[18px] py-2.5">
+                    <span className="mr-1 font-plex text-[8px] tracking-[0.1em] text-[#8a8577]">ROLE COVERAGE</span>
+                    {lineupReport.coverage.map((item) => (
+                      <span key={item.label} className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-plex text-[8px] font-bold", item.ok ? "border-[#b8d8c3] bg-[#f1faf4] text-[#0a7f3f]" : "border-[#ead0ca] bg-[#fff5f2] text-[#c03a2b]")}>
+                        <i className={cn("h-1.5 w-1.5 rounded-full", item.ok ? "bg-[#0a7f3f]" : "bg-[#c03a2b]")} />
+                        {item.label} · {item.value}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="grid gap-0 md:grid-cols-2">
+                    <div className="border-b border-[#f1efe8] px-[18px] py-3 md:border-r md:border-b-0">
+                      <div className="mb-2 font-plex text-[8px] font-bold tracking-[0.1em] text-[#0a7f3f]">WHAT TRAVELS</div>
+                      <div className="flex flex-col gap-1.5">
+                        {(lineupReport.strengths.length ? lineupReport.strengths : ["Add more players to reveal lineup strengths."]).map((text) => <div key={text} className="flex gap-2 text-[11.5px] leading-[1.45] text-[#57534a]"><b className="text-[#0a7f3f]">+</b>{text}</div>)}
+                      </div>
+                    </div>
+                    <div className="px-[18px] py-3">
+                      <div className="mb-2 font-plex text-[8px] font-bold tracking-[0.1em] text-[#c03a2b]">HOW IT BREAKS</div>
+                      <div className="flex flex-col gap-1.5">
+                        {(lineupReport.risks.length ? lineupReport.risks : ["No critical coverage hole detected yet."]).map((text) => <div key={text} className="flex gap-2 text-[11.5px] leading-[1.45] text-[#57534a]"><b className="text-[#c03a2b]">−</b>{text}</div>)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2 border-t border-[#f1efe8] bg-[#faf9f5] px-[18px] py-2.5 text-[11px] leading-[1.5] text-[#57534a]">
+                    <span className="shrink-0 font-plex text-[8px] font-bold tracking-[0.08em] text-[#9a6700]">NEXT MOVE</span>
+                    <span>{lineupReport.recommendation}</span>
+                  </div>
+                </div>
+              )}
+
+              {!hasOpp && !lineupReport && (
+                <div className="mt-3 rounded-[14px] border border-[#e5e2da] bg-white px-[18px] py-4">
+                  <div className="font-plex text-[8px] tracking-[0.12em] text-[#8a8577]">LINEUP REPORT</div>
+                  <div className="mt-1 text-[12px] text-[#57534a]">Drag in your first player to start the analysis.</div>
+                </div>
+              )}
+
+              {/* Matchup tape + read */}
+              {hasOpp && <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3">
                 <div className="rounded-[14px] border border-[#e5e2da] bg-white px-[18px] py-3.5">
                   <div className="mb-3 flex items-center justify-between">
                     <span className="font-plex text-[9px] tracking-[0.12em] text-[#8a8577]">
@@ -870,7 +1023,7 @@ function Whiteboard() {
                     ))}
                   </div>
                 </div>
-              </div>
+              </div>}
 
               {/* Duels */}
               {hasOpp && duels.length > 0 && (
