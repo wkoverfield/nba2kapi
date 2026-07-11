@@ -878,6 +878,11 @@ export const getPlaygroundPlayers = query({
       positions: p.positions ?? [],
       overall: p.overall,
       playerImage: p.playerImage ?? null,
+      attributes: p.attributes ?? {},
+      badges: (p.badges?.list ?? []).map((badge) => ({
+        name: badge.name,
+        tier: badge.tier,
+      })),
       threePointShot: p.attributes?.threePointShot ?? null,
       speed: p.attributes?.speed ?? null,
       drivingDunk: p.attributes?.drivingDunk ?? null,

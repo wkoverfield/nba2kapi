@@ -21,6 +21,9 @@ import { TopNav } from "@/components/chrome/top-nav";
 import { FooterStrip } from "@/components/chrome/footer-strip";
 import { Headshot } from "@/components/ui/headshot";
 import { getRatingClasses } from "@/lib/rating-colors";
+import { getRatingTier } from "@/lib/rating-colors";
+import { getAttributeDisplayName } from "@/lib/attribute-normalizer";
+import { ATTRIBUTE_CATEGORIES } from "@/convex/attributeCategories";
 import { getTeamAbbreviation } from "@/lib/team-abbr";
 import { parseLineupFromURL, lineupToURLParams, type LineupPlayer } from "@/lib/lineup-url";
 import { API_KEY_STORAGE_KEY } from "@/lib/constants";
@@ -36,6 +39,8 @@ type PoolPlayer = {
   positions: string[];
   overall: number;
   playerImage: string | null;
+  attributes: Record<string, number>;
+  badges: { name: string; tier: string }[];
   threePointShot: number | null;
   speed: number | null;
   drivingDunk: number | null;
@@ -55,14 +60,17 @@ const POSITIONS = ["PG", "SG", "SF", "PF", "C"] as const;
 // Court spot geometry from the design (viewBox 100 x 56), left half; the
 // right half mirrors x.
 const SPOTS = [
-  { pos: "PG", x: 30, y: 28 },
-  { pos: "SG", x: 16, y: 13 },
-  { pos: "SF", x: 16, y: 43 },
-  { pos: "PF", x: 37, y: 17 },
-  { pos: "C", x: 38, y: 40 },
+  { pos: "PG", x: 36, y: 25 },
+  { pos: "SG", x: 27, y: 7 },
+  { pos: "SF", x: 27, y: 43 },
+  { pos: "PF", x: 15, y: 39 },
+  { pos: "C", x: 10, y: 18 },
 ];
 
 const CATS = ["ins", "out", "ply", "ath", "reb", "def"] as const;
+const ATTRIBUTE_KEYS = [...new Set(Object.values(ATTRIBUTE_CATEGORIES).flat())];
+const RATING_TIERS = ["Dark Matter", "Galaxy Opal", "Pink Diamond", "Diamond", "Amethyst", "Ruby", "Sapphire", "Emerald", "Gold", "Silver", "Bronze"];
+const BADGE_TIERS = ["Legendary", "Hall of Fame", "Gold", "Silver", "Bronze"];
 const CAT_LABELS: Record<(typeof CATS)[number], string> = {
   ins: "INSIDE",
   out: "OUTSIDE",
@@ -115,6 +123,52 @@ function MiniOvr({ ovr }: { ovr: number }) {
   );
 }
 
+function CourtDiagram({ matchupMode, guardLines }: { matchupMode: boolean; guardLines: { x1: number; y1: number; x2: number; y2: number }[] }) {
+  const line = "#c8a978";
+  const soft = "#decba7";
+  return (
+    <svg viewBox={`0 0 ${matchupMode ? 94 : 47} 50`} className="absolute inset-0 h-full w-full" aria-hidden="true">
+      <defs>
+        <pattern id="wood-planks" width="9.4" height="5" patternUnits="userSpaceOnUse">
+          <rect width="9.4" height="5" fill="#f4e4c3" />
+          <path d="M0 5H9.4 M9.4 0V5" stroke="#ead5ad" strokeWidth="0.12" />
+          <path d="M4.7 0V5" stroke="#f8edd5" strokeWidth="0.08" />
+        </pattern>
+      </defs>
+      <rect x="0.25" y="0.25" width={matchupMode ? 93.5 : 46.5} height="49.5" rx="0.7" fill="url(#wood-planks)" stroke={line} strokeWidth="0.5" />
+
+      {/* Left basket and half-court: dimensions use feet on a 94 × 50 NBA floor. */}
+      <rect x="0.25" y="17" width="18.75" height="16" fill="#ecd5a9" fillOpacity="0.42" stroke={line} strokeWidth="0.38" />
+      <circle cx="19" cy="25" r="6" fill="none" stroke={line} strokeWidth="0.38" />
+      <path d="M19 19 A6 6 0 0 1 19 31" fill="none" stroke={line} strokeWidth="0.38" strokeDasharray="0.8 0.8" />
+      <line x1="4" y1="22" x2="4" y2="28" stroke={line} strokeWidth="0.55" />
+      <circle cx="5.25" cy="25" r="0.75" fill="none" stroke={line} strokeWidth="0.45" />
+      <path d="M5.25 21 A4 4 0 0 1 5.25 29" fill="none" stroke={line} strokeWidth="0.38" />
+      <path d="M0.25 3 H14 M14 3 A23.75 23.75 0 0 1 14 47 M14 47 H0.25" fill="none" stroke={line} strokeWidth="0.45" />
+      <line x1="0.25" y1="22" x2="4" y2="22" stroke={soft} strokeWidth="0.25" />
+      <line x1="0.25" y1="28" x2="4" y2="28" stroke={soft} strokeWidth="0.25" />
+
+      {matchupMode && (
+        <>
+          <line x1="47" y1="0.25" x2="47" y2="49.75" stroke={line} strokeWidth="0.45" />
+          <circle cx="47" cy="25" r="6" fill="none" stroke={line} strokeWidth="0.38" />
+          <rect x="75" y="17" width="18.75" height="16" fill="#ecd5a9" fillOpacity="0.42" stroke={line} strokeWidth="0.38" />
+          <circle cx="75" cy="25" r="6" fill="none" stroke={line} strokeWidth="0.38" />
+          <path d="M75 19 A6 6 0 0 0 75 31" fill="none" stroke={line} strokeWidth="0.38" strokeDasharray="0.8 0.8" />
+          <line x1="90" y1="22" x2="90" y2="28" stroke={line} strokeWidth="0.55" />
+          <circle cx="88.75" cy="25" r="0.75" fill="none" stroke={line} strokeWidth="0.45" />
+          <path d="M88.75 21 A4 4 0 0 0 88.75 29" fill="none" stroke={line} strokeWidth="0.38" />
+          <path d="M93.75 3 H80 M80 3 A23.75 23.75 0 0 0 80 47 M80 47 H93.75" fill="none" stroke={line} strokeWidth="0.45" />
+        </>
+      )}
+
+      {matchupMode && guardLines.map((l, i) => (
+        <line key={i} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke="#967d58" strokeWidth="0.22" strokeDasharray="0.8 1.1" />
+      ))}
+    </svg>
+  );
+}
+
 // ---- Court pieces -----------------------------------------------------------
 
 function CourtSlot({
@@ -134,8 +188,8 @@ function CourtSlot({
   pulsing: boolean;
   onRemove: () => void;
 }) {
-  const x = compareMode ? (side === "yours" ? spot.x : 100 - spot.x) : spot.x + 25;
-  const y = (spot.y / 56) * 100;
+  const x = compareMode ? (side === "yours" ? spot.x : 94 - spot.x) / 94 * 100 : spot.x / 47 * 100;
+  const y = (spot.y / 50) * 100;
   const { setNodeRef, isOver } = useDroppable({ id: `slot:${side}:${index}` });
   const drag = useDraggable({
     id: `chip:${side}:${index}`,
@@ -247,6 +301,12 @@ function Whiteboard() {
   const [sortF, setSortF] = useState<"ovr" | "az">("ovr");
   const [eraF, setEraF] = useState<"all" | TeamType>("all");
   const [minOvr, setMinOvr] = useState(0);
+  const [maxOvr, setMaxOvr] = useState(99);
+  const [ratingTierF, setRatingTierF] = useState("all");
+  const [attributeF, setAttributeF] = useState("all");
+  const [attributeMin, setAttributeMin] = useState(80);
+  const [badgeF, setBadgeF] = useState("all");
+  const [badgeTierF, setBadgeTierF] = useState("all");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerSide, setPickerSide] = useState<Side>("yours");
   const [matchupMode, setMatchupMode] = useState(false);
@@ -332,6 +392,11 @@ function Whiteboard() {
     [yoursFilled, oppsFilled]
   );
 
+  const badgeOptions = useMemo(() => {
+    if (!players) return [];
+    return [...new Set(players.flatMap((p) => (p.badges ?? []).map((badge) => badge.name)))].sort();
+  }, [players]);
+
   const pool = useMemo(() => {
     if (!players) return [];
     const query = q.trim().toLowerCase();
@@ -340,12 +405,16 @@ function Whiteboard() {
         (p) =>
           (posF === "ALL" || p.positions.includes(posF)) &&
           (eraF === "all" || p.teamType === eraF) &&
-          p.overall >= minOvr &&
+          p.overall >= minOvr && p.overall <= maxOvr &&
+          (ratingTierF === "all" || getRatingTier(p.overall) === ratingTierF) &&
+          (attributeF === "all" || (p.attributes?.[attributeF] ?? -1) >= attributeMin) &&
+          (badgeF === "all" || (p.badges ?? []).some((badge) => badge.name === badgeF)) &&
+          (badgeTierF === "all" || (p.badges ?? []).some((badge) => badge.tier === badgeTierF)) &&
           (!query || p.name.toLowerCase().includes(query))
       )
       .sort((a, b) => (sortF === "ovr" ? b.overall - a.overall : a.name.localeCompare(b.name)))
       .slice(0, POOL_LIMIT);
-  }, [players, q, posF, eraF, minOvr, sortF]);
+  }, [players, q, posF, eraF, minOvr, maxOvr, ratingTierF, attributeF, attributeMin, badgeF, badgeTierF, sortF]);
 
   const place = (side: Side, index: number, p: PoolPlayer) => {
     const setter = side === "yours" ? setYours : setOpps;
@@ -534,7 +603,7 @@ function Whiteboard() {
   );
 
   const guardLines = SPOTS.map((s, i) =>
-    yours[i] && opps[i] ? { x1: s.x + 2.5, y1: s.y, x2: 100 - s.x - 2.5, y2: s.y } : null
+    yours[i] && opps[i] ? { x1: s.x + 2.5, y1: s.y, x2: 94 - s.x - 2.5, y2: s.y } : null
   ).filter((l): l is NonNullable<typeof l> => l !== null);
 
   const shareLineup = () => {
@@ -698,29 +767,13 @@ function Whiteboard() {
             {/* Court + analysis */}
             <div className="min-w-0">
               <div
-                className="relative aspect-[16/9.4] overflow-hidden rounded-2xl border border-[#e5e2da] bg-[#f6f4ee] animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
+                className={cn(
+                  "relative mx-auto overflow-hidden rounded-2xl border border-[#d9c49a] bg-[#f4e4c3] shadow-[0_22px_55px_-38px_rgba(81,59,29,0.7)] transition-[max-width,aspect-ratio] duration-500 ease-out animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:transition-none motion-reduce:animate-none",
+                  matchupMode ? "aspect-[94/50] w-full max-w-none" : "aspect-[47/50] w-full max-w-[680px]"
+                )}
                 style={{ animationDelay: "100ms" }}
               >
-                <svg viewBox="0 0 100 56" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
-                  {matchupMode && <line x1="50" y1="0" x2="50" y2="56" stroke="#d9d4c7" strokeWidth="0.25" />}
-                  <circle cx="50" cy="28" r="7" fill="none" stroke="#d9d4c7" strokeWidth="0.25" />
-                  <rect x="0" y="18" width="14" height="20" fill="none" stroke="#d9d4c7" strokeWidth="0.25" />
-                  {matchupMode && <rect x="86" y="18" width="14" height="20" fill="none" stroke="#d9d4c7" strokeWidth="0.25" />}
-                  <path d="M 0 6 Q 30 28 0 50" fill="none" stroke="#d9d4c7" strokeWidth="0.25" />
-                  {matchupMode && <path d="M 100 6 Q 70 28 100 50" fill="none" stroke="#d9d4c7" strokeWidth="0.25" />}
-                  {guardLines.map((l, i) => (
-                    <line
-                      key={i}
-                      x1={l.x1}
-                      y1={l.y1}
-                      x2={l.x2}
-                      y2={l.y2}
-                      stroke="#b5b0a1"
-                      strokeWidth="0.3"
-                      strokeDasharray="1 1.6"
-                    />
-                  ))}
-                </svg>
+                <CourtDiagram matchupMode={matchupMode} guardLines={guardLines} />
 
                 <span className={cn("absolute top-2.5 font-plex text-[8.5px] tracking-[0.1em] text-[#b5b0a1]", matchupMode ? "left-3.5" : "left-1/2 -translate-x-1/2")}>
                   YOUR FIVE · {yoursFilled.length}/5
@@ -738,7 +791,7 @@ function Whiteboard() {
                       <b className="text-[#1a1918]">{oppOvr} OVR</b>
                     </>
                   ) : (
-                    "OPEN HALF — ADD FROM THE POOL"
+                    "OPEN HALF — ADD AN OPPONENT"
                   )}
                 </span>}
 
@@ -882,13 +935,12 @@ function Whiteboard() {
 
           {pickerOpen && (
             <div
-              className="fixed inset-0 z-50 flex items-end justify-center bg-[#1a1918]/35 p-0 backdrop-blur-[2px] sm:items-center sm:p-6"
+              className="pointer-events-none fixed inset-0 z-50 flex items-end justify-center bg-[#1a1918]/35 backdrop-blur-[2px] lg:items-stretch lg:justify-end lg:bg-transparent lg:backdrop-blur-none"
               role="dialog"
               aria-modal="true"
               aria-label={`Choose a player for ${pickerSide === "yours" ? "your lineup" : "the opponent"}`}
-              onMouseDown={(e) => { if (e.target === e.currentTarget) setPickerOpen(false); }}
             >
-              <div className="flex max-h-[88vh] w-full max-w-[760px] flex-col overflow-hidden rounded-t-[22px] border border-[#d9d4c7] bg-[#fffdf8] shadow-[0_30px_80px_-24px_rgba(26,25,24,0.55)] sm:rounded-[22px]">
+              <div className="pointer-events-auto flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-[22px] border border-[#d9d4c7] bg-[#fffdf8] shadow-[0_30px_80px_-24px_rgba(26,25,24,0.55)] lg:my-3 lg:mr-3 lg:max-h-none lg:w-[440px] lg:rounded-[22px]">
                 <div className="flex items-start justify-between gap-4 border-b border-[#e5e2da] px-5 py-4">
                   <div>
                     <div className="font-plex text-[9px] tracking-[0.12em] text-[#8a8577]">
@@ -907,7 +959,7 @@ function Whiteboard() {
                     <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search any player or legend…" className="min-w-0 flex-1 border-0 bg-transparent text-[14px] outline-none placeholder:text-[#b5b0a1]" />
                     <span className="font-plex text-[8px] text-[#b5b0a1]">{pool.length} SHOWN</span>
                   </div>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
                     <div>
                       <div className="mb-1.5 flex items-center gap-1.5 font-plex text-[8px] tracking-[0.08em] text-[#8a8577]"><SlidersHorizontal className="h-3 w-3" /> POSITION</div>
                       <div className="flex flex-wrap gap-1.5">
@@ -920,13 +972,49 @@ function Whiteboard() {
                         {([['all','ALL'],['curr','CURRENT'],['class','CLASSIC'],['allt','ALL-TIME']] as const).map(([value,label]) => <button key={value} type="button" onClick={() => setEraF(value)} className={cn("cursor-pointer rounded-full border px-2.5 py-1 font-plex text-[8px] font-bold", eraF === value ? "border-[#1a1918] bg-[#1a1918] text-white" : "border-[#e5e2da] bg-[#faf9f5] text-[#8a8577]")}>{label}</button>)}
                       </div>
                     </div>
-                    <label className="block min-w-[130px]">
-                      <span className="mb-1.5 block font-plex text-[8px] tracking-[0.08em] text-[#8a8577]">MIN OVR · {minOvr || "ANY"}</span>
-                      <input type="range" min="0" max="95" step="5" value={minOvr} onChange={(e) => setMinOvr(Number(e.target.value))} className="w-full accent-[#1a1918]" />
+                    <label className="block">
+                      <span className="mb-1.5 block font-plex text-[8px] tracking-[0.08em] text-[#8a8577]">CARD TIER</span>
+                      <select value={ratingTierF} onChange={(e) => setRatingTierF(e.target.value)} className="h-9 w-full rounded-[9px] border border-[#e5e2da] bg-[#faf9f5] px-2.5 text-[11px] outline-none focus:border-[#1a1918]">
+                        <option value="all">Any tier</option>
+                        {RATING_TIERS.map((tier) => <option key={tier} value={tier}>{tier}</option>)}
+                      </select>
+                    </label>
+                    <div>
+                      <span className="mb-1.5 block font-plex text-[8px] tracking-[0.08em] text-[#8a8577]">OVERALL RANGE</span>
+                      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                        <input aria-label="Minimum overall" type="number" min="0" max="99" value={minOvr} onChange={(e) => setMinOvr(Math.min(Number(e.target.value), maxOvr))} className="h-9 min-w-0 rounded-[9px] border border-[#e5e2da] bg-[#faf9f5] px-2.5 text-[11px] outline-none focus:border-[#1a1918]" />
+                        <span className="font-plex text-[8px] text-[#b5b0a1]">TO</span>
+                        <input aria-label="Maximum overall" type="number" min="0" max="99" value={maxOvr} onChange={(e) => setMaxOvr(Math.max(Number(e.target.value), minOvr))} className="h-9 min-w-0 rounded-[9px] border border-[#e5e2da] bg-[#faf9f5] px-2.5 text-[11px] outline-none focus:border-[#1a1918]" />
+                      </div>
+                    </div>
+                    <label className="block">
+                      <span className="mb-1.5 block font-plex text-[8px] tracking-[0.08em] text-[#8a8577]">SPECIFIC ATTRIBUTE</span>
+                      <select value={attributeF} onChange={(e) => setAttributeF(e.target.value)} className="h-9 w-full rounded-[9px] border border-[#e5e2da] bg-[#faf9f5] px-2.5 text-[11px] outline-none focus:border-[#1a1918]">
+                        <option value="all">Any attribute</option>
+                        {ATTRIBUTE_KEYS.map((key) => <option key={key} value={key}>{getAttributeDisplayName(key)}</option>)}
+                      </select>
+                    </label>
+                    <label className={cn("block", attributeF === "all" && "opacity-45")}>
+                      <span className="mb-1.5 block font-plex text-[8px] tracking-[0.08em] text-[#8a8577]">ATTRIBUTE MIN · {attributeMin}</span>
+                      <input disabled={attributeF === "all"} type="range" min="25" max="99" value={attributeMin} onChange={(e) => setAttributeMin(Number(e.target.value))} className="w-full accent-[#1a1918]" />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1.5 block font-plex text-[8px] tracking-[0.08em] text-[#8a8577]">SPECIFIC BADGE</span>
+                      <select value={badgeF} onChange={(e) => setBadgeF(e.target.value)} className="h-9 w-full rounded-[9px] border border-[#e5e2da] bg-[#faf9f5] px-2.5 text-[11px] outline-none focus:border-[#1a1918]">
+                        <option value="all">Any badge</option>
+                        {badgeOptions.map((badge) => <option key={badge} value={badge}>{badge}</option>)}
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className="mb-1.5 block font-plex text-[8px] tracking-[0.08em] text-[#8a8577]">BADGE TIER</span>
+                      <select value={badgeTierF} onChange={(e) => setBadgeTierF(e.target.value)} className="h-9 w-full rounded-[9px] border border-[#e5e2da] bg-[#faf9f5] px-2.5 text-[11px] outline-none focus:border-[#1a1918]">
+                        <option value="all">Any badge tier</option>
+                        {BADGE_TIERS.map((tier) => <option key={tier} value={tier}>{tier}</option>)}
+                      </select>
                     </label>
                   </div>
                   <div className="mt-3 flex items-center justify-between">
-                    <button type="button" onClick={() => { setQ(""); setPosF("ALL"); setEraF("all"); setMinOvr(0); }} className="cursor-pointer border-0 bg-transparent font-plex text-[8px] text-[#8a8577] underline underline-offset-4">CLEAR FILTERS</button>
+                    <button type="button" onClick={() => { setQ(""); setPosF("ALL"); setEraF("all"); setMinOvr(0); setMaxOvr(99); setRatingTierF("all"); setAttributeF("all"); setAttributeMin(80); setBadgeF("all"); setBadgeTierF("all"); }} className="cursor-pointer border-0 bg-transparent font-plex text-[8px] text-[#8a8577] underline underline-offset-4">CLEAR FILTERS</button>
                     <button type="button" onClick={() => setSortF((s) => s === "ovr" ? "az" : "ovr")} className="cursor-pointer border-0 bg-transparent font-plex text-[8px] text-[#57534a]">SORT · {sortF === "ovr" ? "OVR ↓" : "A–Z"}</button>
                   </div>
                 </div>
@@ -937,7 +1025,7 @@ function Whiteboard() {
                   )) : Array.from({ length: 8 }, (_, i) => <div key={i} className="h-12 animate-pulse border-b border-[#faf8f2] bg-[#f1efe8]" />)}
                   {players && pool.length === 0 && <div className="px-5 py-16 text-center font-plex text-[9px] tracking-[0.08em] text-[#b5b0a1]">NO MATCHES · TRY WIDENING THE FILTERS</div>}
                 </div>
-                <div className="border-t border-[#e5e2da] bg-[#faf9f5] px-5 py-3 font-plex text-[8px] text-[#8a8577]">TAP A PLAYER TO ADD · DUPLICATE 2K VERSIONS STAY SEPARATE BY ERA + TEAM</div>
+                <div className="border-t border-[#e5e2da] bg-[#faf9f5] px-5 py-3 font-plex text-[8px] text-[#8a8577]">DRAG ONTO A COURT SLOT · TAP TO AUTO-PLACE · VERSIONS STAY SEPARATE BY ERA + TEAM</div>
               </div>
             </div>
           )}
