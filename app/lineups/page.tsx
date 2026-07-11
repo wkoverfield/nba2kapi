@@ -55,6 +55,14 @@ type PoolPlayer = {
   };
 };
 
+type FullPlayerRecord = {
+  slug: string;
+  team: string;
+  teamType: TeamType;
+  attributes?: Record<string, number>;
+  badges?: { list?: { name: string; tier: string }[] };
+};
+
 const POSITIONS = ["PG", "SG", "SF", "PF", "C"] as const;
 
 // Court spot geometry from the design (viewBox 100 x 56), left half; the
@@ -419,6 +427,14 @@ function Whiteboard() {
   };
 
   const players = useQuery(api.players.getPlaygroundPlayers) as PoolPlayer[] | undefined;
+  const selectedSlugs = useMemo(
+    () => [...new Set([...yours, ...opps].filter((p): p is PoolPlayer => p !== null).map((p) => p.slug))],
+    [yours, opps]
+  );
+  const fullSelectedPlayers = useQuery(
+    api.players.getPlayersBySlugs,
+    selectedSlugs.length ? { slugs: selectedSlugs } : "skip"
+  ) as FullPlayerRecord[] | undefined;
 
   useEffect(() => {
     setHasApiKey(!!localStorage.getItem(API_KEY_STORAGE_KEY));
@@ -681,7 +697,24 @@ function Whiteboard() {
       },
     ];
   }, [yoursFilled, oppsFilled, hasOpp, yourOvr, oppOvr]);
-  const lineupReport = useMemo(() => buildLineupReport(yoursFilled), [yoursFilled]);
+  const reportPlayers = useMemo(() => {
+    if (yoursFilled.length === 0) return [];
+    if (!fullSelectedPlayers) return null;
+    return yoursFilled.map((player) => {
+      const full = fullSelectedPlayers.find((candidate) =>
+        candidate.slug === player.slug && candidate.teamType === player.teamType && candidate.team === player.team
+      ) ?? fullSelectedPlayers.find((candidate) => candidate.slug === player.slug && candidate.teamType === player.teamType);
+      return {
+        ...player,
+        attributes: full?.attributes ?? player.attributes ?? {},
+        badges: full?.badges?.list ?? player.badges ?? [],
+      };
+    });
+  }, [yoursFilled, fullSelectedPlayers]);
+  const lineupReport = useMemo(
+    () => reportPlayers ? buildLineupReport(reportPlayers) : null,
+    [reportPlayers]
+  );
 
   const duels = useMemo(
     () =>
@@ -961,7 +994,9 @@ function Whiteboard() {
               {!hasOpp && !lineupReport && (
                 <div className="mt-3 rounded-[14px] border border-[#e5e2da] bg-white px-[18px] py-4">
                   <div className="font-plex text-[8px] tracking-[0.12em] text-[#8a8577]">LINEUP REPORT</div>
-                  <div className="mt-1 text-[12px] text-[#57534a]">Drag in your first player to start the analysis.</div>
+                  <div className="mt-1 text-[12px] text-[#57534a]">
+                    {yoursFilled.length ? "Loading full attributes and badges…" : "Drag in your first player to start the analysis."}
+                  </div>
                 </div>
               )}
 
