@@ -226,10 +226,9 @@ export default function Home() {
               className={cn("mb-[34px] max-w-[460px] text-[18px] leading-[1.6] text-[#57534a]", RISE_IN)}
               style={{ animationDelay: "120ms" }}
             >
-              Access comprehensive player attributes, team rosters, and ratings data —{" "}
-              {stats?.totalPlayers ? `${stats.totalPlayers.toLocaleString()}` : "1,900+"} players
-              across current, classic, and all-time rosters, updated weekly. Build with real NBA 2K
-              data in minutes.
+              Access comprehensive attributes, ratings, and team rosters for the complete current,
+              classic, and all-time NBA 2K player pool, updated weekly. Build with real NBA 2K data
+              in minutes.
             </p>
             <div
               className={cn("mb-10 flex flex-wrap items-center gap-[18px]", RISE_IN)}
