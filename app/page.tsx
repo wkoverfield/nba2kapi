@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -24,19 +24,33 @@ const MONO_LABEL = "font-plex text-[12px] tracking-[0.14em] text-[#8a8577]";
 const PILL_CTA =
   "rounded-full bg-[#1a1918] text-[#faf9f5] no-underline font-semibold transition-[background,transform] duration-150 ease-out hover:bg-[#333] active:scale-[0.97] motion-reduce:transition-none cursor-pointer";
 
-const TEASER_URL =
-  "/api/players?position=guard&era=all&three_ball_gte=85&sort=overall:desc";
+type DemoPlayer = {
+  name: string;
+  slug: string;
+  team: string;
+  teamType: "curr" | "class" | "allt";
+  positions: string[];
+  overall: number;
+  playerImage: string | null;
+  threePointShot: number | null;
+};
 
-// Static teaser rows mirroring the design mock — the sentence-query itself is
-// interactive on /playground; the landing only demonstrates the idea.
-const TEASER_ROWS = [
-  { name: "Shai Gilgeous-Alexander", meta: "PG · OKC", era: "CURRENT", ovr: 98, nbaId: 1628983, init: "", tpt: 85 },
-  { name: "Luka Doncic", meta: "PG · LAL", era: "CURRENT", ovr: 97, nbaId: 1629029, init: "", tpt: 88 },
-  { name: "Stephen Curry", meta: "PG · GSW", era: "CURRENT", ovr: 96, nbaId: 201939, init: "", tpt: 99 },
-  { name: "Reggie Miller", meta: "SG · IND '95", era: "CLASSIC", ovr: 94, nbaId: 0, init: "RM", tpt: 95 },
-  { name: "Damian Lillard", meta: "PG · MIL", era: "CURRENT", ovr: 94, nbaId: 203081, init: "", tpt: 93 },
-  { name: "Ray Allen", meta: "SG · BOS '08", era: "CLASSIC", ovr: 93, nbaId: 0, init: "RA", tpt: 97 },
-];
+const DEMO_POSITIONS = [
+  { label: "guards", value: "guard", positions: ["PG", "SG"] },
+  { label: "wings", value: "wing", positions: ["SG", "SF"] },
+  { label: "bigs", value: "big", positions: ["PF", "C"] },
+] as const;
+const DEMO_ERAS = [
+  { label: "any era", value: "all" },
+  { label: "current", value: "curr" },
+  { label: "classic", value: "class" },
+  { label: "all-time", value: "allt" },
+] as const;
+const DEMO_THRESHOLDS = [80, 85, 90] as const;
+const DEMO_SORTS = [
+  { label: "overall", value: "overall" },
+  { label: "3PT", value: "three_ball" },
+] as const;
 
 const BOARD_MINI = [
   { rank: 1, name: "Thunder", avg: "82.4", w: "96%" },
@@ -59,10 +73,6 @@ const ENDPOINTS = [
   { path: "GET /api/players/slug/:slug", note: "one player, full detail", href: "/docs/endpoints/players" },
   { path: "GET /api/teams/:team/roster", note: "full team rosters", href: "/docs/endpoints/teams" },
 ];
-
-function headshotUrl(nbaId: number) {
-  return `https://cdn.nba.com/headshots/nba/latest/1040x760/${nbaId}.png`;
-}
 
 function weekOfYear(d: Date) {
   const start = new Date(d.getFullYear(), 0, 1);
@@ -108,12 +118,16 @@ function SlotChevron() {
   );
 }
 
-function QuerySlot({ children }: { children: React.ReactNode }) {
+function QuerySlot({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
   return (
-    <span className="inline-flex items-center gap-1.5 border-b-2 border-dashed border-[#d9d4c7] px-[3px] pb-px font-extrabold text-[#1a1918]">
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex cursor-pointer items-center gap-1.5 border-0 border-b-2 border-dashed border-[#d9d4c7] bg-transparent px-[3px] pb-px font-[inherit] font-extrabold text-[#1a1918] transition-colors hover:border-[#1a1918] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1a1918]"
+    >
       {children}
       <SlotChevron />
-    </span>
+    </button>
   );
 }
 
@@ -131,6 +145,10 @@ function SectionHeading({ eyebrow, title }: { eyebrow: string; title: string }) 
 export default function Home() {
   const [showRegistration, setShowRegistration] = useState(false);
   const [hasApiKey, setHasApiKey] = useState(false);
+  const [demoPosition, setDemoPosition] = useState(0);
+  const [demoEra, setDemoEra] = useState(0);
+  const [demoThreshold, setDemoThreshold] = useState(1);
+  const [demoSort, setDemoSort] = useState(0);
   const router = useRouter();
 
   const stats = useQuery(api.players.getStats);
@@ -139,6 +157,25 @@ export default function Home() {
     sortBy: "overall-desc",
     limit: 9,
   });
+  const demoPlayers = useQuery(api.players.getPlaygroundPlayers) as DemoPlayer[] | undefined;
+
+  const demoResults = useMemo(() => {
+    if (!demoPlayers) return [];
+    const position = DEMO_POSITIONS[demoPosition];
+    const era = DEMO_ERAS[demoEra].value;
+    const threshold = DEMO_THRESHOLDS[demoThreshold];
+    return demoPlayers
+      .filter((p) => position.positions.some((pos) => p.positions.includes(pos)))
+      .filter((p) => era === "all" || p.teamType === era)
+      .filter((p) => (p.threePointShot ?? -1) >= threshold)
+      .sort((a, b) =>
+        DEMO_SORTS[demoSort].value === "overall"
+          ? b.overall - a.overall || (b.threePointShot ?? 0) - (a.threePointShot ?? 0)
+          : (b.threePointShot ?? 0) - (a.threePointShot ?? 0) || b.overall - a.overall
+      );
+  }, [demoPlayers, demoPosition, demoEra, demoThreshold, demoSort]);
+
+  const teaserUrl = `/api/players?position=${DEMO_POSITIONS[demoPosition].value}&era=${DEMO_ERAS[demoEra].value}&three_ball_gte=${DEMO_THRESHOLDS[demoThreshold]}&sort=${DEMO_SORTS[demoSort].value}:desc`;
 
   useEffect(() => {
     setHasApiKey(!!localStorage.getItem(API_KEY_STORAGE_KEY));
@@ -160,7 +197,7 @@ export default function Home() {
 
   const copyTeaserUrl = () => {
     navigator.clipboard
-      .writeText(`https://api.nba2kapi.com${TEASER_URL}`)
+      .writeText(`https://api.nba2kapi.com${teaserUrl}`)
       .then(() => toast.success("Request URL copied"));
   };
 
@@ -336,15 +373,29 @@ export default function Home() {
               </Link>
             </div>
             <div className="font-display text-[clamp(19px,2.2vw,25px)] leading-[1.7] font-semibold tracking-[-0.02em] text-[#57534a]">
-              Show me <QuerySlot>guards</QuerySlot> from <QuerySlot>any era</QuerySlot> with{" "}
-              <QuerySlot>3PT ≥ 85</QuerySlot>, ranked by <QuerySlot>overall</QuerySlot>
+              Show me{" "}
+              <QuerySlot onClick={() => setDemoPosition((v) => (v + 1) % DEMO_POSITIONS.length)}>
+                {DEMO_POSITIONS[demoPosition].label}
+              </QuerySlot>{" "}
+              from{" "}
+              <QuerySlot onClick={() => setDemoEra((v) => (v + 1) % DEMO_ERAS.length)}>
+                {DEMO_ERAS[demoEra].label}
+              </QuerySlot>{" "}
+              with{" "}
+              <QuerySlot onClick={() => setDemoThreshold((v) => (v + 1) % DEMO_THRESHOLDS.length)}>
+                3PT ≥ {DEMO_THRESHOLDS[demoThreshold]}
+              </QuerySlot>
+              , ranked by{" "}
+              <QuerySlot onClick={() => setDemoSort((v) => (v + 1) % DEMO_SORTS.length)}>
+                {DEMO_SORTS[demoSort].label}
+              </QuerySlot>
             </div>
             <div className="mt-3.5 flex items-center overflow-hidden rounded-[10px] bg-[#1a1918]">
               <span className="shrink-0 bg-white/12 px-[13px] py-[9px] font-plex text-[9.5px] text-[#faf9f5]">
                 GET
               </span>
               <span className="flex-1 overflow-hidden px-3.5 font-plex text-[11px] text-ellipsis whitespace-nowrap text-[#faf9f5]">
-                {TEASER_URL}
+                {teaserUrl}
               </span>
               <button
                 type="button"
@@ -373,41 +424,40 @@ export default function Home() {
                     3PT ●
                   </span>
                 </div>
-                {TEASER_ROWS.map((r, i) => (
+                {demoResults.slice(0, 6).map((r, i) => (
                   <Link
-                    key={r.name}
-                    href="/playground"
+                    key={`${r.slug}:${r.teamType}:${r.team}`}
+                    href={`/players/${r.slug}?type=${r.teamType}&team=${encodeURIComponent(r.team)}`}
                     className="grid grid-cols-[34px_30px_minmax(150px,1fr)_90px_54px_56px] items-center gap-3 border-b border-[#faf8f2] px-5 py-2 text-[#1a1918] no-underline transition-colors duration-100 hover:bg-[#faf8f2]"
                   >
                     <span className="font-plex text-[10px] text-[#b5b0a1]">{i + 1}</span>
                     <div
-                      className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-[#f1efe8] bg-cover bg-top font-display text-[10px] font-extrabold text-[#57534a]"
-                      style={
-                        r.nbaId ? { backgroundImage: `url('${headshotUrl(r.nbaId)}')` } : undefined
-                      }
+                      className="relative flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-[#f1efe8] font-display text-[10px] font-extrabold text-[#57534a]"
                     >
-                      {r.init}
+                      {r.playerImage ? (
+                        <Image src={r.playerImage} alt="" fill sizes="28px" className="object-cover object-top" />
+                      ) : r.name.split(" ").map((part) => part[0]).join("").slice(0, 2)}
                     </div>
                     <div className="flex min-w-0 items-baseline gap-2">
                       <span className="overflow-hidden text-[13.5px] font-semibold text-ellipsis whitespace-nowrap">
                         {r.name}
                       </span>
                       <span className="whitespace-nowrap font-plex text-[8.5px] text-[#8a8577]">
-                        {r.meta}
+                        {r.positions.join("/")} · {getTeamAbbreviation(r.team)}
                       </span>
                     </div>
                     <span
                       className="font-plex text-[8px] font-bold tracking-[0.08em]"
-                      style={{ color: r.era === "CLASSIC" ? "#9a6700" : "#8a8577" }}
+                      style={{ color: r.teamType === "curr" ? "#8a8577" : "#9a6700" }}
                     >
-                      {r.era}
+                      {r.teamType === "curr" ? "CURRENT" : r.teamType === "class" ? "CLASSIC" : "ALL-TIME"}
                     </span>
-                    <OvrChip ovr={r.ovr} size="sm" />
+                    <OvrChip ovr={r.overall} size="sm" />
                     <span
                       className="rounded-[5px] bg-[#faf7ee] py-[3px] text-center text-[12.5px] font-bold tabular-nums"
-                      style={{ color: getAttributeColor(r.tpt) }}
+                      style={{ color: getAttributeColor(r.threePointShot ?? 0) }}
                     >
-                      {r.tpt}
+                      {r.threePointShot ?? "—"}
                     </span>
                   </Link>
                 ))}
@@ -415,8 +465,7 @@ export default function Home() {
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2 bg-[#faf9f5] px-5 py-[9px]">
               <span className="font-plex text-[8.5px] text-[#b5b0a1]">
-                <b className="text-[#1a1918]">247 MATCH</b> · SHOWING 6 · CURRENT + CLASSIC IN ONE
-                CALL
+                <b className="text-[#1a1918]">{demoResults.length} MATCH</b> · SHOWING {Math.min(6, demoResults.length)} · LIVE {CURRENT_GAME_VERSION} DATA
               </span>
               <span className="font-plex text-[8.5px] text-[#b5b0a1]">● = QUERIED COLUMN</span>
             </div>

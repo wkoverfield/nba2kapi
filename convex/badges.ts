@@ -344,7 +344,7 @@ export const syncBadgesFromPlayers = internalMutation({
 
     const seenBadges = new Map<
       string,
-      { name: string; category: string; imageUrl?: string }
+      { name: string; category: string; description?: string; imageUrl?: string }
     >();
 
     // Collect unique badges from all players
@@ -353,10 +353,13 @@ export const syncBadgesFromPlayers = internalMutation({
       for (const badge of badgeList) {
         const slug = slugify(badge.name);
         if (!seenBadges.has(slug)) {
-          seenBadges.set(slug, {
+          const badgeRecord: { name: string; category: string; description?: string; imageUrl?: string } = {
             name: badge.name,
             category: badge.category || "Unknown",
-          });
+          };
+          if (badge.description) badgeRecord.description = badge.description;
+          if (badge.imageUrl) badgeRecord.imageUrl = badge.imageUrl;
+          seenBadges.set(slug, badgeRecord);
         }
       }
     }
@@ -374,18 +377,24 @@ export const syncBadgesFromPlayers = internalMutation({
       if (existing) {
         await ctx.db.patch(existing._id, {
           category: badge.category,
+          description: badge.description ?? existing.description,
+          imageUrl: badge.imageUrl ?? existing.imageUrl,
+          gameVersion: CURRENT_GAME_VERSION,
           lastUpdated: now,
         });
         updated++;
       } else {
-        await ctx.db.insert("badges", {
+        const newBadge = {
           name: badge.name,
           slug,
           category: badge.category,
           gameVersion: CURRENT_GAME_VERSION,
           lastUpdated: now,
           createdAt: now,
-        });
+          ...(badge.description ? { description: badge.description } : {}),
+          ...(badge.imageUrl ? { imageUrl: badge.imageUrl } : {}),
+        };
+        await ctx.db.insert("badges", newBadge);
         inserted++;
       }
     }

@@ -119,9 +119,13 @@ export const getDossier = query({
       return {
         key: cat,
         score: score === null ? null : Math.round(score),
+        avg: values.length === 0 ? null : Math.round(values.reduce((sum, n) => sum + n, 0) / values.length),
         pct: score === null ? null : percentile(values, score),
       };
     });
+    const overallAvg = cohort.length
+      ? Math.round(cohort.reduce((sum, p) => sum + p.overall, 0) / cohort.length)
+      : null;
     const overallPct = percentile(
       cohort.map((p) => p.overall),
       player.overall
@@ -175,7 +179,7 @@ export const getDossier = query({
       .withIndex("by_playerId", (q) => q.eq("playerId", player._id))
       .collect();
     const badgeDocs = await Promise.all(badgeLinks.map((l) => ctx.db.get(l.badgeId)));
-    const badges = badgeLinks
+    const normalizedBadges = badgeLinks
       .map((l, i) => {
         const b = badgeDocs[i];
         return b
@@ -189,6 +193,19 @@ export const getDossier = query({
           : null;
       })
       .filter((b): b is NonNullable<typeof b> => b !== null);
+    // The scraper's source of truth is the embedded badge list on each player.
+    // Use it immediately when the normalized badge index has not been rebuilt
+    // yet, so the dossier never lies with "0 badges" after a fresh scrape.
+    const rawBadges = normalizedBadges.length
+      ? normalizedBadges
+      : (player.badges?.list ?? []).map((b) => ({
+          name: b.name,
+          slug: b.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+          tier: b.tier,
+          imageUrl: b.imageUrl ?? null,
+          description: b.description ?? null,
+        }));
+    const badges = [...new Map(rawBadges.map((b) => [`${b.slug}:${b.tier}`, b])).values()];
 
     return {
       player: {
@@ -213,6 +230,7 @@ export const getDossier = query({
       attrStats,
       categories,
       overallPct,
+      overallAvg,
       similar,
       history,
       seasonMovement,
