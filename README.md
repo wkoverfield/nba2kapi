@@ -563,8 +563,15 @@ MIT License - see LICENSE file for details
 
 ## Analytics
 
-**Feb 2026 baseline:** 48 API keys, 1,842 requests.
-**Jun 2026:** 168 API keys (146 active), ~45,700 requests — ~25× request growth in four months.
+**July 11, 2026 snapshot:**
+
+- 188 API keys issued; 162 active
+- 48,158 authenticated API requests lifetime
+- 11,379 authenticated requests in the last 30 days; 1,845 in the last 7 days
+- 98.8% of authenticated requests returned 2xx responses in the last 7 days
+- 732 site views from 129 unique visitors in the last 7 days
+
+Authenticated-request totals come from per-key counters and do not include traffic to the unauthenticated public endpoint. Site traffic is measured separately.
 
 ## Disclaimer
 
