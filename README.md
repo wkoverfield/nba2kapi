@@ -1,15 +1,20 @@
-# NBA2KAPI
+# NBA 2K API
 
-A complete REST API and web application for accessing NBA 2K player ratings and team rosters. Includes automated web scraping, a serverless backend, and a modern Next.js frontend.
+A complete REST API and web application for exploring NBA 2K players, attributes, badges, and rosters across current, classic, and all-time teams.
+
+**Live site:** [nba2kapi.com](https://nba2kapi.com) · **Documentation:** [nba2kapi.com/docs](https://nba2kapi.com/docs)
 
 ## Overview
 
-This project provides:
-- **REST API**: Access NBA 2K player data with authentication and rate limiting
-- **Web Dashboard**: Manage API keys and monitor usage
-- **Live Search**: Interactive player search with real-time results
-- **Automated Scraper**: Playwright-based scraper for 2kratings.com
-- **Serverless Backend**: Built on Convex for real-time data and HTTP actions
+NBA 2K API serves one maintained dataset through several focused tools:
+
+- **REST API** — authenticated, rate-limited access to players, attributes, badges, and team rosters
+- **Playground** — build readable player queries and inspect the exact API request
+- **Rosters** — browse every current, classic, and all-time team and its depth chart
+- **Lineup Builder** — drag players onto a regulation court, analyze one five, or compare a matchup
+- **Player Dossiers and Compare** — inspect ratings, physicals, positional context, badges, and side-by-side attribute breakdowns
+- **Badge Explorer** — browse badge definitions and tiers, then open matching players in the Playground
+- **Automated Scraper** — refresh the underlying 2K ratings data on a schedule
 
 ## Features
 
@@ -17,7 +22,7 @@ This project provides:
 - Comprehensive player data (40+ attributes, badges, physical stats)
 - Team roster queries (current, classic, all-time)
 - Player search by name
-- Position and rating filters
+- Position, rating, attribute, badge, and badge-tier filters
 - API key authentication
 - Rate limiting (100 requests/hour per key)
 - ETag support for caching
@@ -35,8 +40,11 @@ This project provides:
 - API key management dashboard
 - Live usage statistics
 - Recent request logs
-- Interactive player search demo
-- Dark mode support
+- Sentence-driven API Playground
+- Searchable roster and player pages
+- Single-lineup analysis and two-lineup matchup comparison
+- In-depth player comparison with attribute, physical, radar, and badge views
+- Searchable badge explorer with tier-specific player handoffs
 - Responsive design
 
 ## Tech Stack
@@ -67,6 +75,10 @@ curl 'https://api.nba2kapi.com/api/teams/Los%20Angeles%20Lakers/roster' \
 
 # Get all players (paginated)
 curl 'https://api.nba2kapi.com/api/players?limit=50&teamType=curr' \
+  -H 'X-API-Key: your_api_key_here'
+
+# Find Gold Deadeye players, highest overall first
+curl 'https://api.nba2kapi.com/api/players?badge=deadeye&badgeTier=Gold&sort=overall:desc' \
   -H 'X-API-Key: your_api_key_here'
 
 # Get database stats (no auth required)
@@ -200,7 +212,7 @@ no API key required — intended for browser apps that can't safely embed a key
 - **Rate limit:** 60 requests/minute per IP (separate from API-key limits)
 - **CORS:** enabled for allowlisted browser origins
 - **Cache:** 1 hour (`Cache-Control: public, max-age=3600`), supports `ETag` / `If-None-Match` → 304
-- **Query params:** identical to `/api/players` (`teamType`, `team`, `minRating`, `maxRating`, `position`, `cursor`, `limit`)
+- **Query params:** `teamType`, `team`, `minRating`, `maxRating`, `position`, `cursor`, and `limit`
 
 **Example:**
 ```bash
@@ -220,6 +232,9 @@ Get all players with optional filters.
 - `position` (string): Filter by position (PG, SG, SF, PF, C)
 - `minRating` (number): Minimum overall rating
 - `maxRating` (number): Maximum overall rating
+- `badge` (string): Filter by normalized badge slug (for example, `deadeye`)
+- `badgeTier` (string): Optionally require an exact tier (`Legendary`, `Hall of Fame`, `Gold`, `Silver`, or `Bronze`)
+- `sort` (string): Sort by overall, name, or an attribute using `<field>:<asc|desc>` (for example, `overall:desc` or `three_ball:desc`)
 - `limit` (number): Results per page (default: 50, max: 100)
 - `cursor` (string): Pagination cursor from previous response
 
@@ -227,7 +242,7 @@ Get all players with optional filters.
 
 **Example:**
 ```bash
-curl 'https://api.nba2kapi.com/api/players?position=PG&minRating=85' \
+curl 'https://api.nba2kapi.com/api/players?position=PG&minRating=85&badge=deadeye&badgeTier=Gold' \
   -H 'X-API-Key: your_api_key_here'
 ```
 
@@ -315,6 +330,20 @@ curl 'https://api.nba2kapi.com/api/players/j97abc123...' \
   -H 'X-API-Key: your_api_key_here'
 ```
 
+#### Badge endpoints
+
+Browse normalized badge metadata or retrieve the players who hold a badge. All badge endpoints require an API key.
+
+- `GET /api/badges` — list badges; optionally filter by `category` or `gameVersion`
+- `GET /api/badges/categories` — list badge categories with counts
+- `GET /api/badges/:slug` — get one badge by normalized slug
+- `GET /api/badges/:slug/players` — get matching players; optionally filter by `tier` and set `limit` (max 100)
+
+```bash
+curl 'https://api.nba2kapi.com/api/badges/deadeye/players?tier=Gold&limit=50' \
+  -H 'X-API-Key: your_api_key_here'
+```
+
 #### GET /api/teams/:teamName/roster
 
 Get a team roster by team name.
@@ -386,14 +415,21 @@ Health check endpoint for service monitoring (no auth required).
 │   ├── schema.ts             # Database schema
 │   ├── players.ts            # Player queries
 │   ├── teams.ts              # Team queries
+│   ├── badges.ts             # Badge directory and player lookups
+│   ├── dossier.ts            # Player detail aggregates
 │   ├── apiKeys.ts            # API key management
 │   └── http.ts               # HTTP API endpoints
 │
 ├── app/                      # Next.js App Router
 │   ├── page.tsx             # Landing page
-│   ├── dashboard/           # Dashboard
+│   ├── dashboard/           # API-key dashboard
 │   ├── docs/                # Documentation
-│   └── player/              # Player pages
+│   ├── playground/          # Interactive query builder
+│   ├── teams/               # Rosters and depth charts
+│   ├── lineups/             # Lineup builder and analysis
+│   ├── compare/             # Player comparison
+│   ├── badges/              # Badge explorer and detail pages
+│   └── players/             # Player dossiers
 │
 ├── components/              # React components
 │   ├── ui/                 # UI primitives (shadcn/ui)
@@ -421,7 +457,7 @@ Health check endpoint for service monitoring (no auth required).
 
 ### Team Types
 
-- `curr` - Current NBA teams (2024-25 season)
+- `curr` - Current NBA teams for the active NBA 2K release
 - `class` - Classic NBA teams (historical)
 - `allt` - All-Time NBA teams (legends)
 
@@ -500,8 +536,10 @@ Contributions are welcome! Please:
 ## Roadmap
 
 - [ ] Historical rating tracking (track changes over time)
-- [ ] Player comparison tool
-- [ ] Advanced search filters (archetype, badges)
+- [x] Player comparison tool
+- [x] Badge explorer and badge-tier player filtering
+- [x] Single-lineup analysis and two-lineup matchup mode
+- [ ] Additional advanced filters, including archetype
 - [ ] GraphQL API
 - [ ] WebSocket support for real-time updates
 - [ ] Team analytics and stats
@@ -525,8 +563,9 @@ MIT License - see LICENSE file for details
 
 ## Analytics
 
-**Feb 2026 baseline:** 48 API keys, 1,842 requests.
-**Jun 2026:** 168 API keys (146 active), ~45,700 requests — ~25× request growth in four months.
+- **Feb 2026:** 48 API keys · 1,842 cumulative requests
+- **Jun 2026:** 168 API keys · 45,700+ cumulative requests
+- **Jul 2026:** 188 API keys · 48,200+ cumulative requests
 
 ## Disclaimer
 
