@@ -209,6 +209,8 @@ export const VALID_PARAMS_BY_ENDPOINT: Record<string, Set<string>> = {
     "minRating",
     "maxRating",
     "position",
+    "badge",
+    "badgeTier",
     "sort",
     "fields",
     "cursor",

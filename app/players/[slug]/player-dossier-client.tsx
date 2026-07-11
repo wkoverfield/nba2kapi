@@ -473,7 +473,7 @@ function PlayerDossier({
               </span>
               <div className="flex gap-2">
                 <Link
-                  href={`/playground?era=${era === "curr" ? "curr" : era === "class" ? "class" : "all"}`}
+                  href={`/compare?player1=${player!.slug}&type1=${era}&team1=${encodeURIComponent(player!.team)}`}
                   className="rounded-full border border-[#e5e2da] bg-white px-3 py-1.5 text-[11.5px] font-semibold text-[#1a1918] no-underline transition-[border-color,transform] duration-150 hover:border-[#1a1918] active:scale-[0.97] motion-reduce:transition-none"
                 >
                   Compare

@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { label: "Playground", href: "/playground" },
   { label: "Teams", href: "/teams" },
   { label: "Lineups", href: "/lineups" },
+  { label: "Badges", href: "/badges" },
   { label: "Docs", href: "/docs" },
 ];
 
@@ -117,14 +118,14 @@ export function TopNav({
 
       <nav
         aria-label="Main navigation"
-        className="flex items-center gap-1 rounded-full border border-[#e5e2da] bg-white p-[5px]"
+        className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-[#e5e2da] bg-white p-[5px] sm:gap-1"
       >
         {NAV_LINKS.map((link) => (
           <Link
             key={link.href}
             href={link.href}
             className={cn(
-              "rounded-full px-4 py-[7px] text-[13.5px] font-medium text-[#1a1918] no-underline transition-[background,transform] duration-150 ease-out hover:bg-[#f1efe8] active:scale-[0.97] motion-reduce:transition-none",
+              "shrink-0 rounded-full px-2.5 py-[7px] text-[12px] font-medium text-[#1a1918] no-underline transition-[background,transform] duration-150 ease-out hover:bg-[#f1efe8] active:scale-[0.97] sm:px-4 sm:text-[13.5px] motion-reduce:transition-none",
               pathname.startsWith(link.href) && "bg-[#f1efe8]"
             )}
           >

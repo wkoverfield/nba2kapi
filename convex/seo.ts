@@ -36,6 +36,9 @@ export const getIndexableEntities = query({
       teams: [...teamByKey.values()].sort(
         (a, b) => a.teamType.localeCompare(b.teamType) || a.slug.localeCompare(b.slug)
       ),
+      badges: (await ctx.db.query("badges").collect())
+        .map((badge) => ({ slug: badge.slug }))
+        .sort((a, b) => a.slug.localeCompare(b.slug)),
     };
   },
 });

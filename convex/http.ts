@@ -699,6 +699,8 @@ app.get("/api/players",
     minRating: z.coerce.number().min(0).max(99).optional(),
     maxRating: z.coerce.number().min(0).max(99).optional(),
     position: z.string().optional(),
+    badge: z.string().max(80).optional(),
+    badgeTier: z.string().max(40).optional(),
     sort: z.string().optional(),
     fields: z.string().optional(),
     cursor: z.string().optional(),
@@ -736,6 +738,8 @@ app.get("/api/players",
         const group = POSITION_GROUPS[params.position.toLowerCase()];
         queryArgs.positions = group ?? [params.position.toUpperCase()];
       }
+      if (params.badge) queryArgs.badgeSlug = params.badge;
+      if (params.badgeTier) queryArgs.badgeTier = params.badgeTier;
 
       // Per-attribute range filters: <alias>_gte / <alias>_lte
       const attributeFilters = new Map<string, { key: string; gte?: number; lte?: number }>();

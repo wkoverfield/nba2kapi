@@ -63,6 +63,8 @@ type QueryState = {
   sortDir: "asc" | "desc";
   team: string | null;
   search: string | null;
+  badge: string | null;
+  badgeTier: string | null;
   page: number;
 };
 
@@ -74,28 +76,30 @@ const SHOWCASE: QueryState = {
   sortDir: "desc",
   team: null,
   search: null,
+  badge: null,
+  badgeTier: null,
   page: 0,
 };
 
 const SAVED_QUERIES: { label: string; state: QueryState }[] = [
   {
     label: "Lockdown wings, any era",
-    state: { pos: "wing", era: "all", filter: { key: "perimeterDefense", gte: 85 }, sortKey: "perimeterDefense", sortDir: "desc", team: null, search: null, page: 0 },
+    state: { pos: "wing", era: "all", filter: { key: "perimeterDefense", gte: 85 }, sortKey: "perimeterDefense", sortDir: "desc", team: null, search: null, badge: null, badgeTier: null, page: 0 },
   },
   {
     label: "Bigs who shoot 80+",
-    state: { pos: "big", era: "all", filter: { key: "threePointShot", gte: 80 }, sortKey: "threePointShot", sortDir: "desc", team: null, search: null, page: 0 },
+    state: { pos: "big", era: "all", filter: { key: "threePointShot", gte: 80 }, sortKey: "threePointShot", sortDir: "desc", team: null, search: null, badge: null, badgeTier: null, page: 0 },
   },
   {
     label: "'96 Bulls full roster",
-    state: { pos: "any", era: "class", filter: null, sortKey: "overall", sortDir: "desc", team: "1995-96 Chicago Bulls", search: null, page: 0 },
+    state: { pos: "any", era: "class", filter: null, sortKey: "overall", sortDir: "desc", team: "1995-96 Chicago Bulls", search: null, badge: null, badgeTier: null, page: 0 },
   },
 ];
 
 // ---- URL <-> state ----------------------------------------------------------
 
 function stateFromParams(sp: URLSearchParams): QueryState {
-  const known = ["position", "era", "sort", "team", "search", "cursor"];
+  const known = ["position", "era", "sort", "team", "search", "badge", "badgeTier", "cursor"];
   const hasGte = [...sp.keys()].some(
     (k) => k.endsWith("_gte") && ATTRIBUTE_PARAM_ALIASES[k.slice(0, -4)]
   );
@@ -137,6 +141,8 @@ function stateFromParams(sp: URLSearchParams): QueryState {
     sortDir: sortDirRaw === "asc" ? "asc" : "desc",
     team: sp.get("team"),
     search: sp.get("search"),
+    badge: sp.get("badge"),
+    badgeTier: sp.get("badgeTier"),
     page: Number.isFinite(cursor) && cursor > 0 ? Math.floor(cursor / PAGE_SIZE) : 0,
   };
 }
@@ -149,6 +155,8 @@ function paramsFromState(s: QueryState): string {
     params.set(`${CAMEL_TO_SNAKE[s.filter.key] ?? s.filter.key}_gte`, String(s.filter.gte));
   if (s.team) params.set("team", s.team);
   if (s.search) params.set("search", s.search);
+  if (s.badge) params.set("badge", s.badge);
+  if (s.badge && s.badgeTier) params.set("badgeTier", s.badgeTier);
   params.set(
     "sort",
     `${s.sortKey === "overall" ? "overall" : (CAMEL_TO_SNAKE[s.sortKey] ?? s.sortKey)}:${s.sortDir}`
@@ -235,6 +243,7 @@ function Playground() {
   const [copied, setCopied] = useState(false);
   const [hasApiKey, setHasApiKey] = useState(false);
   const [responseOpen, setResponseOpen] = useState(false);
+  const badges = useQuery(api.badges.getBadgeDirectory, {});
 
   useEffect(() => {
     setHasApiKey(!!localStorage.getItem(API_KEY_STORAGE_KEY));
@@ -272,6 +281,8 @@ function Playground() {
       sortByAttribute: q.sortKey !== "overall" ? { key: q.sortKey, dir: q.sortDir } : undefined,
       search: q.search ?? undefined,
       teams: q.team ? [q.team] : undefined,
+      badgeSlug: q.badge ?? undefined,
+      badgeTier: q.badgeTier ?? undefined,
       limit: PAGE_SIZE,
       offset: q.page * PAGE_SIZE,
     }),
@@ -379,6 +390,7 @@ function Playground() {
   };
 
   const first = data?.players[0];
+  const selectedBadge = badges?.find((badge) => badge.slug === q.badge);
 
   return (
     <div className="min-h-screen bg-[#faf9f5] font-body text-[#1a1918]">
@@ -487,6 +499,43 @@ function Playground() {
                 </DropdownMenu.Content>
               </DropdownMenu.Portal>
             </DropdownMenu.Root>
+            {" "}and{" "}
+            <DropdownMenu.Root>
+              <SlotTrigger>{selectedBadge ? selectedBadge.name : "any badge"}</SlotTrigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content className={cn(MENU_CONTENT, "min-w-[250px]")} sideOffset={6} align="start">
+                  <DropdownMenu.Item className={MENU_ITEM} onSelect={() => set({ badge: null, badgeTier: null })}>
+                    any badge <Check on={!q.badge} />
+                  </DropdownMenu.Item>
+                  {badges?.map((badge) => (
+                    <DropdownMenu.Item key={badge.slug} className={MENU_ITEM} onSelect={() => set({ badge: badge.slug, badgeTier: null })}>
+                      <span>{badge.name} <span className="font-plex text-[8px] text-[#b5b0a1]">{badge.playerCount}</span></span>
+                      <Check on={q.badge === badge.slug} />
+                    </DropdownMenu.Item>
+                  ))}
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
+            {q.badge && (
+              <>
+                {" "}at{" "}
+                <DropdownMenu.Root>
+                  <SlotTrigger>{q.badgeTier ?? "any tier"}</SlotTrigger>
+                  <DropdownMenu.Portal>
+                    <DropdownMenu.Content className={MENU_CONTENT} sideOffset={6} align="start">
+                      <DropdownMenu.Item className={MENU_ITEM} onSelect={() => set({ badgeTier: null })}>
+                        any tier <Check on={!q.badgeTier} />
+                      </DropdownMenu.Item>
+                      {["Legendary", "Hall of Fame", "Gold", "Silver", "Bronze"].map((tier) => (
+                        <DropdownMenu.Item key={tier} className={MENU_ITEM} onSelect={() => set({ badgeTier: tier })}>
+                          {tier} <Check on={q.badgeTier === tier} />
+                        </DropdownMenu.Item>
+                      ))}
+                    </DropdownMenu.Content>
+                  </DropdownMenu.Portal>
+                </DropdownMenu.Root>
+              </>
+            )}
             , ranked by{" "}
             <DropdownMenu.Root>
               <SlotTrigger>{sortLabel(q.sortKey)}</SlotTrigger>
@@ -547,6 +596,15 @@ function Playground() {
             className="cursor-pointer rounded-full border border-[#e5e2da] bg-white px-2.5 py-0.5 font-plex text-[9px] tracking-[0.08em] text-[#57534a] hover:border-[#1a1918]"
           >
             NAME: &quot;{q.search.toUpperCase()}&quot; ✕
+          </button>
+        )}
+        {q.badge && (
+          <button
+            type="button"
+            onClick={() => set({ badge: null, badgeTier: null })}
+            className="cursor-pointer rounded-full border border-[#e5e2da] bg-white px-2.5 py-0.5 font-plex text-[9px] tracking-[0.08em] text-[#57534a] hover:border-[#1a1918]"
+          >
+            BADGE: {(selectedBadge?.name ?? q.badge).toUpperCase()}{q.badgeTier ? ` · ${q.badgeTier.toUpperCase()}` : ""} ✕
           </button>
         )}
         <span className="mx-1 hidden h-4 w-px bg-[#e5e2da] sm:block" />
