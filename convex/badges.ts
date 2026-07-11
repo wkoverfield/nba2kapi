@@ -451,3 +451,61 @@ export const linkPlayerBadgesFromData = internalMutation({
     return { playersProcessed, totalLinks };
   },
 });
+
+/**
+ * Bounded version of linkPlayerBadgesFromData for production maintenance.
+ * The full-table mutation can exceed Convex's one-second mutation limit once
+ * the dataset grows past ~1,700 players. Call repeatedly with continueCursor
+ * until isDone is true.
+ */
+export const linkPlayerBadgesBatch = internalMutation({
+  args: {
+    paginationOpts: v.object({
+      numItems: v.number(),
+      cursor: v.union(v.string(), v.null()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const page = await ctx.db.query("players").paginate(args.paginationOpts);
+    let totalLinks = 0;
+    let playersProcessed = 0;
+
+    for (const player of page.page) {
+      const badgeList = player.badges?.list ?? [];
+      if (badgeList.length === 0) continue;
+
+      const existing = await ctx.db
+        .query("playerBadges")
+        .withIndex("by_playerId", (q) => q.eq("playerId", player._id))
+        .collect();
+      for (const link of existing) await ctx.db.delete(link._id);
+
+      const seen = new Set<string>();
+      for (const badge of badgeList) {
+        const slug = slugify(badge.name);
+        const key = `${slug}:${badge.tier}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const badgeDoc = await ctx.db
+          .query("badges")
+          .withIndex("by_slug", (q) => q.eq("slug", slug))
+          .first();
+        if (!badgeDoc) continue;
+        await ctx.db.insert("playerBadges", {
+          playerId: player._id,
+          badgeId: badgeDoc._id,
+          tier: badge.tier,
+        });
+        totalLinks++;
+      }
+      playersProcessed++;
+    }
+
+    return {
+      continueCursor: page.continueCursor,
+      isDone: page.isDone,
+      playersProcessed,
+      totalLinks,
+    };
+  },
+});
