@@ -260,7 +260,8 @@ function PlayerDossier() {
   const badgeShelf = useMemo(() => {
     if (!dossier) return [];
     const byTier = new Map<string, (typeof dossier.badges)[number][]>();
-    for (const b of dossier.badges) {
+    const uniqueBadges = [...new Map(dossier.badges.map((b) => [`${b.slug}:${b.tier}`, b])).values()];
+    for (const b of uniqueBadges) {
       if (!byTier.has(b.tier)) byTier.set(b.tier, []);
       byTier.get(b.tier)!.push(b);
     }
