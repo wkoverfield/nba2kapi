@@ -220,9 +220,11 @@ function PlayerDossier() {
   const radar = useMemo(() => {
     if (!dossier || !player) return null;
     const byKey = Object.fromEntries(dossier.categories.map((c) => [c.key, c.score]));
+    const avgByKey = Object.fromEntries(dossier.categories.map((c) => [c.key, c.avg]));
     const axes = RADAR_AXES.map((a) => ({
       ...a,
       value: a.key === "overall" ? player.overall : (byKey[a.key] as number | null),
+      average: a.key === "overall" ? dossier.overallAvg : (avgByKey[a.key] as number | null),
     }));
     const cx = 105;
     const cy = 92;
@@ -239,6 +241,8 @@ function PlayerDossier() {
     );
     const dots = axes.map((a, i) => pt(i, ((a.value ?? 0) / 99) * r));
     const path = dots.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ") + " Z";
+    const avgDots = axes.map((a, i) => pt(i, ((a.average ?? 0) / 99) * r));
+    const avgPath = avgDots.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ") + " Z";
     const ticks = axes.map((a, i) => {
       const p = pt(i, r + 14);
       const dx = p.x - cx;
@@ -250,7 +254,7 @@ function PlayerDossier() {
         anchor: (Math.abs(dx) < 8 ? "middle" : dx > 0 ? "start" : "end") as "middle" | "start" | "end",
       };
     });
-    return { rings, dots, path, ticks };
+    return { rings, dots, path, avgPath, ticks };
   }, [dossier, player]);
 
   const badgeShelf = useMemo(() => {
@@ -344,7 +348,7 @@ function PlayerDossier() {
         </div>
 
         {/* Tier card + right column */}
-        <div className="mt-[18px] grid grid-cols-[repeat(auto-fit,minmax(min(100%,320px),1fr))] items-stretch gap-[22px]">
+        <div className="mt-[18px] grid items-stretch gap-[22px] lg:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]">
           {/* MyTeam tier card */}
           <div className="flex max-w-[420px] flex-col gap-2.5">
           <div
@@ -632,13 +636,20 @@ function PlayerDossier() {
 
           {/* Category radar */}
           <div className="rounded-[14px] border border-[#e5e2da] bg-white px-[18px] py-3.5">
-            <div className={cn(CARD_LABEL, "mb-1")}>CATEGORY RADAR</div>
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <div className={CARD_LABEL}>CATEGORY RADAR</div>
+              <div className="flex items-center gap-3 font-plex text-[7.5px] text-[#8a8577]">
+                <span className="inline-flex items-center gap-1"><i className="h-0.5 w-3 bg-[#1a1918]" />PLAYER</span>
+                <span className="inline-flex items-center gap-1"><i className="h-0.5 w-3 border-t border-dashed border-[#b98404]" />{dossier?.primaryPosition ?? "POS"} AVG</span>
+              </div>
+            </div>
             <div className="flex justify-center">
               {radar ? (
                 <svg width="210" height="184" viewBox="0 0 210 184" className="overflow-visible">
                   {radar.rings.map((ring) => (
                     <polygon key={ring} points={ring} fill="none" stroke="#e5e2da" strokeWidth="1" />
                   ))}
+                  <path d={radar.avgPath} fill="#d3a21d" fillOpacity="0.06" stroke="#b98404" strokeWidth="1.5" strokeDasharray="4 4" />
                   <path d={radar.path} fill="#1a1918" fillOpacity="0.08" stroke="#1a1918" strokeWidth="2" />
                   {radar.dots.map((d, i) => (
                     <circle key={i} cx={d.x} cy={d.y} r="2.5" fill="#1a1918" />

@@ -14,7 +14,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { Search } from "lucide-react";
+import { Search, SlidersHorizontal, UsersRound, X } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { TopNav } from "@/components/chrome/top-nav";
@@ -122,6 +122,7 @@ function CourtSlot({
   index,
   spot,
   player,
+  compareMode,
   pulsing,
   onRemove,
 }: {
@@ -129,10 +130,11 @@ function CourtSlot({
   index: number;
   spot: { pos: string; x: number; y: number };
   player: PoolPlayer | null;
+  compareMode: boolean;
   pulsing: boolean;
   onRemove: () => void;
 }) {
-  const x = side === "yours" ? spot.x : 100 - spot.x;
+  const x = compareMode ? (side === "yours" ? spot.x : 100 - spot.x) : spot.x + 25;
   const y = (spot.y / 56) * 100;
   const { setNodeRef, isOver } = useDroppable({ id: `slot:${side}:${index}` });
   const drag = useDraggable({
@@ -243,6 +245,11 @@ function Whiteboard() {
   const [q, setQ] = useState("");
   const [posF, setPosF] = useState("ALL");
   const [sortF, setSortF] = useState<"ovr" | "az">("ovr");
+  const [eraF, setEraF] = useState<"all" | TeamType>("all");
+  const [minOvr, setMinOvr] = useState(0);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerSide, setPickerSide] = useState<Side>("yours");
+  const [matchupMode, setMatchupMode] = useState(false);
   const [dragging, setDragging] = useState<PoolPlayer | null>(null);
   // Browsers synthesize a click after pointerup, so a completed drag would
   // also fire the tap handlers (remove / tap-place). Swallow clicks that
@@ -286,7 +293,10 @@ function Whiteboard() {
       return slots;
     };
     if (state.lineup1.length) setYours(fill(state.lineup1));
-    if (state.lineup2?.length) setOpps(fill(state.lineup2));
+    if (state.lineup2?.length) {
+      setOpps(fill(state.lineup2));
+      setMatchupMode(true);
+    }
     setHydrated(true);
   }, [players, hydrated, searchParams]);
 
@@ -299,14 +309,14 @@ function Whiteboard() {
         .map((p) => ({ slug: p.slug, teamType: p.teamType, team: p.team }));
     const params = lineupToURLParams({
       lineup1: toEntries(yours),
-      lineup2: toEntries(opps),
+      lineup2: matchupMode ? toEntries(opps) : [],
       filterTeamType: "curr",
     });
     const next = params.toString();
     if (next !== searchParams.toString()) {
       router.replace(next ? `/lineups?${next}` : "/lineups", { scroll: false });
     }
-  }, [yours, opps, hydrated, router, searchParams]);
+  }, [yours, opps, matchupMode, hydrated, router, searchParams]);
 
   const yoursFilled = yours.filter((p): p is PoolPlayer => p !== null);
   const oppsFilled = opps.filter((p): p is PoolPlayer => p !== null);
@@ -329,11 +339,13 @@ function Whiteboard() {
       .filter(
         (p) =>
           (posF === "ALL" || p.positions.includes(posF)) &&
+          (eraF === "all" || p.teamType === eraF) &&
+          p.overall >= minOvr &&
           (!query || p.name.toLowerCase().includes(query))
       )
       .sort((a, b) => (sortF === "ovr" ? b.overall - a.overall : a.name.localeCompare(b.name)))
       .slice(0, POOL_LIMIT);
-  }, [players, q, posF, sortF]);
+  }, [players, q, posF, eraF, minOvr, sortF]);
 
   const place = (side: Side, index: number, p: PoolPlayer) => {
     const setter = side === "yours" ? setYours : setOpps;
@@ -353,12 +365,22 @@ function Whiteboard() {
     });
   };
 
-  // Tap fallback: your matching slot first, then theirs
+  // The picker always targets the lineup the user explicitly opened it for.
   const tapPlace = (p: PoolPlayer) => {
     const idx = primarySlot(p);
-    if (!yours[idx]) return place("yours", idx, p);
-    if (!opps[idx]) return place("opps", idx, p);
-    toast(`Both ${POSITIONS[idx]} spots are taken — drag onto a slot to replace`);
+    const slots = pickerSide === "yours" ? yours : opps;
+    if (!slots[idx]) {
+      place(pickerSide, idx, p);
+      setPickerOpen(false);
+      return;
+    }
+    const open = slots.findIndex((slot) => slot === null);
+    if (open >= 0) {
+      place(pickerSide, open, p);
+      setPickerOpen(false);
+      return;
+    }
+    toast(`${pickerSide === "yours" ? "Your" : "Opponent"} lineup is full — remove or replace a player first`);
   };
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
@@ -437,8 +459,8 @@ function Whiteboard() {
   const reads = useMemo(() => {
     if (yoursFilled.length === 0) {
       return [
-        { tag: "START", c: "#8a8577", t: "Tap or drag anyone from the pool to seat your five — mixing eras is the whole point." },
-        { tag: "TIP", c: "#8a8577", t: "Filter the pool by position to fill a specific spot; the tape below builds as you go." },
+        { tag: "START", c: "#8a8577", t: "Open the player picker and seat your five — mixing eras is the whole point." },
+        { tag: "TIP", c: "#8a8577", t: "Use position, era, and rating filters to find the right fit; the analysis builds as you go." },
       ];
     }
     if (hasOpp) {
@@ -526,15 +548,45 @@ function Whiteboard() {
       <TopNav hasApiKey={hasApiKey} width="wide" />
 
       <div className="mx-auto max-w-[1440px] px-[clamp(20px,4vw,48px)] pt-2 pb-12">
-        <div className="flex justify-end animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
-          <div className="flex items-center gap-2.5">
-            {hasOpp && (
+        <div className="flex flex-wrap items-center justify-between gap-3 animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
+          <div>
+            <div className="font-plex text-[9px] tracking-[0.12em] text-[#8a8577]">LINEUP LAB</div>
+            <h1 className="mt-1 mb-0 font-display text-[clamp(24px,3vw,36px)] font-bold tracking-[-0.03em]">
+              {matchupMode ? "Build the matchup" : "Build your five"}
+            </h1>
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2.5">
+            <button
+              type="button"
+              onClick={() => { setPickerSide("yours"); setPickerOpen(true); }}
+              className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#1a1918] bg-white px-3.5 py-[7px] text-[11.5px] font-semibold transition-[background,transform] hover:bg-[#f1efe8] active:scale-[0.97]"
+            >
+              <Search className="h-3.5 w-3.5" /> Add player
+            </button>
+            {!matchupMode ? (
               <button
                 type="button"
-                onClick={() => setOpps([null, null, null, null, null])}
+                onClick={() => setMatchupMode(true)}
+                className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#e5e2da] bg-white px-3.5 py-[7px] text-[11.5px] font-semibold transition-[border-color,transform] hover:border-[#1a1918] active:scale-[0.97]"
+              >
+                <UsersRound className="h-3.5 w-3.5" /> Add opponent
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => { setPickerSide("opps"); setPickerOpen(true); }}
+                className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#e5e2da] bg-white px-3.5 py-[7px] text-[11.5px] font-semibold transition-[border-color,transform] hover:border-[#1a1918] active:scale-[0.97]"
+              >
+                <Search className="h-3.5 w-3.5" /> Add opponent player
+              </button>
+            )}
+            {matchupMode && (
+              <button
+                type="button"
+                onClick={() => { setOpps([null, null, null, null, null]); setMatchupMode(false); }}
                 className="cursor-pointer rounded-full border border-[#e5e2da] bg-white px-3.5 py-[7px] text-[11.5px] font-semibold text-[#1a1918] transition-[border-color,transform] duration-150 hover:border-[#1a1918] active:scale-[0.97] motion-reduce:transition-none"
               >
-                Clear opponent
+                Single lineup
               </button>
             )}
             {yoursFilled.length > 0 && (
@@ -568,10 +620,10 @@ function Whiteboard() {
             lastDragEndRef.current = Date.now();
           }}
         >
-          <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,270px),1fr))] items-start gap-3.5">
+          <div className="mt-4 grid items-start gap-3.5">
             {/* Player pool */}
             <div
-              className="overflow-hidden rounded-[14px] border border-[#e5e2da] bg-white animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
+              className="hidden overflow-hidden rounded-[14px] border border-[#e5e2da] bg-white"
               style={{ animationDelay: "60ms" }}
             >
               <div className="border-b border-[#f1efe8] px-4 pt-[11px] pb-3">
@@ -644,18 +696,18 @@ function Whiteboard() {
             </div>
 
             {/* Court + analysis */}
-            <div className="min-w-0 lg:col-span-2" style={{ gridColumn: "span 2" }}>
+            <div className="min-w-0">
               <div
                 className="relative aspect-[16/9.4] overflow-hidden rounded-2xl border border-[#e5e2da] bg-[#f6f4ee] animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
                 style={{ animationDelay: "100ms" }}
               >
                 <svg viewBox="0 0 100 56" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
-                  <line x1="50" y1="0" x2="50" y2="56" stroke="#d9d4c7" strokeWidth="0.25" />
+                  {matchupMode && <line x1="50" y1="0" x2="50" y2="56" stroke="#d9d4c7" strokeWidth="0.25" />}
                   <circle cx="50" cy="28" r="7" fill="none" stroke="#d9d4c7" strokeWidth="0.25" />
                   <rect x="0" y="18" width="14" height="20" fill="none" stroke="#d9d4c7" strokeWidth="0.25" />
-                  <rect x="86" y="18" width="14" height="20" fill="none" stroke="#d9d4c7" strokeWidth="0.25" />
+                  {matchupMode && <rect x="86" y="18" width="14" height="20" fill="none" stroke="#d9d4c7" strokeWidth="0.25" />}
                   <path d="M 0 6 Q 30 28 0 50" fill="none" stroke="#d9d4c7" strokeWidth="0.25" />
-                  <path d="M 100 6 Q 70 28 100 50" fill="none" stroke="#d9d4c7" strokeWidth="0.25" />
+                  {matchupMode && <path d="M 100 6 Q 70 28 100 50" fill="none" stroke="#d9d4c7" strokeWidth="0.25" />}
                   {guardLines.map((l, i) => (
                     <line
                       key={i}
@@ -670,7 +722,7 @@ function Whiteboard() {
                   ))}
                 </svg>
 
-                <span className="absolute top-2.5 left-3.5 font-plex text-[8.5px] tracking-[0.1em] text-[#b5b0a1]">
+                <span className={cn("absolute top-2.5 font-plex text-[8.5px] tracking-[0.1em] text-[#b5b0a1]", matchupMode ? "left-3.5" : "left-1/2 -translate-x-1/2")}>
                   YOUR FIVE · {yoursFilled.length}/5
                   {yourOvr !== null && (
                     <>
@@ -679,7 +731,7 @@ function Whiteboard() {
                     </>
                   )}
                 </span>
-                <span className="absolute top-2.5 right-3.5 font-plex text-[8.5px] tracking-[0.1em] text-[#b5b0a1]">
+                {matchupMode && <span className="absolute top-2.5 right-3.5 font-plex text-[8.5px] tracking-[0.1em] text-[#b5b0a1]">
                   {hasOpp ? (
                     <>
                       THEIR FIVE · {oppsFilled.length}/5 ·{" "}
@@ -688,7 +740,7 @@ function Whiteboard() {
                   ) : (
                     "OPEN HALF — ADD FROM THE POOL"
                   )}
-                </span>
+                </span>}
 
                 {SPOTS.map((spot, i) => (
                   <CourtSlot
@@ -697,28 +749,28 @@ function Whiteboard() {
                     index={i}
                     spot={spot}
                     player={yours[i]}
+                    compareMode={matchupMode}
                     pulsing={false}
                     onRemove={guardedTap(() => remove("yours", i))}
                   />
                 ))}
-                {SPOTS.map((spot, i) => (
+                {matchupMode && SPOTS.map((spot, i) => (
                   <CourtSlot
                     key={`opps-${spot.pos}`}
                     side="opps"
                     index={i}
                     spot={spot}
                     player={opps[i]}
+                    compareMode={matchupMode}
                     pulsing={hasOpp}
                     onRemove={guardedTap(() => remove("opps", i))}
                   />
                 ))}
 
-                {!hasOpp && (
-                  <div className="absolute top-1/2 right-[6%] max-w-[150px] -translate-y-1/2 text-center font-plex text-[9px] leading-[1.8] tracking-[0.08em] text-[#b5b0a1]">
-                    DROP ANYONE ON THIS HALF
-                    <br />
-                    TO START A MATCHUP
-                  </div>
+                {!matchupMode && yoursFilled.length === 0 && (
+                  <button type="button" onClick={() => { setPickerSide("yours"); setPickerOpen(true); }} className="absolute bottom-[8%] left-1/2 -translate-x-1/2 cursor-pointer rounded-full bg-[#1a1918] px-4 py-2 text-[11px] font-semibold text-white shadow-lg">
+                    Choose your first player
+                  </button>
                 )}
               </div>
 
@@ -827,6 +879,68 @@ function Whiteboard() {
               )}
             </div>
           </div>
+
+          {pickerOpen && (
+            <div
+              className="fixed inset-0 z-50 flex items-end justify-center bg-[#1a1918]/35 p-0 backdrop-blur-[2px] sm:items-center sm:p-6"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Choose a player for ${pickerSide === "yours" ? "your lineup" : "the opponent"}`}
+              onMouseDown={(e) => { if (e.target === e.currentTarget) setPickerOpen(false); }}
+            >
+              <div className="flex max-h-[88vh] w-full max-w-[760px] flex-col overflow-hidden rounded-t-[22px] border border-[#d9d4c7] bg-[#fffdf8] shadow-[0_30px_80px_-24px_rgba(26,25,24,0.55)] sm:rounded-[22px]">
+                <div className="flex items-start justify-between gap-4 border-b border-[#e5e2da] px-5 py-4">
+                  <div>
+                    <div className="font-plex text-[9px] tracking-[0.12em] text-[#8a8577]">
+                      {pickerSide === "yours" ? "YOUR FIVE" : "OPPONENT"} · PLAYER PICKER
+                    </div>
+                    <h2 className="mt-1 mb-0 font-display text-[24px] font-bold tracking-[-0.025em]">Find the right player</h2>
+                  </div>
+                  <button type="button" onClick={() => setPickerOpen(false)} className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-[#e5e2da] bg-white hover:border-[#1a1918]" aria-label="Close player picker">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="border-b border-[#e5e2da] bg-white px-5 py-4">
+                  <div className="flex items-center gap-2 rounded-full border border-[#d9d4c7] bg-[#faf9f5] px-4 py-3">
+                    <Search className="h-4 w-4 text-[#8a8577]" />
+                    <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search any player or legend…" className="min-w-0 flex-1 border-0 bg-transparent text-[14px] outline-none placeholder:text-[#b5b0a1]" />
+                    <span className="font-plex text-[8px] text-[#b5b0a1]">{pool.length} SHOWN</span>
+                  </div>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                    <div>
+                      <div className="mb-1.5 flex items-center gap-1.5 font-plex text-[8px] tracking-[0.08em] text-[#8a8577]"><SlidersHorizontal className="h-3 w-3" /> POSITION</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {["ALL", ...POSITIONS].map((label) => <button key={label} type="button" onClick={() => setPosF(label)} className={cn("cursor-pointer rounded-full border px-2.5 py-1 font-plex text-[8px] font-bold", posF === label ? "border-[#1a1918] bg-[#1a1918] text-white" : "border-[#e5e2da] bg-[#faf9f5] text-[#8a8577]")}>{label}</button>)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="mb-1.5 font-plex text-[8px] tracking-[0.08em] text-[#8a8577]">ERA</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {([['all','ALL'],['curr','CURRENT'],['class','CLASSIC'],['allt','ALL-TIME']] as const).map(([value,label]) => <button key={value} type="button" onClick={() => setEraF(value)} className={cn("cursor-pointer rounded-full border px-2.5 py-1 font-plex text-[8px] font-bold", eraF === value ? "border-[#1a1918] bg-[#1a1918] text-white" : "border-[#e5e2da] bg-[#faf9f5] text-[#8a8577]")}>{label}</button>)}
+                      </div>
+                    </div>
+                    <label className="block min-w-[130px]">
+                      <span className="mb-1.5 block font-plex text-[8px] tracking-[0.08em] text-[#8a8577]">MIN OVR · {minOvr || "ANY"}</span>
+                      <input type="range" min="0" max="95" step="5" value={minOvr} onChange={(e) => setMinOvr(Number(e.target.value))} className="w-full accent-[#1a1918]" />
+                    </label>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between">
+                    <button type="button" onClick={() => { setQ(""); setPosF("ALL"); setEraF("all"); setMinOvr(0); }} className="cursor-pointer border-0 bg-transparent font-plex text-[8px] text-[#8a8577] underline underline-offset-4">CLEAR FILTERS</button>
+                    <button type="button" onClick={() => setSortF((s) => s === "ovr" ? "az" : "ovr")} className="cursor-pointer border-0 bg-transparent font-plex text-[8px] text-[#57534a]">SORT · {sortF === "ovr" ? "OVR ↓" : "A–Z"}</button>
+                  </div>
+                </div>
+
+                <div className="min-h-0 flex-1 overflow-y-auto bg-white">
+                  {players ? pool.map((p) => (
+                    <PoolRow key={`${p.slug}:${p.teamType}:${p.team}`} p={p} placed={placedKeys.has(`${p.slug}:${p.teamType}:${p.team}`)} onTap={guardedTap(() => tapPlace(p))} />
+                  )) : Array.from({ length: 8 }, (_, i) => <div key={i} className="h-12 animate-pulse border-b border-[#faf8f2] bg-[#f1efe8]" />)}
+                  {players && pool.length === 0 && <div className="px-5 py-16 text-center font-plex text-[9px] tracking-[0.08em] text-[#b5b0a1]">NO MATCHES · TRY WIDENING THE FILTERS</div>}
+                </div>
+                <div className="border-t border-[#e5e2da] bg-[#faf9f5] px-5 py-3 font-plex text-[8px] text-[#8a8577]">TAP A PLAYER TO ADD · DUPLICATE 2K VERSIONS STAY SEPARATE BY ERA + TEAM</div>
+              </div>
+            </div>
+          )}
 
           <DragOverlay dropAnimation={null}>
             {dragging && (
