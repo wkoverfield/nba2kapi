@@ -81,21 +81,6 @@ const SHOWCASE: QueryState = {
   page: 0,
 };
 
-const SAVED_QUERIES: { label: string; state: QueryState }[] = [
-  {
-    label: "Lockdown wings, any era",
-    state: { pos: "wing", era: "all", filter: { key: "perimeterDefense", gte: 85 }, sortKey: "perimeterDefense", sortDir: "desc", team: null, search: null, badge: null, badgeTier: null, page: 0 },
-  },
-  {
-    label: "Bigs who shoot 80+",
-    state: { pos: "big", era: "all", filter: { key: "threePointShot", gte: 80 }, sortKey: "threePointShot", sortDir: "desc", team: null, search: null, badge: null, badgeTier: null, page: 0 },
-  },
-  {
-    label: "'96 Bulls full roster",
-    state: { pos: "any", era: "class", filter: null, sortKey: "overall", sortDir: "desc", team: "1995-96 Chicago Bulls", search: null, badge: null, badgeTier: null, page: 0 },
-  },
-];
-
 // ---- URL <-> state ----------------------------------------------------------
 
 function stateFromParams(sp: URLSearchParams): QueryState {
@@ -607,18 +592,6 @@ function Playground() {
             BADGE: {(selectedBadge?.name ?? q.badge).toUpperCase()}{q.badgeTier ? ` · ${q.badgeTier.toUpperCase()}` : ""} ✕
           </button>
         )}
-        <span className="mx-1 hidden h-4 w-px bg-[#e5e2da] sm:block" />
-        <span className="font-plex text-[8.5px] tracking-[0.1em] text-[#b5b0a1]">SAVED</span>
-        {SAVED_QUERIES.map((s) => (
-          <button
-            key={s.label}
-            type="button"
-            onClick={() => setQ(s.state)}
-            className="cursor-pointer rounded-full border border-[#e5e2da] bg-white px-3 py-1 text-[11px] font-semibold text-[#1a1918] transition-[border-color,transform] duration-150 hover:border-[#1a1918] active:scale-[0.97] motion-reduce:transition-none"
-          >
-            {s.label}
-          </button>
-        ))}
         <div className="ml-auto flex gap-2">
           <button
             type="button"
