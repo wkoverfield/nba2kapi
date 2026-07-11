@@ -371,21 +371,32 @@ function PlayerDossier({
                     priority
                   />
                 )}
-                <div className="absolute inset-x-0 top-0 z-[2] h-[48%] bg-[linear-gradient(to_bottom,rgba(10,10,14,0.9)_0%,rgba(10,10,14,0.52)_42%,rgba(10,10,14,0)_100%)]" />
-                <div className="absolute inset-x-0 bottom-0 z-[2] h-[42%] bg-[linear-gradient(to_top,rgba(10,10,14,0.94)_0%,rgba(10,10,14,0.65)_46%,rgba(10,10,14,0)_100%)]" />
-                <div className="absolute top-5 left-[22px] z-[3]">
-                  <div className="font-plex text-[9.5px] tracking-[0.14em] text-white/85">
+                <div className="absolute inset-x-0 top-0 z-[2] h-[24%] bg-[linear-gradient(to_bottom,rgba(10,10,14,0.46)_0%,rgba(10,10,14,0)_100%)]" />
+                <div className="absolute inset-x-0 bottom-0 z-[2] h-[22%] bg-[linear-gradient(to_top,rgba(10,10,14,0.34)_0%,rgba(10,10,14,0)_100%)]" />
+                <div className="absolute top-5 left-[18px] z-[3]">
+                  <div className="inline-flex rounded-full border border-white/15 bg-black/70 px-2.5 py-1.5 font-plex text-[10px] font-medium tracking-[0.12em] text-white shadow-sm backdrop-blur-md">
                     {tier.toUpperCase()} · {player.positions.join("/")} · {abbr}
                   </div>
-                  <div className="mt-1.5 font-display text-[76px] leading-none font-extrabold text-white [text-shadow:0_3px_16px_rgba(0,0,0,0.35)]">
+                  <div className="mt-1.5 font-display text-[76px] leading-none font-extrabold text-white [text-shadow:0_3px_18px_rgba(0,0,0,0.62)]">
                     {player.overall}
                   </div>
                 </div>
-                <div className="absolute right-0 bottom-0 left-0 z-[3] px-[22px] pt-[18px] pb-4">
+                {player.teamImg && (
+                  <div className="absolute top-[18px] right-[18px] z-[3] flex h-12 w-12 items-center justify-center rounded-full border border-white/60 bg-white/90 p-1.5 shadow-[0_8px_22px_rgba(0,0,0,0.2)] backdrop-blur-sm">
+                    <Image
+                      src={player.teamImg}
+                      alt={`${player.team} logo`}
+                      width={38}
+                      height={38}
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                )}
+                <div className="absolute right-[14px] bottom-[14px] left-[14px] z-[3] rounded-[14px] border border-white/15 bg-black/76 px-4 py-3.5 shadow-[0_12px_28px_rgba(0,0,0,0.24)] backdrop-blur-md">
                   <div className="font-display text-[24px] leading-[1.05] font-bold tracking-[-0.02em] text-white">
                     {player.name}
                   </div>
-                  <div className="mt-[7px] font-plex text-[9.5px] tracking-[0.1em] text-white/75">
+                  <div className="mt-2 font-plex text-[10.5px] font-medium tracking-[0.08em] text-white/90">
                     {[player.height, player.weight, player.wingspan ? `${player.wingspan} WS` : null, `${badgesTotal} BADGES`]
                       .filter(Boolean)
                       .join(" · ")}
