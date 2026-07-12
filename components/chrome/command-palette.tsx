@@ -8,7 +8,6 @@ import { Search } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Headshot } from "@/components/ui/headshot";
-import { getRatingClasses } from "@/lib/rating-colors";
 import { getTeamAbbreviation, getTeamConference, formatTeamShortName } from "@/lib/team-abbr";
 import { cn } from "@/lib/utils";
 
@@ -24,9 +23,18 @@ type PoolPlayer = {
   playerImage: string | null;
 };
 
+type DirectoryBadge = {
+  name: string;
+  slug: string;
+  category: string;
+  imageUrl: string | null;
+  playerCount: number;
+};
+
 type Result =
   | { kind: "player"; key: string; name: string; meta: string; href: string; player: PoolPlayer }
   | { kind: "team"; key: string; name: string; meta: string; href: string; abbr: string; logo: string | null }
+  | { kind: "badge"; key: string; name: string; meta: string; href: string; badge: DirectoryBadge }
   | { kind: "query"; key: string; name: string; meta: string; href: string };
 
 type Group = { label: string; items: Result[] };
@@ -59,6 +67,22 @@ function TeamIcon({ logo, abbr, name }: { logo: string | null; abbr: string; nam
   );
 }
 
+function BadgeIcon({ badge }: { badge: DirectoryBadge }) {
+  if (badge.imageUrl) {
+    return (
+      <span className="relative h-[30px] w-[30px] shrink-0">
+        <Image src={badge.imageUrl} alt="" fill sizes="30px" className="object-contain" />
+      </span>
+    );
+  }
+
+  return (
+    <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-[#f6e9c8] font-display text-[9px] font-extrabold text-[#8a6200]">
+      {badge.name.split(" ").map((part) => part[0]).join("").slice(0, 2)}
+    </span>
+  );
+}
+
 export function CommandPalette({
   open,
   onOpenChange,
@@ -87,6 +111,9 @@ export function CommandPalette({
   ) as PoolPlayer[] | undefined;
   const logoMap = useQuery(api.teams.getTeamLogoMap, everOpened ? {} : "skip") as
     | Record<string, string>
+    | undefined;
+  const badges = useQuery(api.badges.getBadgeDirectory, everOpened ? {} : "skip") as
+    | DirectoryBadge[]
     | undefined;
 
   const teams = useMemo(() => {
@@ -156,6 +183,30 @@ export function CommandPalette({
       if (matchedTeams.length) out.push({ label: "TEAMS", items: matchedTeams });
     }
 
+    if (badges) {
+      const matchedBadges = query
+        ? badges
+            .filter((badge) =>
+              badge.name.toLowerCase().includes(query) || badge.category.toLowerCase().includes(query)
+            )
+            .sort((a, b) => b.playerCount - a.playerCount || a.name.localeCompare(b.name))
+            .slice(0, 6)
+        : [];
+      if (matchedBadges.length) {
+        out.push({
+          label: "BADGES",
+          items: matchedBadges.map((badge) => ({
+            kind: "badge",
+            key: `b:${badge.slug}`,
+            name: badge.name,
+            meta: `${badge.category.toUpperCase()} · ${badge.playerCount} PLAYER${badge.playerCount === 1 ? "" : "S"}`,
+            href: `/badges?badge=${encodeURIComponent(badge.slug)}`,
+            badge,
+          })),
+        });
+      }
+    }
+
     out.push({
       label: "RUN AS QUERY",
       items: [
@@ -173,7 +224,7 @@ export function CommandPalette({
       ],
     });
     return out;
-  }, [players, teams, q]);
+  }, [players, teams, badges, q]);
 
   const flat = useMemo(() => groups.flatMap((g) => g.items), [groups]);
 
@@ -215,14 +266,14 @@ export function CommandPalette({
           onKeyDown={onKeyDown}
           className="fixed top-[12%] left-1/2 z-50 w-[min(640px,calc(100vw-32px))] -translate-x-1/2 overflow-hidden rounded-[18px] border border-[#e5e2da] bg-white font-body shadow-[0_40px_80px_-24px_rgba(26,25,24,0.5)] animate-[pop-in_220ms_cubic-bezier(0.23,1,0.32,1)_both] focus:outline-none motion-reduce:animate-none"
         >
-          <Dialog.Title className="sr-only">Search players, teams, and queries</Dialog.Title>
+          <Dialog.Title className="sr-only">Search players, teams, badges, and queries</Dialog.Title>
           <div className="flex items-center gap-3 border-b border-[#f1efe8] px-5 py-[15px]">
             <Search className="h-4 w-4 text-[#8a8577]" strokeWidth={2} />
             <input
               autoFocus
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search players, teams…"
+              placeholder="Search players, teams, badges…"
               className="flex-1 border-none bg-transparent font-body text-[16px] text-[#1a1918] outline-none placeholder:text-[#b5b0a1]"
             />
             <span className="font-plex text-[9px] text-[#b5b0a1]">ESC TO CLOSE</span>
@@ -253,6 +304,8 @@ export function CommandPalette({
                         <Headshot src={item.player.playerImage} name={item.name} size={30} />
                       ) : item.kind === "team" ? (
                         <TeamIcon logo={item.logo} abbr={item.abbr} name={item.name} />
+                      ) : item.kind === "badge" ? (
+                        <BadgeIcon badge={item.badge} />
                       ) : (
                         <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg bg-[#1a1918]">
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#faf9f5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
