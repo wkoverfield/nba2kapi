@@ -25,6 +25,8 @@ function useGitHubStars(repo: string) {
     if (cached) {
       const { count, timestamp } = JSON.parse(cached);
       if (Date.now() - timestamp < 3600000) {
+        // Cached external state is intentionally synchronized on mount.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setStars(count);
         return;
       }
@@ -85,6 +87,24 @@ export function TopNav({
   const pathname = usePathname();
   const stars = useGitHubStars(GITHUB_REPO);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [isCompact, setIsCompact] = useState(false);
+
+  useEffect(() => {
+    const updateCompactState = () => {
+      setIsCompact((compact) => {
+        if (!compact && window.scrollY > 40) return true;
+        if (compact && window.scrollY < 8) return false;
+        return compact;
+      });
+    };
+
+    const initialFrame = window.requestAnimationFrame(updateCompactState);
+    window.addEventListener("scroll", updateCompactState, { passive: true });
+    return () => {
+      window.cancelAnimationFrame(initialFrame);
+      window.removeEventListener("scroll", updateCompactState);
+    };
+  }, []);
 
   // ⌘K / Ctrl+K opens the global command palette (a modal, so it's safe to
   // fire even while an input has focus).
@@ -102,80 +122,93 @@ export function TopNav({
     "rounded-full bg-[#1a1918] px-5 py-2.5 text-[13.5px] font-semibold text-[#faf9f5] no-underline transition-[background,transform] duration-150 ease-out hover:bg-[#333] active:scale-[0.97] motion-reduce:transition-none";
 
   return (
-    <div
-      className={cn(
-        "mx-auto flex w-full flex-wrap items-center justify-between gap-3 px-[clamp(20px,4vw,48px)] py-5",
-        SHELL_WIDTHS[width]
-      )}
+    <header
+      className="pointer-events-none sticky top-0 z-40"
+      data-compact={isCompact ? "true" : "false"}
     >
-      <Link
-        href="/"
-        className="font-display text-[22px] font-extrabold tracking-[-0.02em] text-[#1a1918] no-underline"
+      <div
+        aria-hidden="true"
+        className={cn(
+          "absolute inset-0 origin-top border-b border-[#e5e2da]/80 bg-[#faf9f5]/92 shadow-[0_10px_30px_-24px_rgba(26,25,24,0.45)] backdrop-blur-xl transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.77,0,0.175,1)] motion-reduce:transform-none motion-reduce:transition-opacity",
+          isCompact ? "opacity-100 md:scale-y-[0.76]" : "scale-y-100 opacity-0"
+        )}
+      />
+      <div
+        className={cn(
+          "pointer-events-auto relative mx-auto flex w-full origin-top flex-wrap items-center justify-between gap-3 px-[clamp(20px,4vw,48px)] py-5 transition-transform duration-200 ease-[cubic-bezier(0.77,0,0.175,1)] motion-reduce:transform-none motion-reduce:transition-none",
+          isCompact && "md:-translate-y-[7px] md:scale-[0.96]",
+          SHELL_WIDTHS[width]
+        )}
       >
-        nba2kapi
-      </Link>
+        <Link
+          href="/"
+          className="font-display text-[22px] font-extrabold tracking-[-0.02em] text-[#1a1918] no-underline"
+        >
+          nba2kapi
+        </Link>
 
-      <nav
-        aria-label="Main navigation"
-        className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-[#e5e2da] bg-white p-[5px] sm:gap-1"
-      >
-        {NAV_LINKS.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            className={cn(
-              "shrink-0 rounded-full px-2.5 py-[7px] text-[12px] font-medium text-[#1a1918] no-underline transition-[background,transform] duration-150 ease-out hover:bg-[#f1efe8] active:scale-[0.97] sm:px-4 sm:text-[13.5px] motion-reduce:transition-none",
-              pathname.startsWith(link.href) && "bg-[#f1efe8]"
-            )}
+        <nav
+          aria-label="Main navigation"
+          className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-[#e5e2da] bg-white p-[5px] sm:gap-1"
+        >
+          {NAV_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={cn(
+                "shrink-0 rounded-full px-2.5 py-[7px] text-[12px] font-medium text-[#1a1918] no-underline transition-[background,transform] duration-150 ease-out hover:bg-[#f1efe8] active:scale-[0.97] sm:px-4 sm:text-[13.5px] motion-reduce:transition-none",
+                pathname.startsWith(link.href) && "bg-[#f1efe8]"
+              )}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            title="Search everything — players, teams, badges, and queries"
+            className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#e5e2da] bg-white px-3.5 py-[9px] transition-[border-color,transform] duration-150 ease-out hover:border-[#1a1918] active:scale-[0.97] motion-reduce:transition-none"
           >
-            {link.label}
-          </Link>
-        ))}
-      </nav>
-
-      <div className="flex items-center gap-2.5">
-        <button
-          type="button"
-          onClick={() => setPaletteOpen(true)}
-          title="Search everything — players, teams, queries"
-          className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#e5e2da] bg-white px-3.5 py-[9px] transition-[border-color,transform] duration-150 ease-out hover:border-[#1a1918] active:scale-[0.97] motion-reduce:transition-none"
-        >
-          <Search className="h-[13px] w-[13px] text-[#57534a]" strokeWidth={2} />
-          <span className="text-[12.5px] text-[#8a8577]">Search</span>
-          <span className="rounded-[5px] border border-[#e5e2da] bg-[#faf9f5] px-[5px] py-[2px] font-plex text-[9px] text-[#b5b0a1]">
-            ⌘K
-          </span>
-        </button>
-
-        <a
-          href={`https://github.com/${GITHUB_REPO}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Star on GitHub"
-          className="inline-flex items-center gap-2 rounded-full border border-[#e5e2da] bg-white px-4 py-[9px] text-[13px] font-semibold text-[#1a1918] no-underline transition-[border-color,transform] duration-150 ease-out hover:border-[#1a1918] active:scale-[0.97] motion-reduce:transition-none"
-        >
-          <OctocatIcon />
-          {stars ?? "★"}
-        </a>
-
-        {maskedKey && (
-          <span className="inline-flex items-center gap-[7px] rounded-full border border-[#e5e2da] bg-white px-3.5 py-2 font-plex text-[10px] text-[#57534a]">
-            <span className="h-[7px] w-[7px] rounded-full bg-[#0a7f3f]" />
-            {maskedKey}
-          </span>
-        )}
-        {onCtaClick ? (
-          <button type="button" onClick={onCtaClick} className={cn(ctaClasses, "cursor-pointer")}>
-            {ctaLabel}
+            <Search className="h-[13px] w-[13px] text-[#57534a]" strokeWidth={2} />
+            <span className="text-[12.5px] text-[#8a8577]">Search</span>
+            <span className="rounded-[5px] border border-[#e5e2da] bg-[#faf9f5] px-[5px] py-[2px] font-plex text-[9px] text-[#b5b0a1]">
+              ⌘K
+            </span>
           </button>
-        ) : (
-          <Link href="/dashboard" className={ctaClasses}>
-            {ctaLabel}
-          </Link>
-        )}
+
+          <a
+            href={`https://github.com/${GITHUB_REPO}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Star on GitHub"
+            className="inline-flex items-center gap-2 rounded-full border border-[#e5e2da] bg-white px-4 py-[9px] text-[13px] font-semibold text-[#1a1918] no-underline transition-[border-color,transform] duration-150 ease-out hover:border-[#1a1918] active:scale-[0.97] motion-reduce:transition-none"
+          >
+            <OctocatIcon />
+            {stars ?? "★"}
+          </a>
+
+          {maskedKey && (
+            <span className="inline-flex items-center gap-[7px] rounded-full border border-[#e5e2da] bg-white px-3.5 py-2 font-plex text-[10px] text-[#57534a]">
+              <span className="h-[7px] w-[7px] rounded-full bg-[#0a7f3f]" />
+              {maskedKey}
+            </span>
+          )}
+          {onCtaClick ? (
+            <button type="button" onClick={onCtaClick} className={cn(ctaClasses, "cursor-pointer")}>
+              {ctaLabel}
+            </button>
+          ) : (
+            <Link href="/dashboard" className={ctaClasses}>
+              {ctaLabel}
+            </Link>
+          )}
+        </div>
       </div>
 
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
-    </div>
+    </header>
   );
 }
