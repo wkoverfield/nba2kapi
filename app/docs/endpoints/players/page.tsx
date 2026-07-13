@@ -188,6 +188,17 @@ export default function PlayersEndpointPage() {
             desc: <>The whole matching dataset in one call — one request against your rate limit.</>,
           },
           {
+            name: "/api/players/batch",
+            type: "POST",
+            desc: (
+              <>
+                Resolve up to 100 names and/or slugs in one call, instead of searching one at a
+                time. Names match case-, accent-, and punctuation-insensitively; unresolved
+                entries come back in <code>meta.unmatched</code>.
+              </>
+            ),
+          },
+          {
             name: "/api/players/slug/:slug",
             type: "GET",
             desc: (

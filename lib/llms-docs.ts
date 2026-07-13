@@ -26,6 +26,7 @@ Auth: X-API-Key header (free key at https://nba2kapi.com/dashboard, 500 requests
 - GET /api/players/bulk — the whole matching dataset in one call
 - GET /api/players/slug/{slug} — one player, full detail
 - GET /api/players/search?q= — name search
+- POST /api/players/batch — resolve up to 100 names and/or slugs in one call
 - GET /api/players/{id}/history — weekly rating snapshots
 - GET /api/teams — teams with roster averages
 - GET /api/teams/{team}/roster — full roster (accepts names or slugs)
@@ -122,6 +123,23 @@ One player, full detail (all attributes, badges, hot zones). Optional
 
 Name search (partial, word-order-agnostic). Params: \`q\` (required),
 \`teamType\`, \`limit\` (max 50, default 50).
+
+## POST /api/players/batch
+
+Resolve a list of players by name and/or slug in one request, instead of
+calling \`/search\` once per name. JSON body: \`names\` (string[]) and/or
+\`slugs\` (string[]), optional \`teamType\`; combined max 100 per call. Names
+are matched case-, accent-, and punctuation-insensitively (so \`"doncic"\`
+resolves \`"Dončić"\`). Response \`data\` is the matched player array;
+\`meta.unmatched\` lists anything that didn't resolve, each with a \`reason\`
+(\`not_found\` | \`ambiguous\` | \`empty\`) and, when ambiguous, \`candidates\`.
+Costs one request against the rate limit.
+
+\`\`\`
+curl -X POST 'https://api.nba2kapi.com/api/players/batch' \\
+  -H 'X-API-Key: YOUR_KEY' -H 'Content-Type: application/json' \\
+  -d '{"names":["Jimmy Butler","Bennedict Mathurin"],"teamType":"curr"}'
+\`\`\`
 
 Player documents also carry two history fields straight from 2kratings:
 \`ratingHistory\` (game-to-game overalls: \`[{ gameVersion, overall, delta }]\`)
