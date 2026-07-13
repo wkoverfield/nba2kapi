@@ -6,7 +6,7 @@
  * the HTTP layer; this file just exposes the raw Convex query.
  */
 
-import { query } from "./_generated/server";
+import { query, internalQuery } from "./_generated/server";
 
 const MS_PER_HOUR = 60 * 60 * 1000;
 const MS_PER_DAY = 24 * MS_PER_HOUR;
@@ -133,6 +133,103 @@ export const getAdminStats = query({
         totalPlayers: allPlayersMeta.length,
         lastScrapeAt,
       },
+    };
+  },
+});
+
+/**
+ * Per-key usage breakdown over a rolling window (default 35 days), for
+ * answering "who drove the spike, when did they stop, and did their requests
+ * start failing first?". Aggregates only: names and counts, never emails or
+ * IPs, so it is safe to surface in a future admin dashboard.
+ *
+ * Internal: reached via `npx convex run admin:getUsageBreakdown` (admin CLI).
+ */
+export const getUsageBreakdown = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    const days = 35;
+    const cutoff = new Date(now - days * MS_PER_DAY).toISOString();
+    const cutoff7d = new Date(now - 7 * MS_PER_DAY).toISOString();
+
+    const logs = await ctx.db
+      .query("requestLogs")
+      .withIndex("by_timestamp", (q) => q.gte("timestamp", cutoff))
+      .collect();
+
+    const allKeys = await ctx.db.query("apiKeys").collect();
+    const nameById = new Map(allKeys.map((k) => [k._id as unknown as string, k.name]));
+
+    // Overall daily totals.
+    const overallByDay: Record<string, number> = {};
+
+    type KeyAgg = {
+      count: number;
+      count7d: number;
+      first: string;
+      last: string;
+      byDay: Record<string, number>;
+      status: Record<string, number>;
+      endpoints: Record<string, number>;
+    };
+    const perKey = new Map<string, KeyAgg>();
+
+    for (const log of logs) {
+      const day = log.timestamp.slice(0, 10);
+      overallByDay[day] = (overallByDay[day] || 0) + 1;
+
+      const id = log.apiKeyId as unknown as string;
+      let agg = perKey.get(id);
+      if (!agg) {
+        agg = {
+          count: 0,
+          count7d: 0,
+          first: log.timestamp,
+          last: log.timestamp,
+          byDay: {},
+          status: {},
+          endpoints: {},
+        };
+        perKey.set(id, agg);
+      }
+      agg.count += 1;
+      if (log.timestamp >= cutoff7d) agg.count7d += 1;
+      if (log.timestamp < agg.first) agg.first = log.timestamp;
+      if (log.timestamp > agg.last) agg.last = log.timestamp;
+      agg.byDay[day] = (agg.byDay[day] || 0) + 1;
+      const bucket = `${Math.floor(log.statusCode / 100)}xx`;
+      agg.status[bucket] = (agg.status[bucket] || 0) + 1;
+      agg.endpoints[log.endpoint] = (agg.endpoints[log.endpoint] || 0) + 1;
+    }
+
+    const topEndpoints = (o: Record<string, number>) =>
+      Object.entries(o)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .map(([endpoint, count]) => ({ endpoint, count }));
+
+    const keys = Array.from(perKey.entries())
+      .map(([id, agg]) => ({
+        name: nameById.get(id) ?? "(deleted key)",
+        count: agg.count,
+        count7d: agg.count7d,
+        firstSeen: agg.first.slice(0, 10),
+        lastSeen: agg.last.slice(0, 10),
+        activeDays: Object.keys(agg.byDay).length,
+        status: agg.status,
+        stoppedButActiveEarlier: agg.count7d === 0 && agg.count > 0,
+        topEndpoints: topEndpoints(agg.endpoints),
+        dailySeries: Object.entries(agg.byDay).sort((a, b) => a[0].localeCompare(b[0])),
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20);
+
+    return {
+      windowDays: days,
+      windowStart: cutoff.slice(0, 10),
+      overallDaily: Object.entries(overallByDay).sort((a, b) => a[0].localeCompare(b[0])),
+      keys,
     };
   },
 });
