@@ -8,7 +8,6 @@ import {
   IBM_Plex_Mono,
 } from "next/font/google";
 import "./globals.css";
-import { LegacyHeader, LegacyFooter } from "@/components/legacy-chrome";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ConvexClientProvider } from "@/components/convex-client-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -109,9 +108,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <div className="flex min-h-screen flex-col">
-              <LegacyHeader />
               <main className="flex-1">{children}</main>
-              <LegacyFooter />
             </div>
             <Toaster />
             <Analytics />

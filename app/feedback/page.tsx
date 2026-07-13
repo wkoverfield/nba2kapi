@@ -2,13 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
-import { motion } from "framer-motion";
 import { api } from "../../convex/_generated/api";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { TopNav } from "@/components/chrome/top-nav";
+import { FooterStrip } from "@/components/chrome/footer-strip";
 import {
   Dialog,
   DialogContent,
@@ -18,7 +14,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { fadeIn, slideUp, staggerContainer } from "@/lib/animations";
 import { ChevronUp, Plus, MessageSquare, Bug, Lightbulb, HelpCircle } from "lucide-react";
 import type { Id } from "../../convex/_generated/dataModel";
 
@@ -34,11 +29,16 @@ function getVisitorId(): string {
 }
 
 const FEEDBACK_TYPES = [
-  { value: "feature", label: "Feature", icon: Lightbulb, color: "bg-blue-500" },
-  { value: "bug", label: "Bug", icon: Bug, color: "bg-red-500" },
-  { value: "improvement", label: "Improvement", icon: MessageSquare, color: "bg-yellow-500" },
-  { value: "other", label: "Other", icon: HelpCircle, color: "bg-gray-500" },
+  { value: "feature", label: "Feature", icon: Lightbulb, dot: "#3b6fd4" },
+  { value: "bug", label: "Bug", icon: Bug, dot: "#c2410c" },
+  { value: "improvement", label: "Improvement", icon: MessageSquare, dot: "#b7791f" },
+  { value: "other", label: "Other", icon: HelpCircle, dot: "#8a8577" },
 ];
+
+const INPUT_CLASS =
+  "flex w-full rounded-lg border border-[#e5e2da] bg-white px-3 py-2 text-[14px] text-[#1a1918] placeholder:text-[#b5b0a1] focus-visible:outline-none focus-visible:border-[#1a1918] disabled:cursor-not-allowed disabled:opacity-50";
+
+const LABEL_CLASS = "text-[12px] font-medium text-[#57534a]";
 
 export default function FeedbackPage() {
   const [visitorId, setVisitorId] = useState("");
@@ -55,6 +55,9 @@ export default function FeedbackPage() {
   const removeUpvote = useMutation(api.feedback.removeUpvote);
 
   useEffect(() => {
+    // Visitor ID lives in localStorage, so it must be read on the client after
+    // mount to avoid an SSR/hydration mismatch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisitorId(getVisitorId());
   }, []);
 
@@ -99,60 +102,66 @@ export default function FeedbackPage() {
   };
 
   return (
-    <div className="min-h-screen">
-      <section className="border-b bg-transparent">
-        <div className="container mx-auto px-4 py-16 md:py-24">
-          <motion.div
-            variants={staggerContainer}
-            initial="initial"
-            animate="animate"
-            className="max-w-4xl mx-auto"
-          >
-            <motion.div variants={slideUp} className="text-center mb-12">
-              <h1 className="mb-4 text-4xl font-bold tracking-tight sm:text-5xl">
-                Feedback & Suggestions
-              </h1>
-              <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-                Help us improve the NBA 2K API. Submit feature requests, report bugs, or suggest improvements.
-                Upvote ideas you'd like to see implemented.
-              </p>
-            </motion.div>
+    <div className="min-h-screen bg-[linear-gradient(to_bottom,#fffdf8,#faf9f5_420px)] font-body text-[#1a1918]">
+      <TopNav />
 
-            <motion.div variants={slideUp} className="mb-8">
+      <main className="mx-auto max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2 pb-16">
+        <div className="mx-auto max-w-[760px]">
+          {/* Header */}
+          <div className="pt-8 pb-9">
+            <div className="mb-3 font-plex text-[11px] tracking-[0.12em] text-[#8a8577]">
+              FEEDBACK
+            </div>
+            <h1 className="font-display text-[clamp(32px,5vw,44px)] font-extrabold leading-[1.05] tracking-[-0.02em] text-[#1a1918]">
+              Feature requests & bugs
+            </h1>
+            <p className="mt-3.5 max-w-[540px] text-[15px] leading-[1.6] text-[#57534a]">
+              Suggest features, report bugs, and upvote what you want built next.
+            </p>
+
+            <div className="mt-6">
               <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button size="lg" className="gap-2 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-[#1a1918] px-5 py-2.5 text-[13.5px] font-semibold text-[#faf9f5] no-underline transition-[background,transform] duration-150 ease-out hover:bg-[#333] active:scale-[0.97] motion-reduce:transition-none"
+                  >
                     <Plus className="h-4 w-4" />
-                    Submit Feedback
-                  </Button>
+                    Submit feedback
+                  </button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-lg">
+                <DialogContent className="border-[#e5e2da] bg-[#faf9f5] text-[#1a1918] sm:max-w-lg">
                   <form onSubmit={handleSubmit}>
                     <DialogHeader>
-                      <DialogTitle>Submit Feedback</DialogTitle>
-                      <DialogDescription>
-                        Share your ideas to help improve the API.
+                      <DialogTitle className="font-display text-[19px] font-extrabold tracking-[-0.01em] text-[#1a1918]">
+                        Submit feedback
+                      </DialogTitle>
+                      <DialogDescription className="text-[13.5px] text-[#8a8577]">
+                        Share an idea or issue to help shape the API.
                       </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                       {/* Type selector */}
                       <div className="space-y-2">
-                        <Label>Type</Label>
+                        <div className={LABEL_CLASS}>Type</div>
                         <div className="flex flex-wrap gap-2">
                           {FEEDBACK_TYPES.map((t) => {
                             const Icon = t.icon;
+                            const selected = type === t.value;
                             return (
-                              <Button
+                              <button
                                 key={t.value}
                                 type="button"
-                                variant={type === t.value ? "default" : "outline"}
-                                size="sm"
                                 onClick={() => setType(t.value)}
-                                className="gap-1.5"
+                                className={
+                                  selected
+                                    ? "inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[#1a1918] bg-[#1a1918] px-3 py-1.5 text-[12.5px] font-medium text-[#faf9f5] transition-colors duration-150"
+                                    : "inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[#e5e2da] bg-white px-3 py-1.5 text-[12.5px] font-medium text-[#57534a] transition-colors duration-150 hover:border-[#1a1918]"
+                                }
                               >
                                 <Icon className="h-3.5 w-3.5" />
                                 {t.label}
-                              </Button>
+                              </button>
                             );
                           })}
                         </div>
@@ -160,133 +169,142 @@ export default function FeedbackPage() {
 
                       {/* Title */}
                       <div className="space-y-2">
-                        <Label htmlFor="title">
-                          Title <span className="text-muted-foreground">({title.length}/100)</span>
-                        </Label>
-                        <Input
+                        <label htmlFor="title" className={LABEL_CLASS}>
+                          Title <span className="text-[#b5b0a1]">({title.length}/100)</span>
+                        </label>
+                        <input
                           id="title"
                           value={title}
                           onChange={(e) => setTitle(e.target.value.slice(0, 100))}
                           placeholder="Short, descriptive title"
+                          className={INPUT_CLASS}
                           required
                         />
                       </div>
 
                       {/* Description */}
                       <div className="space-y-2">
-                        <Label htmlFor="description">
-                          Description <span className="text-muted-foreground">({description.length}/500)</span>
-                        </Label>
+                        <label htmlFor="description" className={LABEL_CLASS}>
+                          Description{" "}
+                          <span className="text-[#b5b0a1]">({description.length}/500)</span>
+                        </label>
                         <textarea
                           id="description"
                           value={description}
                           onChange={(e) => setDescription(e.target.value.slice(0, 500))}
-                          placeholder="Describe your suggestion or issue in detail..."
+                          placeholder="Describe your suggestion or issue in detail"
                           rows={4}
-                          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                          className={INPUT_CLASS + " resize-none"}
                           required
                         />
                       </div>
 
                       {/* Name (optional) */}
                       <div className="space-y-2">
-                        <Label htmlFor="authorName">
-                          Your Name <span className="text-muted-foreground">(optional)</span>
-                        </Label>
-                        <Input
+                        <label htmlFor="authorName" className={LABEL_CLASS}>
+                          Your name <span className="text-[#b5b0a1]">(optional)</span>
+                        </label>
+                        <input
                           id="authorName"
                           value={authorName}
                           onChange={(e) => setAuthorName(e.target.value.slice(0, 50))}
                           placeholder="Anonymous"
+                          className={INPUT_CLASS}
                         />
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button
+                      <button
                         type="button"
-                        variant="outline"
                         onClick={() => setDialogOpen(false)}
+                        className="inline-flex cursor-pointer items-center justify-center rounded-full border border-[#e5e2da] bg-white px-4 py-2 text-[13.5px] font-medium text-[#57534a] transition-colors duration-150 hover:border-[#1a1918]"
                       >
                         Cancel
-                      </Button>
-                      <Button
+                      </button>
+                      <button
                         type="submit"
                         disabled={isSubmitting || !title.trim() || !description.trim()}
+                        className="inline-flex cursor-pointer items-center justify-center rounded-full bg-[#1a1918] px-5 py-2 text-[13.5px] font-semibold text-[#faf9f5] transition-[background,transform] duration-150 ease-out hover:bg-[#333] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
                       >
                         {isSubmitting ? "Submitting..." : "Submit"}
-                      </Button>
+                      </button>
                     </DialogFooter>
                   </form>
                 </DialogContent>
               </Dialog>
-            </motion.div>
+            </div>
+          </div>
 
-            {/* Feedback List */}
-            <motion.div variants={fadeIn} className="space-y-4">
-              {feedback === undefined ? (
-                <div className="text-center py-12 text-muted-foreground">Loading...</div>
-              ) : feedback.length === 0 ? (
-                <Card>
-                  <CardContent className="py-12 text-center text-muted-foreground">
-                    No feedback yet. Be the first to submit a suggestion!
-                  </CardContent>
-                </Card>
-              ) : (
-                feedback.map((item) => {
-                  const typeConfig = getTypeConfig(item.type);
-                  const Icon = typeConfig.icon;
-                  const hasVoted = item.upvoterIds.includes(visitorId);
+          {/* Feedback List */}
+          <div className="space-y-3">
+            {feedback === undefined ? (
+              <div className="py-16 text-center text-[14px] text-[#8a8577]">Loading...</div>
+            ) : feedback.length === 0 ? (
+              <div className="rounded-2xl border border-[#e5e2da] bg-white py-16 text-center text-[14px] text-[#8a8577]">
+                No feedback yet. Be the first to submit a suggestion.
+              </div>
+            ) : (
+              feedback.map((item) => {
+                const typeConfig = getTypeConfig(item.type);
+                const hasVoted = item.upvoterIds.includes(visitorId);
 
-                  return (
-                    <Card key={item._id} className="overflow-hidden">
-                      <CardContent className="p-0">
-                        <div className="flex">
-                          {/* Upvote section */}
-                          <button
-                            onClick={() => handleUpvote(item._id, hasVoted)}
-                            className={`flex flex-col items-center justify-center px-4 py-4 border-r transition-colors ${
-                              hasVoted
-                                ? "bg-primary/10 text-primary"
-                                : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                            }`}
-                          >
-                            <ChevronUp className={`h-5 w-5 ${hasVoted ? "fill-current" : ""}`} />
-                            <span className="text-sm font-semibold">{item.upvotes}</span>
-                          </button>
+                return (
+                  <div
+                    key={item._id}
+                    className="overflow-hidden rounded-2xl border border-[#e5e2da] bg-white transition-colors duration-150 hover:border-[#d8d4c8]"
+                  >
+                    <div className="flex">
+                      {/* Upvote column */}
+                      <button
+                        onClick={() => handleUpvote(item._id, hasVoted)}
+                        aria-pressed={hasVoted}
+                        className={
+                          hasVoted
+                            ? "flex w-[64px] shrink-0 cursor-pointer flex-col items-center justify-center gap-0.5 border-r border-[#e5e2da] bg-[#1a1918] py-5 text-[#faf9f5] transition-colors duration-150"
+                            : "flex w-[64px] shrink-0 cursor-pointer flex-col items-center justify-center gap-0.5 border-r border-[#e5e2da] bg-[#faf9f5] py-5 text-[#8a8577] transition-colors duration-150 hover:bg-[#f1efe8] hover:text-[#1a1918]"
+                        }
+                      >
+                        <ChevronUp className="h-[18px] w-[18px]" strokeWidth={2.25} />
+                        <span className="text-[13px] font-semibold tabular-nums">{item.upvotes}</span>
+                      </button>
 
-                          {/* Content */}
-                          <div className="flex-1 p-4">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Badge
-                                variant="secondary"
-                                className={`${typeConfig.color} text-white border-0 gap-1`}
-                              >
-                                <Icon className="h-3 w-3" />
-                                {typeConfig.label}
-                              </Badge>
-                              {item.status !== "pending" && (
-                                <Badge variant="outline" className="capitalize">
-                                  {item.status}
-                                </Badge>
-                              )}
-                            </div>
-                            <h3 className="font-semibold mb-1">{item.title}</h3>
-                            <p className="text-sm text-muted-foreground mb-2">{item.description}</p>
-                            <div className="text-xs text-muted-foreground">
-                              {item.authorName || "Anonymous"} &bull;{" "}
-                              {new Date(item.createdAt).toLocaleDateString()}
-                            </div>
-                          </div>
+                      {/* Content */}
+                      <div className="flex-1 px-5 py-4">
+                        <div className="mb-2 flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e5e2da] bg-[#faf9f5] px-2.5 py-1 text-[11px] font-medium text-[#57534a]">
+                            <span
+                              className="h-[7px] w-[7px] rounded-full"
+                              style={{ backgroundColor: typeConfig.dot }}
+                            />
+                            {typeConfig.label}
+                          </span>
+                          {item.status !== "pending" && (
+                            <span className="inline-flex items-center rounded-full border border-[#e5e2da] px-2.5 py-1 text-[11px] font-medium capitalize text-[#8a8577]">
+                              {item.status}
+                            </span>
+                          )}
                         </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })
-              )}
-            </motion.div>
-          </motion.div>
+                        <h3 className="text-[15px] font-semibold leading-snug text-[#1a1918]">
+                          {item.title}
+                        </h3>
+                        <p className="mt-1 text-[13.5px] leading-[1.55] text-[#57534a]">
+                          {item.description}
+                        </p>
+                        <div className="mt-2.5 font-plex text-[11px] text-[#b5b0a1]">
+                          {item.authorName || "Anonymous"} &bull;{" "}
+                          {new Date(item.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
-      </section>
+      </main>
+
+      <FooterStrip />
     </div>
   );
 }
