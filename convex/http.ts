@@ -1000,6 +1000,62 @@ app.get("/api/public/players",
   }
 );
 
+// POST /api/players/batch - Resolve many players by name and/or slug in one call.
+// Body: { names?: string[], slugs?: string[], teamType?: "curr"|"class"|"allt" }
+// Returns matched players plus an `unmatched` list in meta for anything that
+// didn't resolve. Caps the combined list to keep the query bounded.
+app.post("/api/players/batch",
+  authMiddleware,
+  zValidator("json", z.object({
+    names: z.array(z.string()).optional(),
+    slugs: z.array(z.string()).optional(),
+    teamType: z.enum(["curr", "class", "allt"]).optional(),
+  })),
+  async (c) => {
+    try {
+      const body = c.req.valid("json");
+      const names = body.names ?? [];
+      const slugs = body.slugs ?? [];
+      const total = names.length + slugs.length;
+
+      if (total === 0) {
+        return c.json(errorResponse(
+          "Provide at least one name or slug",
+          "VALIDATION_ERROR"
+        ), 400);
+      }
+      const MAX = 100;
+      if (total > MAX) {
+        return c.json(errorResponse(
+          `Too many identifiers (${total}); max ${MAX} per request`,
+          "TOO_MANY_IDENTIFIERS"
+        ), 400);
+      }
+
+      const queryArgs: {
+        names: string[];
+        slugs: string[];
+        teamType?: "curr" | "class" | "allt";
+      } = { names, slugs };
+      if (body.teamType) queryArgs.teamType = body.teamType;
+
+      const result = await c.env.runQuery(api.players.batchResolvePlayers, queryArgs);
+
+      return c.json(successResponse(result.players, {
+        requested: total,
+        matched: result.players.length,
+        unmatched: result.unmatched,
+      }));
+    } catch (error: any) {
+      console.error("Batch resolve error:", error);
+      return c.json(errorResponse(
+        "Failed to resolve players",
+        "QUERY_ERROR"
+      ), 500);
+    }
+  }
+);
+
 // GET /api/players/search - Search players by name
 // NOTE: This route MUST come before /api/players/:id to avoid matching "search" as an ID
 app.get("/api/players/search",

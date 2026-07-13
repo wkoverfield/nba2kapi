@@ -571,6 +571,108 @@ export const searchPlayers = query({
 });
 
 /**
+ * Batch-resolve a list of player names and/or slugs in one call.
+ *
+ * Solves the pattern seen in real usage: consumers with a roster of known
+ * names hitting /search once per name (hundreds of calls) because neither
+ * /bulk (returns everything, no name matching) nor /search (one name per call)
+ * fits "resolve my list". Names are normalized (lowercased, accents and
+ * periods stripped) so "doncic" resolves "Dončić" and "Jr." variants match.
+ * Anything that can't be resolved is reported back in `unmatched`.
+ */
+export const batchResolvePlayers = query({
+  args: {
+    names: v.optional(v.array(v.string())),
+    slugs: v.optional(v.array(v.string())),
+    teamType: v.optional(
+      v.union(v.literal("curr"), v.literal("class"), v.literal("allt")),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const names = args.names ?? [];
+    const slugs = args.slugs ?? [];
+
+    const norm = (s: string) =>
+      s
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "") // strip diacritics
+        .replace(/[.]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    // Candidate pool, scoped by teamType when provided.
+    const pool: Doc<"players">[] =
+      args.teamType !== undefined
+        ? await ctx.db
+            .query("players")
+            .withIndex("by_teamType", (q) => q.eq("teamType", args.teamType!))
+            .collect()
+        : await ctx.db.query("players").collect();
+
+    const byNormName = new Map<string, Doc<"players">[]>();
+    for (const p of pool) {
+      const key = norm(p.name);
+      const arr = byNormName.get(key);
+      if (arr) arr.push(p);
+      else byNormName.set(key, [p]);
+    }
+
+    const matched = new Map<string, Doc<"players">>();
+    const unmatched: { query: string; reason: string; candidates?: string[] }[] = [];
+
+    for (const raw of names) {
+      const q = norm(raw);
+      if (!q) {
+        unmatched.push({ query: raw, reason: "empty" });
+        continue;
+      }
+      let hits = byNormName.get(q);
+      if (!hits) {
+        // Fall back to a substring match; only accept it if it's unambiguous.
+        const contains = pool.filter((p) => {
+          const n = norm(p.name);
+          return n.includes(q) || q.includes(n);
+        });
+        if (contains.length === 1) {
+          hits = contains;
+        } else if (contains.length === 0) {
+          unmatched.push({ query: raw, reason: "not_found" });
+          continue;
+        } else {
+          unmatched.push({
+            query: raw,
+            reason: "ambiguous",
+            candidates: contains.slice(0, 5).map((p) => p.name),
+          });
+          continue;
+        }
+      }
+      for (const p of hits) matched.set(p._id, p);
+    }
+
+    for (const raw of slugs) {
+      const s = raw.trim().toLowerCase();
+      if (!s) {
+        unmatched.push({ query: raw, reason: "empty" });
+        continue;
+      }
+      const player = await ctx.db
+        .query("players")
+        .withIndex("by_slug", (q) => q.eq("slug", s))
+        .first();
+      if (!player || (args.teamType !== undefined && player.teamType !== args.teamType)) {
+        unmatched.push({ query: raw, reason: "not_found" });
+        continue;
+      }
+      matched.set(player._id, player);
+    }
+
+    return { players: Array.from(matched.values()), unmatched };
+  },
+});
+
+/**
  * Get players by team
  */
 export const getPlayersByTeam = query({
