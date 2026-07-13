@@ -594,7 +594,7 @@ app.get("/api/admin/stats", async (c) => {
   if (!auth.valid) return auth.error;
 
   try {
-    const stats = await c.env.runQuery(api.admin.getAdminStats, {});
+    const stats = await c.env.runQuery(internal.admin.getAdminStats, {});
     // No caching — stats should reflect current state on every call.
     c.header("Cache-Control", "no-store");
     return c.json(successResponse(stats));
@@ -671,7 +671,7 @@ app.get("/api/admin/scrape/jobs",
     try {
       const { limit } = c.req.valid("query");
 
-      const jobs = await c.env.runQuery(api.scrapeJobs.getRecentJobs, { limit });
+      const jobs = await c.env.runQuery(internal.scrapeJobs.getRecentJobs, { limit });
 
       return c.json(successResponse(jobs, {
         count: jobs.length,
@@ -697,7 +697,7 @@ app.get("/api/admin/scrape/:jobId",
     try {
       const jobId = c.req.param("jobId");
 
-      const job = await c.env.runQuery(api.scrapeJobs.getJobStatus, { jobId });
+      const job = await c.env.runQuery(internal.scrapeJobs.getJobStatus, { jobId });
 
       if (!job) {
         return c.json(errorResponse(

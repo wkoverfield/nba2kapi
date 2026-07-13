@@ -3,7 +3,7 @@
  * Query and mutation functions for tracking scraping operations
  */
 
-import { mutation, query } from "./_generated/server";
+import { mutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 
 /**
@@ -44,8 +44,11 @@ export const upsertJob = mutation({
 
 /**
  * Get job status by ID
+ * internalQuery: only reached via the admin-key-gated /api/admin/scrape/:jobId
+ * HTTP route. A public query would be callable directly via the deployment URL,
+ * bypassing that gate.
  */
-export const getJobStatus = query({
+export const getJobStatus = internalQuery({
   args: { jobId: v.string() },
   handler: async (ctx, args) => {
     const job = await ctx.db
@@ -59,8 +62,10 @@ export const getJobStatus = query({
 
 /**
  * Get recent scrape jobs
+ * internalQuery: only reached via the admin-key-gated /api/admin/scrape/jobs
+ * HTTP route. See getJobStatus above.
  */
-export const getRecentJobs = query({
+export const getRecentJobs = internalQuery({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const jobs = await ctx.db
