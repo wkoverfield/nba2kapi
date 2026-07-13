@@ -6,12 +6,16 @@
  * the HTTP layer; this file just exposes the raw Convex query.
  */
 
-import { query } from "./_generated/server";
+import { internalQuery } from "./_generated/server";
 
 const MS_PER_HOUR = 60 * 60 * 1000;
 const MS_PER_DAY = 24 * MS_PER_HOUR;
 
-export const getAdminStats = query({
+// internalQuery, not query: this returns every API-key holder's email plus the
+// full usage/top-users breakdown. The X-Admin-Key gate lives in the HTTP layer
+// (convex/http.ts). A public `query` would be callable directly from any browser
+// via NEXT_PUBLIC_CONVEX_URL, bypassing that gate entirely.
+export const getAdminStats = internalQuery({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();
