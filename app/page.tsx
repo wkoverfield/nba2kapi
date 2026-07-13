@@ -10,6 +10,7 @@ import { api } from "../convex/_generated/api";
 import { TopNav } from "@/components/chrome/top-nav";
 import { SiteFooter } from "@/components/chrome/site-footer";
 import { KeyDialog } from "@/components/chrome/key-dialog";
+import { ShowcaseStrip } from "@/components/showcase/showcase-strip";
 import { getRatingClasses, getRatingTier, getAttributeColor } from "@/lib/rating-colors";
 import { getTeamAbbreviation } from "@/lib/team-abbr";
 import { API_KEY_STORAGE_KEY } from "@/lib/constants";
@@ -173,6 +174,9 @@ export default function Home() {
   const teaserUrl = `/api/players?position=${DEMO_POSITIONS[demoPosition].value}&era=${DEMO_ERAS[demoEra].value}&three_ball_gte=${DEMO_THRESHOLDS[demoThreshold]}&sort=${DEMO_SORTS[demoSort].value}:desc`;
 
   useEffect(() => {
+    // API key lives in localStorage, so it must be read on the client after
+    // mount to avoid an SSR/hydration mismatch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHasApiKey(!!localStorage.getItem(API_KEY_STORAGE_KEY));
   }, []);
 
@@ -652,6 +656,9 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        {/* Showcase — community projects built on the API (hidden until seeded) */}
+        <ShowcaseStrip />
 
         {/* CTA */}
         <div
