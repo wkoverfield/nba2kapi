@@ -347,4 +347,25 @@ export default defineSchema({
     date: v.string(),
     visitorId: v.string(),
   }).index("by_date_and_visitor", ["date", "visitorId"]),
+
+  /**
+   * Showcase - community-submitted apps and projects built on the API.
+   * Submissions start "pending" and only render publicly once "approved"
+   * (moderation gate, see convex/showcase.ts). submitterEmail is private and
+   * is never returned by the public query; it is kept for contact/verification.
+   */
+  showcaseProjects: defineTable({
+    name: v.string(),
+    url: v.string(),
+    description: v.string(),
+    category: v.string(), // "app" | "league-tool" | "bot" | "data-viz" | "other"
+    status: v.string(), // "pending" | "approved" | "rejected"
+    featured: v.optional(v.boolean()), // surfaced in the landing strip
+    submitterName: v.optional(v.string()),
+    submitterEmail: v.optional(v.string()), // private, never exposed publicly
+    createdAt: v.string(),
+    approvedAt: v.optional(v.string()),
+  })
+    .index("by_status", ["status"])
+    .index("by_status_and_createdAt", ["status", "createdAt"]),
 });

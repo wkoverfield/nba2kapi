@@ -10,7 +10,7 @@ import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { HonoWithConvex, HttpRouterWithHono } from "convex-helpers/server/hono";
 import { ActionCtx } from "./_generated/server";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { CURRENT_GAME_VERSION } from "./gameVersion";
 import {
@@ -606,6 +606,57 @@ app.get("/api/admin/stats", async (c) => {
     ), 500);
   }
 });
+
+// GET /api/admin/showcase - List pending showcase submissions (requires admin key)
+app.get("/api/admin/showcase", async (c) => {
+  const auth = validateAdminKey(c);
+  if (!auth.valid) return auth.error;
+
+  try {
+    const pending = await c.env.runQuery(internal.showcase.listPending, {});
+    c.header("Cache-Control", "no-store");
+    return c.json(successResponse(pending, { count: pending.length }));
+  } catch (error: any) {
+    console.error("List pending showcase error:", error);
+    return c.json(errorResponse(
+      "Failed to list showcase submissions",
+      "QUERY_ERROR"
+    ), 500);
+  }
+});
+
+// POST /api/admin/showcase/:id - Approve/reject a submission (requires admin key)
+// Body: { status: "approved" | "rejected" | "pending", featured?: boolean }
+app.post("/api/admin/showcase/:id",
+  zValidator("json", z.object({
+    status: z.enum(["approved", "rejected", "pending"]),
+    featured: z.boolean().optional(),
+  })),
+  async (c) => {
+    const auth = validateAdminKey(c);
+    if (!auth.valid) return auth.error;
+
+    try {
+      const id = c.req.param("id") as Id<"showcaseProjects">;
+      const body = c.req.valid("json");
+      const mutationArgs: {
+        id: Id<"showcaseProjects">;
+        status: "approved" | "rejected" | "pending";
+        featured?: boolean;
+      } = { id, status: body.status };
+      if (body.featured !== undefined) mutationArgs.featured = body.featured;
+      await c.env.runMutation(internal.showcase.setStatus, mutationArgs);
+      c.header("Cache-Control", "no-store");
+      return c.json(successResponse({ id, ...body }));
+    } catch (error: any) {
+      console.error("Update showcase status error:", error);
+      return c.json(errorResponse(
+        "Failed to update submission",
+        "MUTATION_ERROR"
+      ), 500);
+    }
+  }
+);
 
 // GET /api/admin/scrape/jobs - Get recent scrape jobs (requires admin key in header)
 app.get("/api/admin/scrape/jobs",

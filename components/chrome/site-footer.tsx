@@ -46,6 +46,9 @@ export function SiteFooter() {
               <Link href="/playground" className={FOOTER_LINK}>
                 Player dossiers
               </Link>
+              <Link href="/showcase" className={FOOTER_LINK}>
+                Showcase
+              </Link>
             </div>
           </div>
 
