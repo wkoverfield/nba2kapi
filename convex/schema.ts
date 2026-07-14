@@ -368,4 +368,18 @@ export default defineSchema({
   })
     .index("by_status", ["status"])
     .index("by_status_and_createdAt", ["status", "createdAt"]),
+
+  /**
+   * Metric Snapshots - permanent daily banking of cumulative usage counters.
+   * One row per UTC date holds point-in-time values of the monotonic counters
+   * (total pageviews, cumulative API requests summed across all keys, etc.).
+   * Because the API-request total is stored raw (not as a delta), day-over-day
+   * differences yield per-day volume, and any window (7d/30d/yearly) stays
+   * derivable indefinitely without retaining raw request logs.
+   */
+  metricSnapshots: defineTable({
+    date: v.string(), // UTC "YYYY-MM-DD"
+    capturedAt: v.number(), // epoch ms when the snapshot was taken
+    metrics: v.record(v.string(), v.number()),
+  }).index("by_date", ["date"]),
 });
