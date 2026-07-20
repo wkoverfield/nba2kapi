@@ -72,7 +72,7 @@ export default function PlayersEndpointPage() {
     >
       <EndpointHeader path="/api/players" title="List players">
         <p className="m-0">
-          Every player in the database — 1,700+ across current, classic, and all-time rosters —
+          Every player in the database — 1,800+ across current, classic, and all-time rosters —
           filterable on any attribute, sortable on any column. This is the endpoint the{" "}
           <Link href="/playground">playground</Link> writes for you.
         </p>
@@ -111,7 +111,8 @@ export default function PlayersEndpointPage() {
             desc: (
               <>
                 Filter to one team by full name, e.g. <code>Los Angeles Lakers</code> or{" "}
-                <code>1995-96 Chicago Bulls</code>.
+                <code>1995-96 Chicago Bulls</code>. Offseason free agents carry the team{" "}
+                <code>Free Agency</code> with era <code>curr</code>.
               </>
             ),
           },
