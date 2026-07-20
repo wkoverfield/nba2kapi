@@ -3,7 +3,7 @@
  * Scrapes team listings and basic player data from team roster pages
  */
 
-import { BASE_URL, TEAM_SELECTORS, TEAM_TYPES, SCRAPER_OPTIONS } from './config.js';
+import { BASE_URL, TEAM_SELECTORS, TEAM_TYPES, EXTRA_TEAMS, SCRAPER_OPTIONS } from './config.js';
 import { normalizeUrl, logProgress, logError, delay, parseIntSafe, gotoThroughChallenge } from './utils.js';
 
 /**
@@ -83,8 +83,14 @@ export async function scrapeTeamLinks(page, teamType) {
     };
   });
 
-  logProgress(`Found ${uniqueTeams.length} teams`);
-  return uniqueTeams;
+  // Append roster pages that never appear on the team-list page (e.g. the
+  // Free Agency page), skipping any the list unexpectedly started including.
+  const extras = (EXTRA_TEAMS[teamType] || []).filter(
+    (extra) => !uniqueTeams.some((team) => team.link === extra.link)
+  );
+
+  logProgress(`Found ${uniqueTeams.length} teams (+${extras.length} extra)`);
+  return [...uniqueTeams, ...extras];
 }
 
 /**

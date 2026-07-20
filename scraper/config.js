@@ -27,6 +27,22 @@ export const TEAM_TYPES = {
 };
 
 /**
+ * Roster pages that are not linked from the team-list pages but must be
+ * scraped alongside them. 2kratings parks offseason free agents on a
+ * standalone Free Agency page, so without this every free agent falls out
+ * of the dataset on the next scrape (and reconcile then prunes them).
+ */
+export const EXTRA_TEAMS = {
+  curr: [
+    {
+      link: '/teams/free-agency',
+      teamName: 'Free Agency',
+      teamImg: 'https://www.2kratings.com/wp-content/uploads/free-agency.svg'
+    }
+  ]
+};
+
+/**
  * DOM selectors for team roster pages
  */
 export const TEAM_SELECTORS = {
