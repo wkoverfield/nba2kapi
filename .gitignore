@@ -7,6 +7,9 @@ node_modules/
 .env.local
 .env.*.local
 
+# Scrape pipeline output (per-run revalidation diff, CI-only)
+scrape-diff.json
+
 # Logs
 logs/
 *.log

@@ -101,3 +101,40 @@ jobs:
           bash scripts/scrape-retry.sh curr
           bash scripts/scrape-retry.sh class
           bash scripts/scrape-retry.sh allt
+
+      # cohortStats and teams are precomputed tables read by the site's
+      # dossier/team queries; rebuild them after every scrape so derived stats
+      # track the fresh player data. Runs only when the scrape steps succeeded
+      # (default step condition), so stats never rebuild over partial data.
+      - name: Rebuild derived stats tables
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+        run: npx convex run cohorts:rebuildAll
+
+      # POST the run's actual diff (emitted by runScraper.js into
+      # scrape-diff.json) so the site re-renders only the pages that changed.
+      # Best-effort by design: an unreachable endpoint must never fail the
+      # scrape run; pages simply stay cached until the next successful scrape.
+      - name: Revalidate changed pages
+        env:
+          REVALIDATE_URL: ${{ secrets.REVALIDATE_URL }}
+          REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+        run: |
+          if [ ! -f scrape-diff.json ]; then
+            echo "No scrape diff file; skipping revalidation."
+            exit 0
+          fi
+          if [ -z "$REVALIDATE_URL" ] || [ -z "$REVALIDATE_SECRET" ]; then
+            echo "::warning::REVALIDATE_URL / REVALIDATE_SECRET not configured; skipping revalidation."
+            exit 0
+          fi
+          jq -c --arg secret "$REVALIDATE_SECRET" \
+            '{secret: $secret, players: (.players // []), teams: (.teams // []), deleted: (.deleted // [])}' \
+            scrape-diff.json > revalidate-body.json
+          if curl -sS --fail-with-body --max-time 60 -X POST "$REVALIDATE_URL/api/revalidate" \
+              -H 'Content-Type: application/json' --data @revalidate-body.json; then
+            echo "Revalidation request accepted."
+          else
+            echo "::warning::Revalidation request failed; cached pages refresh on the next successful scrape."
+          fi
+          rm -f revalidate-body.json
