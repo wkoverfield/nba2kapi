@@ -3,6 +3,10 @@ import { fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { SITE_URL, teamCanonical } from "@/lib/seo";
 
+// Refreshed on demand via POST /api/revalidate after each scrape; the 30-day
+// revalidate is a backstop only.
+export const revalidate = 2592000;
+
 const STATIC_ROUTES: Array<{
   path: string;
   changeFrequency: "daily" | "weekly" | "monthly";

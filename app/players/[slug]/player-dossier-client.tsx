@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { usePreloadedQuery, type Preloaded } from "convex/react";
+import { usePreloadedQuery, useQuery, type Preloaded } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { TopNav } from "@/components/chrome/top-nav";
 import { FooterStrip } from "@/components/chrome/footer-strip";
@@ -120,7 +120,21 @@ function PlayerDossier({
 
   const [hasApiKey, setHasApiKey] = useState(false);
   const [endpointCopied, setEndpointCopied] = useState(false);
-  const dossier = usePreloadedQuery(preloadedDossier);
+
+  // The server renders (and statically caches) the canonical default version
+  // only. ?type= / ?team= variants are fetched here on the client and swap in
+  // over the canonical data once loaded, so query params never force dynamic
+  // rendering on the server.
+  const canonicalDossier = usePreloadedQuery(preloadedDossier);
+  const wantsVariant =
+    !!canonicalDossier &&
+    ((requestedType !== undefined && requestedType !== canonicalDossier.player.teamType) ||
+      (!!teamParam && teamParam !== canonicalDossier.player.team));
+  const variantDossier = useQuery(
+    api.dossier.getDossier,
+    wantsVariant ? { slug, teamType: requestedType, team: teamParam ?? undefined } : "skip"
+  );
+  const dossier = wantsVariant && variantDossier !== undefined ? variantDossier : canonicalDossier;
 
   useEffect(() => {
     setHasApiKey(!!localStorage.getItem(API_KEY_STORAGE_KEY));

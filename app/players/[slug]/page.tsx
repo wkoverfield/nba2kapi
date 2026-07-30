@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { preloadQuery, preloadedQueryResult } from "convex/nextjs";
@@ -5,24 +6,30 @@ import { api } from "@/convex/_generated/api";
 import { gameLabel, safeJsonLd, SITE_URL } from "@/lib/seo";
 import { PlayerDossierClient } from "./player-dossier-client";
 
-type TeamType = "curr" | "class" | "allt";
-type PageProps = {
-  params: Promise<{ slug: string }>;
-  searchParams: Promise<{ type?: string; team?: string }>;
-};
+// Canonical player pages are statically cached (full route cache) and
+// invalidated on demand via POST /api/revalidate after each scrape. The
+// 30-day revalidate is a backstop only. Era/team query variants (?type=,
+// ?team=) are resolved client-side so they never force dynamic rendering.
+export const revalidate = 2592000;
 
-function teamType(value?: string): TeamType | undefined {
-  return value === "curr" || value === "class" || value === "allt" ? value : undefined;
+// No paths at build time: every slug renders on first request, then is
+// cached. Unknown slugs still 404 via notFound() below.
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  return [];
 }
 
-export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
-  const [{ slug }, search] = await Promise.all([params, searchParams]);
-  const preloaded = await preloadQuery(api.dossier.getDossier, {
-    slug,
-    teamType: teamType(search.type),
-    team: search.team,
-  });
-  const dossier = preloadedQueryResult(preloaded);
+type PageProps = {
+  params: Promise<{ slug: string }>;
+};
+
+// One dossier fetch per render, shared by generateMetadata and the page body.
+const preloadDossier = cache((slug: string) =>
+  preloadQuery(api.dossier.getDossier, { slug })
+);
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const dossier = preloadedQueryResult(await preloadDossier(slug));
   if (!dossier) return { title: "Player not found", robots: { index: false, follow: false } };
 
   const p = dossier.player;
@@ -41,12 +48,8 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
 }
 
 export default async function PlayerPage(props: PageProps) {
-  const [{ slug }, search] = await Promise.all([props.params, props.searchParams]);
-  const preloadedDossier = await preloadQuery(api.dossier.getDossier, {
-    slug,
-    teamType: teamType(search.type),
-    team: search.team,
-  });
+  const { slug } = await props.params;
+  const preloadedDossier = await preloadDossier(slug);
   const dossier = preloadedQueryResult(preloadedDossier);
   if (!dossier) notFound();
 
