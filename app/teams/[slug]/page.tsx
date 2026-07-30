@@ -10,6 +10,10 @@ import { TeamDetailClient } from "./team-detail-client";
 // invalidated on demand via POST /api/revalidate after each scrape. The
 // 30-day revalidate is a backstop only. ?type= era variants are resolved
 // client-side so they never force dynamic rendering.
+// force-static is required: convex/nextjs issues its fetches with
+// cache: "no-store", which would otherwise throw DYNAMIC_SERVER_USAGE
+// during on-demand static generation.
+export const dynamic = "force-static";
 export const revalidate = 2592000;
 
 // No paths at build time: every slug renders on first request, then is
