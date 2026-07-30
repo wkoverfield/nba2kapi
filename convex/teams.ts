@@ -7,7 +7,13 @@ import { query } from "./_generated/server";
 import { v } from "convex/values";
 
 /**
- * Get team by slug - helper to convert slug to team name
+ * Get team by slug - helper to convert slug to team name.
+ *
+ * Point-read on the precomputed `teams` table (rebuilt at scrape time by
+ * cohorts.ts). While the table is still empty for an era (fresh deploy before
+ * the cohorts:rebuildAll backfill), falls back to deriving the team from
+ * player rows; once populated, a miss is authoritative and returns null
+ * without scanning players.
  */
 export const getTeamBySlug = query({
   args: {
@@ -15,10 +21,30 @@ export const getTeamBySlug = query({
     teamType: v.union(v.literal("curr"), v.literal("class"), v.literal("allt")),
   },
   handler: async (ctx, args) => {
-    // Get all players of this team type
+    const teamDoc = await ctx.db
+      .query("teams")
+      .withIndex("by_slug_and_type", (q) =>
+        q.eq("slug", args.slug).eq("teamType", args.teamType)
+      )
+      .first();
+    if (teamDoc) {
+      return {
+        name: teamDoc.name,
+        slug: args.slug,
+        teamType: args.teamType,
+      };
+    }
+
+    const eraPopulated = await ctx.db
+      .query("teams")
+      .withIndex("by_teamType", (q) => q.eq("teamType", args.teamType))
+      .first();
+    if (eraPopulated) return null;
+
+    // Fallback: era not backfilled yet; derive the team from player rows
     const players = await ctx.db
       .query("players")
-      .filter((q) => q.eq(q.field("teamType"), args.teamType))
+      .withIndex("by_teamType", (q) => q.eq("teamType", args.teamType))
       .collect();
 
     // Find a player whose team name matches the slug

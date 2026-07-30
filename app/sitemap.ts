@@ -3,6 +3,13 @@ import { fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { SITE_URL, teamCanonical } from "@/lib/seo";
 
+// Rendered once and served from the full route cache: the Convex fetch is
+// uncached, so without force-static this route would re-run the entity
+// inventory query on every crawler request. Refreshed on demand via POST
+// /api/revalidate after each scrape; the 30-day revalidate is a backstop.
+export const dynamic = "force-static";
+export const revalidate = 2592000;
+
 const STATIC_ROUTES: Array<{
   path: string;
   changeFrequency: "daily" | "weekly" | "monthly";

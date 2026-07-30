@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { usePreloadedQuery, type Preloaded } from "convex/react";
+import { usePreloadedQuery, useQuery, type Preloaded } from "convex/react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { TopNav } from "@/components/chrome/top-nav";
@@ -147,14 +147,41 @@ function TeamPage({
   const router = useRouter();
   const slug = params.slug as string;
   const typeParam = searchParams.get("type");
-  const era: TeamType = typeParam === "class" || typeParam === "allt" ? typeParam : "curr";
+  const requestedEra: TeamType | null =
+    typeParam === "curr" || typeParam === "class" || typeParam === "allt" ? typeParam : null;
 
   const [view, setView] = useState<"depth" | "table">("depth");
   const [hasApiKey, setHasApiKey] = useState(false);
 
-  const teamInfo = usePreloadedQuery(preloadedTeam);
-  const roster = usePreloadedQuery(preloadedRoster) as RosterPlayer[];
-  const board = usePreloadedQuery(preloadedBoard);
+  // The server renders (and statically caches) the slug's own era, resolved
+  // from the slug alone. A ?type= that names a different era is fetched here
+  // on the client and swaps in once loaded, so query params never force
+  // dynamic rendering on the server.
+  const baseTeam = usePreloadedQuery(preloadedTeam);
+  const baseRoster = usePreloadedQuery(preloadedRoster) as RosterPlayer[];
+  const baseBoard = usePreloadedQuery(preloadedBoard);
+  const baseEra = (baseTeam?.teamType ?? "curr") as TeamType;
+  const wantsVariant = requestedEra !== null && baseTeam !== null && requestedEra !== baseEra;
+  const variantTeam = useQuery(
+    api.teams.getTeamBySlug,
+    wantsVariant ? { slug, teamType: requestedEra } : "skip"
+  );
+  const variantRoster = useQuery(
+    api.players.getPlayersByTeam,
+    wantsVariant && variantTeam ? { team: variantTeam.name, teamType: requestedEra } : "skip"
+  );
+  const variantBoard = useQuery(
+    api.teams.getBoard,
+    wantsVariant ? { teamType: requestedEra } : "skip"
+  );
+
+  // Until the variant resolves, keep rendering the base era so labels, links,
+  // and data stay consistent with each other.
+  const variantReady = wantsVariant && variantTeam !== undefined;
+  const teamInfo = variantReady ? variantTeam : baseTeam;
+  const roster = (variantReady ? variantRoster : baseRoster) as RosterPlayer[];
+  const board = variantReady ? variantBoard : baseBoard;
+  const era: TeamType = variantReady ? (requestedEra as TeamType) : baseEra;
 
   useEffect(() => {
     setHasApiKey(!!localStorage.getItem(API_KEY_STORAGE_KEY));

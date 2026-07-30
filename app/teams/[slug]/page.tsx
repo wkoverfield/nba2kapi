@@ -1,26 +1,53 @@
+import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { fetchQuery, preloadQuery, preloadedQueryResult } from "convex/nextjs";
+import { preloadQuery, preloadedQueryResult } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { ERA_LABELS, gameLabel, safeJsonLd, SITE_URL, teamCanonical } from "@/lib/seo";
 import { TeamDetailClient } from "./team-detail-client";
 
+// Canonical team pages are statically cached (full route cache) and
+// invalidated on demand via POST /api/revalidate after each scrape. The
+// 30-day revalidate is a backstop only. ?type= era variants are resolved
+// client-side so they never force dynamic rendering.
+// force-static is required: convex/nextjs issues its fetches with
+// cache: "no-store", which would otherwise throw DYNAMIC_SERVER_USAGE
+// during on-demand static generation.
+export const dynamic = "force-static";
+export const revalidate = 2592000;
+
+// No paths at build time: every slug renders on first request, then is
+// cached. Unknown slugs still 404 via notFound() below.
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  return [];
+}
+
 type TeamType = "curr" | "class" | "allt";
 type PageProps = {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ type?: string }>;
 };
 
-function parseTeamType(value?: string): TeamType {
-  return value === "class" || value === "allt" ? value : "curr";
-}
+const ERAS: TeamType[] = ["curr", "class", "allt"];
 
-export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
-  const [{ slug }, search] = await Promise.all([params, searchParams]);
-  const era = parseTeamType(search.type);
-  const team = await fetchQuery(api.teams.getTeamBySlug, { slug, teamType: era });
+// Team slugs embed their era (classic slugs carry a season prefix, all-time
+// slugs an "all-time-" prefix), so a slug maps to exactly one era. Probe eras
+// in canonical order and keep the first hit. Cached so generateMetadata and
+// the page body share one lookup per render.
+const preloadTeam = cache(async (slug: string) => {
+  for (const era of ERAS) {
+    const preloaded = await preloadQuery(api.teams.getTeamBySlug, { slug, teamType: era });
+    if (preloadedQueryResult(preloaded) !== null) return preloaded;
+  }
+  return null;
+});
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const preloadedTeam = await preloadTeam(slug);
+  const team = preloadedTeam ? preloadedQueryResult(preloadedTeam) : null;
   if (!team) return { title: "Team not found", robots: { index: false, follow: false } };
 
+  const era = team.teamType;
   const game = gameLabel();
   const eraLabel = ERA_LABELS[era];
   const title = `${team.name} ${game} Roster, Ratings & Depth Chart`;
@@ -35,14 +62,14 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   };
 }
 
-export default async function TeamPage({ params, searchParams }: PageProps) {
-  const [{ slug }, search] = await Promise.all([params, searchParams]);
-  const era = parseTeamType(search.type);
-  const team = await fetchQuery(api.teams.getTeamBySlug, { slug, teamType: era });
-  if (!team) notFound();
+export default async function TeamPage({ params }: PageProps) {
+  const { slug } = await params;
+  const preloadedTeam = await preloadTeam(slug);
+  const team = preloadedTeam ? preloadedQueryResult(preloadedTeam) : null;
+  if (!preloadedTeam || !team) notFound();
 
-  const [preloadedTeam, preloadedRoster, preloadedBoard] = await Promise.all([
-    preloadQuery(api.teams.getTeamBySlug, { slug, teamType: era }),
+  const era = team.teamType;
+  const [preloadedRoster, preloadedBoard] = await Promise.all([
     preloadQuery(api.players.getPlayersByTeam, { team: team.name, teamType: era }),
     preloadQuery(api.teams.getBoard, { teamType: era }),
   ]);

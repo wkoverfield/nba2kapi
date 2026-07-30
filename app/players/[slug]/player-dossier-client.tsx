@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { usePreloadedQuery, type Preloaded } from "convex/react";
+import { usePreloadedQuery, useQuery, type Preloaded } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { TopNav } from "@/components/chrome/top-nav";
 import { FooterStrip } from "@/components/chrome/footer-strip";
@@ -120,7 +120,28 @@ function PlayerDossier({
 
   const [hasApiKey, setHasApiKey] = useState(false);
   const [endpointCopied, setEndpointCopied] = useState(false);
-  const dossier = usePreloadedQuery(preloadedDossier);
+
+  // The server renders (and statically caches) the canonical default version
+  // only. ?type= / ?team= variants are fetched here on the client and swap in
+  // over the canonical data once loaded, so query params never force dynamic
+  // rendering on the server.
+  const canonicalDossier = usePreloadedQuery(preloadedDossier);
+  const wantsVariant =
+    !!canonicalDossier &&
+    ((requestedType !== undefined && requestedType !== canonicalDossier.player.teamType) ||
+      (!!teamParam && teamParam !== canonicalDossier.player.team));
+  const variantDossier = useQuery(
+    api.dossier.getDossier,
+    wantsVariant ? { slug, teamType: requestedType, team: teamParam ?? undefined } : "skip"
+  );
+  // While a requested variant loads, hold a quiet shell (undefined) rather
+  // than the canonical version: a Classic/All-Time deep link must never flash
+  // the current-era card before swapping.
+  const dossier = wantsVariant
+    ? variantDossier === undefined
+      ? undefined
+      : variantDossier
+    : canonicalDossier;
 
   useEffect(() => {
     setHasApiKey(!!localStorage.getItem(API_KEY_STORAGE_KEY));
@@ -280,6 +301,20 @@ function PlayerDossier({
         .map((c) => ({ label: CATEGORY_LABELS[c.key], pct: c.pct as number })),
     ];
   }, [dossier, player]);
+
+  if (dossier === undefined) {
+    return (
+      <div className="min-h-screen bg-[#faf9f5] font-body text-[#1a1918]">
+        <TopNav hasApiKey={hasApiKey} />
+        <div className="py-24 text-center">
+          <p className="m-0 font-plex text-[10.5px] tracking-[0.12em] text-[#8a8577]">
+            LOADING VERSION
+          </p>
+        </div>
+        <FooterStrip />
+      </div>
+    );
+  }
 
   if (dossier === null) {
     return (

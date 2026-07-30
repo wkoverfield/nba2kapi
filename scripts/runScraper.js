@@ -3,6 +3,7 @@
  * Runs the Playwright scraper and uploads results to Convex
  */
 
+import fs from "fs";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api.js";
 import { CURRENT_GAME_VERSION } from "../convex/gameVersion.js";
@@ -14,6 +15,53 @@ import { initBrowser, createPage } from '../scraper/utils.js';
 // (NOT .convex.site which is for HTTP actions)
 const CONVEX_URL = process.env.CONVEX_URL || "https://canny-kingfisher-472.convex.cloud";
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
+
+// Diff of what this run actually touched, for targeted page revalidation.
+// Merged (set-union) across runs/retry attempts into one JSON file
+// {players, teams, deleted} that the scrape workflow POSTs to the site's
+// /api/revalidate endpoint after a successful run.
+const SCRAPE_DIFF_FILE = process.env.SCRAPE_DIFF_FILE || "scrape-diff.json";
+
+/** Team slug formula shared with convex/teams.ts getBoard / sitemap URLs. */
+function teamSlug(teamName) {
+  return String(teamName || "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+}
+
+/**
+ * Merge this run's diff into SCRAPE_DIFF_FILE. Union semantics: a retry
+ * attempt after a partial (blocked) attempt sees already-updated players as
+ * "unchanged", so earlier attempts' slugs must survive. Never throws: diff
+ * emission is best-effort and must not fail a scrape.
+ */
+function mergeScrapeDiff({ players, teams, deleted }) {
+  try {
+    let existing = { players: [], teams: [], deleted: [] };
+    if (fs.existsSync(SCRAPE_DIFF_FILE)) {
+      try {
+        const parsed = JSON.parse(fs.readFileSync(SCRAPE_DIFF_FILE, "utf8"));
+        existing = {
+          players: Array.isArray(parsed.players) ? parsed.players : [],
+          teams: Array.isArray(parsed.teams) ? parsed.teams : [],
+          deleted: Array.isArray(parsed.deleted) ? parsed.deleted : [],
+        };
+      } catch {
+        // Corrupt file: start fresh rather than losing this run's diff.
+      }
+    }
+    const merged = {
+      players: [...new Set([...existing.players, ...players])].sort(),
+      teams: [...new Set([...existing.teams, ...teams])].sort(),
+      deleted: [...new Set([...existing.deleted, ...deleted])].sort(),
+    };
+    fs.writeFileSync(SCRAPE_DIFF_FILE, JSON.stringify(merged, null, 2) + "\n");
+    console.log(
+      `Scrape diff -> ${SCRAPE_DIFF_FILE}: ${merged.players.length} players, ` +
+      `${merged.teams.length} teams, ${merged.deleted.length} deleted`
+    );
+  } catch (error) {
+    console.error(`Failed to write scrape diff (non-fatal): ${error.message}`);
+  }
+}
 
 /**
  * Main scraper function
@@ -40,6 +88,11 @@ async function runScraper(options = {}) {
   let teamsScraped = 0;
   let emptyTeams = 0; // teams whose roster came back with 0 players (soft-block signal)
   const errors = [];
+
+  // Slugs this run actually touched (drives targeted page revalidation)
+  const changedPlayerSlugs = new Set(); // added + updated players
+  const deletedPlayerSlugs = new Set(); // removed by reconcile
+  const affectedTeamSlugs = new Set(); // teams of any player above
 
   console.log(`Starting scrape job ${jobId} for team type: ${teamType}`);
 
@@ -109,8 +162,12 @@ async function runScraper(options = {}) {
 
               if (result.action === 'inserted') {
                 playersAdded++;
+                changedPlayerSlugs.add(slug);
+                affectedTeamSlugs.add(teamSlug(fullPlayer.team || team.teamName));
               } else if (result.action === 'updated') {
                 playersUpdated++;
+                changedPlayerSlugs.add(slug);
+                affectedTeamSlugs.add(teamSlug(fullPlayer.team || team.teamName));
               } else {
                 playersUnchanged++;
               }
@@ -176,11 +233,21 @@ async function runScraper(options = {}) {
           dryRun: process.env.RECONCILE_DRY_RUN === 'true',
         });
         console.log(`Reconcile (${teamType}):`, JSON.stringify(reconcile));
+        for (const removed of reconcile.deletedPlayers ?? []) {
+          deletedPlayerSlugs.add(removed.slug);
+          affectedTeamSlugs.add(teamSlug(removed.team));
+        }
       } catch (error) {
         // Non-fatal: a reconcile failure shouldn't fail the scrape/upload.
         console.error(`Reconcile failed for ${teamType} (non-fatal):`, error.message);
       }
     }
+
+    mergeScrapeDiff({
+      players: [...changedPlayerSlugs],
+      teams: [...affectedTeamSlugs],
+      deleted: [...deletedPlayerSlugs],
+    });
 
     return {
       jobId,
@@ -203,6 +270,14 @@ async function runScraper(options = {}) {
     const duration = Date.now() - new Date(startTime).getTime();
 
     console.error(`Scrape job ${jobId} failed:`, error);
+
+    // Players upserted before the failure are real changes: record them so a
+    // later successful attempt's revalidation still covers their pages.
+    mergeScrapeDiff({
+      players: [...changedPlayerSlugs],
+      teams: [...affectedTeamSlugs],
+      deleted: [...deletedPlayerSlugs],
+    });
 
     return {
       jobId,
