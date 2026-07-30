@@ -101,7 +101,17 @@ const cohortDocValidator = {
   ),
 };
 
-/** Upsert one cohortStats doc keyed by (teamType, primaryPosition). */
+/**
+ * Upsert one cohortStats doc keyed by (teamType, primaryPosition).
+ *
+ * Size ceiling: the null-position (whole era) doc is the largest (~300KB at
+ * ~770 players) and scales with era size against Convex's 1MB document limit.
+ * If replace() ever throws on size, the old doc persists (stale, not missing),
+ * so getDossier's missing-doc fallback will NOT fire; the signal is a failing
+ * rebuild step in CI. Mitigation when rosters approach the limit: split the
+ * per-attribute arrays across per-position docs and drop the era-wide doc's
+ * roster field.
+ */
 export const writeCohortStatsDoc = internalMutation({
   args: cohortDocValidator,
   handler: async (ctx, args) => {

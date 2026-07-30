@@ -134,7 +134,14 @@ function PlayerDossier({
     api.dossier.getDossier,
     wantsVariant ? { slug, teamType: requestedType, team: teamParam ?? undefined } : "skip"
   );
-  const dossier = wantsVariant && variantDossier !== undefined ? variantDossier : canonicalDossier;
+  // While a requested variant loads, hold a quiet shell (undefined) rather
+  // than the canonical version: a Classic/All-Time deep link must never flash
+  // the current-era card before swapping.
+  const dossier = wantsVariant
+    ? variantDossier === undefined
+      ? undefined
+      : variantDossier
+    : canonicalDossier;
 
   useEffect(() => {
     setHasApiKey(!!localStorage.getItem(API_KEY_STORAGE_KEY));
@@ -294,6 +301,20 @@ function PlayerDossier({
         .map((c) => ({ label: CATEGORY_LABELS[c.key], pct: c.pct as number })),
     ];
   }, [dossier, player]);
+
+  if (dossier === undefined) {
+    return (
+      <div className="min-h-screen bg-[#faf9f5] font-body text-[#1a1918]">
+        <TopNav hasApiKey={hasApiKey} />
+        <div className="py-24 text-center">
+          <p className="m-0 font-plex text-[10.5px] tracking-[0.12em] text-[#8a8577]">
+            LOADING VERSION
+          </p>
+        </div>
+        <FooterStrip />
+      </div>
+    );
+  }
 
   if (dossier === null) {
     return (

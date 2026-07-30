@@ -27,6 +27,12 @@ on:
         default: false
         type: boolean
 
+# Serialize runs: two overlapping scrapes would interleave their derived-table
+# rebuilds (cohortStats/teams) into inconsistent snapshots.
+concurrency:
+  group: scrape-nba2k
+  cancel-in-progress: false
+
 jobs:
   scrape:
     runs-on: ubuntu-latest
@@ -109,7 +115,15 @@ jobs:
       - name: Rebuild derived stats tables
         env:
           CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
-        run: npx convex run cohorts:rebuildAll
+          # Scheduled runs scrape curr only; rebuild only what was scraped so
+          # the weekly cron never re-reads the (larger) class/allt eras.
+          SCRAPED_TYPE: ${{ github.event.inputs.team_type || 'curr' }}
+        run: |
+          if [ "$SCRAPED_TYPE" = "all" ]; then
+            npx convex run cohorts:rebuildAll
+          else
+            npx convex run cohorts:rebuildAll "{\"teamType\": \"$SCRAPED_TYPE\"}"
+          fi
 
       # POST the run's actual diff (emitted by runScraper.js into
       # scrape-diff.json) so the site re-renders only the pages that changed.
@@ -131,10 +145,32 @@ jobs:
           jq -c --arg secret "$REVALIDATE_SECRET" \
             '{secret: $secret, players: (.players // []), teams: (.teams // []), deleted: (.deleted // [])}' \
             scrape-diff.json > revalidate-body.json
-          if curl -sS --fail-with-body --max-time 60 -X POST "$REVALIDATE_URL/api/revalidate" \
-              -H 'Content-Type: application/json' --data @revalidate-body.json; then
+          # A diff that never posts is permanently lost (unchanged players
+          # never re-enter a later diff), so retry before giving up, and on
+          # total failure preserve scrape-diff.json as an artifact for a
+          # manual re-post.
+          ok=0
+          for attempt in 1 2 3; do
+            if curl -sS --fail-with-body --max-time 60 -X POST "$REVALIDATE_URL/api/revalidate" \
+                -H 'Content-Type: application/json' --data @revalidate-body.json; then
+              ok=1
+              break
+            fi
+            echo "Revalidation attempt $attempt failed; retrying in $((attempt * 20))s."
+            sleep $((attempt * 20))
+          done
+          if [ "$ok" = "1" ]; then
             echo "Revalidation request accepted."
           else
-            echo "::warning::Revalidation request failed; cached pages refresh on the next successful scrape."
+            echo "::warning::Revalidation failed after 3 attempts; scrape-diff.json saved as artifact for manual re-post."
+            echo "REVALIDATE_FAILED=1" >> "$GITHUB_ENV"
           fi
           rm -f revalidate-body.json
+
+      - name: Preserve scrape diff after failed revalidation
+        if: env.REVALIDATE_FAILED == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: scrape-diff
+          path: scrape-diff.json
+          retention-days: 30
