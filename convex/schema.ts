@@ -114,6 +114,64 @@ export default defineSchema({
     .index("by_team_and_type", ["team", "teamType"]),
 
   /**
+   * Cohort statistics - precomputed at scrape time (cohorts.ts rebuild) so the
+   * dossier query can compute percentiles/averages/similar-players from ONE
+   * document instead of scanning every player doc in the era.
+   *
+   * One doc per (teamType, primaryPosition) plus one per-era fallback doc with
+   * primaryPosition null covering the WHOLE era (the cohort used for players
+   * without positions). All value arrays are sorted ascending for binary
+   * search; averages are pre-rounded exactly as dossier.getDossier rounds them
+   * (attributes to 0.1, categories and overall to integers).
+   */
+  cohortStats: defineTable({
+    teamType: v.union(v.literal("curr"), v.literal("class"), v.literal("allt")),
+    primaryPosition: v.union(v.string(), v.null()),
+    // attribute key -> sorted cohort values + rounded average
+    attrs: v.record(
+      v.string(),
+      v.object({ values: v.array(v.number()), avg: v.number() })
+    ),
+    // category key (CATEGORY_KEYS) -> sorted cohort category scores + average
+    categories: v.record(
+      v.string(),
+      v.object({ values: v.array(v.number()), avg: v.union(v.number(), v.null()) })
+    ),
+    overall: v.object({
+      values: v.array(v.number()),
+      avg: v.union(v.number(), v.null()),
+    }),
+    // Compact cohort roster in era-index order (order matters: distance ties
+    // in similar-players resolve by stable sort over this order). catScores
+    // holds raw (unrounded) category scores in CATEGORY_KEYS order.
+    roster: v.array(
+      v.object({
+        playerId: v.id("players"),
+        slug: v.string(),
+        name: v.string(),
+        team: v.string(),
+        overall: v.number(),
+        catScores: v.array(v.union(v.number(), v.null())),
+      })
+    ),
+    updatedAt: v.string(), // ISO timestamp
+  }).index("by_teamType_and_position", ["teamType", "primaryPosition"]),
+
+  /**
+   * Teams - one doc per (slug, teamType), derived from player rows at scrape
+   * time (cohorts.ts rebuild). Gives teams.getTeamBySlug an indexed point-read
+   * instead of a players table scan.
+   */
+  teams: defineTable({
+    slug: v.string(), // team name lowercased, non-alphanumerics collapsed to "-"
+    teamType: v.union(v.literal("curr"), v.literal("class"), v.literal("allt")),
+    name: v.string(), // display name exactly as stored on player docs
+    updatedAt: v.string(), // ISO timestamp
+  })
+    .index("by_slug_and_type", ["slug", "teamType"])
+    .index("by_teamType", ["teamType"]),
+
+  /**
    * API Keys table - stores user API keys for authentication
    */
   apiKeys: defineTable({

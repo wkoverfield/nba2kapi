@@ -302,6 +302,13 @@ export const reconcileRoster = mutation({
       aborted,
       reasons,
       sample,
+      // Slugs/teams actually removed this run, so the scrape pipeline can
+      // invalidate exactly those pages. Empty on dry runs and aborts (nothing
+      // was removed). Bounded by the 40% prune cap above.
+      deletedPlayers:
+        !aborted && !args.dryRun
+          ? orphans.map((o) => ({ slug: o.slug, team: o.team }))
+          : [],
     };
     console.log("[reconcileRoster]", JSON.stringify(result));
     return result;
