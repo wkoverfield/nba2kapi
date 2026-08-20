@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 /**
@@ -123,5 +123,24 @@ export const removeUpvote = mutation({
     });
 
     return { success: true };
+  },
+});
+
+/**
+ * Update feedback status (internal only, run from the CLI or dashboard).
+ * Valid statuses: "pending" | "planned" | "completed" | "declined".
+ */
+export const updateFeedbackStatus = internalMutation({
+  args: {
+    id: v.id("feedback"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("planned"),
+      v.literal("completed"),
+      v.literal("declined")
+    ),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, { status: args.status });
   },
 });
