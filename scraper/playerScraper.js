@@ -34,10 +34,12 @@ export async function scrapePlayerDetails(page, basicPlayer) {
         const text = p.textContent;
 
         // Extract height - try both formats
-        // Format 1: "6 feet 9 inches" (current teams)
-        let heightMatch = text.match(/(\d+)\s*feet\s*(\d+)\s*inches/);
+        // Format 1: "is 6 feet 9 inches (206cm) tall" / "is 7 feet (213cm) tall"
+        // (current teams). Anchor on "is ... tall" so a bare "N feet M inches"
+        // can't match the wingspan sentence when the height has no inches part.
+        let heightMatch = text.match(/is\s+(\d+)\s*feet(?:\s*(\d+)\s*inch(?:es)?)?\s*(?:\([^)]*\))?\s*tall/);
         if (heightMatch) {
-          details.height = `${heightMatch[1]}'${heightMatch[2]}"`;
+          details.height = `${heightMatch[1]}'${heightMatch[2] || '0'}"`;
         } else {
           // Format 2: "Height: 6'7" (201cm)" (classic/all-time teams)
           heightMatch = text.match(/Height:\s*(\d+)'(\d+)"/);
