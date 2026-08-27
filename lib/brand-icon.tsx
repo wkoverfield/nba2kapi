@@ -1,27 +1,17 @@
 import { ImageResponse } from 'next/og'
 
-// Google's css2 endpoint serves TTF (which satori can consume, unlike woff2)
-// only to old user agents.
-const FONT_CSS_URL =
-  'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@800&text=2k'
-const LEGACY_UA = 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/534.30'
+// Bricolage Grotesque 800, subset to the "2k" glyphs (OFL). Bundled because
+// satori needs raw TTF bytes and fetching Google Fonts at request time proved
+// unreliable: an HTML error page in place of the font crashes rendering with
+// "Unsupported OpenType signature".
+const FONT_URL = new URL('./bricolage-grotesque-800-2k.ttf', import.meta.url)
 
 let fontPromise: Promise<ArrayBuffer | null> | null = null
 
 function loadDisplayFont(): Promise<ArrayBuffer | null> {
-  fontPromise ??= (async () => {
-    try {
-      const css = await (
-        await fetch(FONT_CSS_URL, { headers: { 'User-Agent': LEGACY_UA } })
-      ).text()
-      const url = css.match(/src:\s*url\((.+?)\)/)?.[1]
-      if (!url) return null
-      return await (await fetch(url)).arrayBuffer()
-    } catch {
-      // Icon still renders in satori's default font if Google is unreachable.
-      return null
-    }
-  })()
+  fontPromise ??= fetch(FONT_URL)
+    .then((res) => res.arrayBuffer())
+    .catch(() => null) // Icon still renders in satori's default font.
   return fontPromise
 }
 
