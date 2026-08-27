@@ -1,12 +1,15 @@
 name: Scrape NBA 2K Ratings
 
 on:
-  # Weekly, Saturday 03:00 UTC — catches 2K's typical Friday-evening roster
-  # drops. Weekly matches how often ratings actually change, so we stay fresh
-  # without hammering 2kratings (one polite collector; the API caches + serves
-  # everyone downstream, so this is the ONLY request load they ever see).
+  # Daily 03:00 UTC through the NBA 2K27 launch window (early access Aug 26,
+  # worldwide release Sep 4 2026) — launch-period ratings and rosters change
+  # daily. TEMPORARY: revert to weekly Saturday ('0 3 * * 6') around
+  # mid-September 2026 once post-launch updates settle back to 2K's usual
+  # Friday-evening roster-drop rhythm. Still one polite collector; the API
+  # caches + serves everyone downstream, so this is the ONLY request load
+  # 2kratings ever sees, and unchanged days revalidate nothing.
   schedule:
-    - cron: '0 3 * * 6'
+    - cron: '0 3 * * *'
 
   # Allow manual trigger from GitHub UI
   workflow_dispatch:
