@@ -1,4 +1,4 @@
-import { mutation, internalQuery, internalMutation } from "./_generated/server";
+import { mutation, query, internalQuery, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -133,5 +133,30 @@ export const pruneVisits = internalMutation({
       deleted++;
     }
     return { deleted, more: old.length === 4000 };
+  },
+});
+
+/**
+ * Public: cumulative impact numbers for external display (wkoverfield.com
+ * reads these at build time). Serves only the latest daily metricSnapshots
+ * row — one tiny document, no raw events, no per-user data — so the query is
+ * safe and cheap regardless of caller volume. Returns null until the first
+ * snapshot exists.
+ */
+export const publicImpact = query({
+  args: {},
+  handler: async (ctx) => {
+    const snap = await ctx.db
+      .query("metricSnapshots")
+      .withIndex("by_date")
+      .order("desc")
+      .first();
+    if (!snap) return null;
+    const m = snap.metrics;
+    return {
+      asOf: snap.date,
+      apiKeys: m.apiKeysTotal ?? 0,
+      requests: m.apiRequestsTotal ?? 0,
+    };
   },
 });
