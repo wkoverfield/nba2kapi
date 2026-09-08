@@ -11,7 +11,7 @@ import { zValidator } from "@hono/zod-validator";
 import { HonoWithConvex, HttpRouterWithHono } from "convex-helpers/server/hono";
 import { ActionCtx } from "./_generated/server";
 import { api, internal } from "./_generated/api";
-import { Id } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 import { CURRENT_GAME_VERSION } from "./gameVersion";
 import {
   detectUnknownParams,
@@ -1093,6 +1093,342 @@ app.get("/api/players/search",
       return c.json(errorResponse(
         "Search failed",
         "SEARCH_ERROR"
+      ), 500);
+    }
+  }
+);
+
+// ============================================================================
+// ROUTES: VERSIONS (roster archive)
+// ============================================================================
+//
+// One URL shape for every edition: /api/versions/{version}/... The current
+// edition (CURRENT_GAME_VERSION) always proxies to the live tables, even once
+// a freeze snapshot of it exists; archived editions read rosterArchive. After
+// the season constant is bumped the outgoing edition becomes archived and
+// reads from the archive. Registered ahead of /api/players/:id, and the bulk
+// route ahead of the :slug route.
+
+const GAME_VERSION_PATTERN = /^2K\d{2}$/;
+
+function normalizeGameVersion(raw: string | undefined): string | null {
+  const version = (raw ?? "").trim().toUpperCase();
+  return GAME_VERSION_PATTERN.test(version) ? version : null;
+}
+
+type ResolvedVersion =
+  | {
+      ok: true;
+      gameVersion: string;
+      // rosterVersions summary when the edition is archived, else null (live)
+      archive: { capturedAt: string; source: string; label: string; playerCount: number } | null;
+    }
+  | { ok: false; response: Response };
+
+/**
+ * Normalize the :version path param and decide where it is served from: the
+ * current edition is always live (archive: null), any other edition must have
+ * a rosterVersions doc. 400 INVALID_VERSION for anything that is not 2K\d{2};
+ * 404 VERSION_NOT_FOUND (with details.availableVersions) for a well-formed
+ * edition the API does not have.
+ */
+async function resolveGameVersion(c: any): Promise<ResolvedVersion> {
+  const rawVersion = c.req.param("version");
+  const gameVersion = normalizeGameVersion(rawVersion);
+  if (!gameVersion) {
+    return {
+      ok: false,
+      response: c.json(errorResponse(
+        `Invalid game version '${rawVersion}'`,
+        "INVALID_VERSION",
+        {
+          version: rawVersion,
+          hint: "Use an edition code such as 2K26 or 2K27. GET /api/versions lists every edition this API serves.",
+        }
+      ), 400),
+    };
+  }
+
+  if (gameVersion === CURRENT_GAME_VERSION) {
+    return { ok: true, gameVersion, archive: null };
+  }
+
+  const archive = await c.env.runQuery(api.rosterArchive.getVersion, { gameVersion });
+  if (!archive) {
+    const availableVersions: string[] = await c.env.runQuery(api.rosterArchive.listVersionKeys, {});
+    return {
+      ok: false,
+      response: c.json(errorResponse(
+        `Game version ${gameVersion} is not available`,
+        "VERSION_NOT_FOUND",
+        {
+          version: gameVersion,
+          availableVersions,
+          hint: "GET /api/versions lists every edition this API serves.",
+        }
+      ), 404),
+    };
+  }
+
+  return { ok: true, gameVersion, archive };
+}
+
+/** ?position= accepts exact positions (PG..C) or a POSITION_GROUPS name. */
+function resolvePositions(position: string | undefined): string[] | undefined {
+  if (!position) return undefined;
+  const group = POSITION_GROUPS[position.toLowerCase()];
+  return group ?? [position.toUpperCase()];
+}
+
+const TEAM_TYPE_ORDER: Record<string, number> = { curr: 0, class: 1, allt: 2 };
+
+/** Live rows carry no edition key of their own; stamp the current one. */
+function withCurrentVersion<T extends object>(rows: T[]): Array<T & { gameVersion: string }> {
+  return rows.map((row) => ({ ...row, gameVersion: CURRENT_GAME_VERSION }));
+}
+
+// GET /api/versions - Every edition the API serves (no key required)
+app.get("/api/versions",
+  publicIpRateLimitMiddleware,
+  rejectUnknownParams("/api/versions"),
+  async (c) => {
+    try {
+      const versions = await c.env.runQuery(api.rosterArchive.listVersions, {});
+
+      c.header("Cache-Control", "public, max-age=3600");
+
+      return c.json(successResponse(versions, {
+        count: versions.length,
+        current: CURRENT_GAME_VERSION,
+      }));
+    } catch (error) {
+      console.error("Error fetching versions:", error);
+      return c.json(errorResponse(
+        "Failed to fetch versions",
+        "QUERY_ERROR"
+      ), 500);
+    }
+  }
+);
+
+// GET /api/versions/:version/players - Filtered, offset-paginated players of
+// one edition
+app.get("/api/versions/:version/players",
+  authMiddleware,
+  rejectUnknownParams("/api/versions/:version/players"),
+  zValidator("query", z.object({
+    teamType: z.enum(["all", "curr", "class", "allt"]).default("curr"),
+    // era supersedes teamType; "all" merges current + classic + all-time.
+    era: z.enum(["all", "curr", "class", "allt"]).optional(),
+    team: z.string().optional(),
+    position: z.string().optional(),
+    minRating: z.coerce.number().min(0).max(99).optional(),
+    maxRating: z.coerce.number().min(0).max(99).optional(),
+    search: z.string().max(80).optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(50),
+    offset: z.coerce.number().int().min(0).default(0),
+  })),
+  async (c) => {
+    try {
+      const resolved = await resolveGameVersion(c);
+      if (!resolved.ok) return resolved.response;
+      const { gameVersion, archive } = resolved;
+      const params = c.req.valid("query");
+
+      const queryArgs: Record<string, unknown> = { limit: params.limit, offset: params.offset };
+      const era = params.era ?? params.teamType;
+      if (era !== "all") queryArgs.teamType = era;
+      if (params.team) queryArgs.teams = [params.team];
+      if (params.search) queryArgs.search = params.search;
+      if (params.minRating !== undefined) queryArgs.minOverall = params.minRating;
+      if (params.maxRating !== undefined) queryArgs.maxOverall = params.maxRating;
+      const positions = resolvePositions(params.position);
+      if (positions) queryArgs.positions = positions;
+
+      const result = archive
+        ? await c.env.runQuery(api.rosterArchive.getVersionPlayers, { gameVersion, ...queryArgs })
+        : await c.env
+            .runQuery(api.players.getAllFiltered, { sortBy: "overall-desc", ...queryArgs })
+            .then((live) => ({ ...live, players: withCurrentVersion(live.players) }));
+
+      c.header("Cache-Control", "public, max-age=3600");
+
+      return c.json(successResponse(result.players, {
+        gameVersion,
+        count: result.players.length,
+        total: result.totalCount,
+        hasMore: result.hasMore,
+        offset: params.offset,
+        limit: params.limit,
+      }));
+    } catch (error) {
+      console.error("Error fetching version players:", error);
+      return c.json(errorResponse(
+        "Failed to fetch players",
+        "QUERY_ERROR"
+      ), 500);
+    }
+  }
+);
+
+// GET /api/versions/:version/players/bulk - Whole matching set of one edition
+// in a single response (sorted overall desc, capped at 10k). One request
+// against the caller's rate limit; edge-cached 1 hour, revalidates via ETag.
+//
+// NOTE: This route MUST be registered before /api/versions/:version/players/:slug
+// so "bulk" isn't parsed as a slug.
+app.get("/api/versions/:version/players/bulk",
+  authMiddleware,
+  rejectUnknownParams("/api/versions/:version/players/bulk"),
+  zValidator("query", z.object({
+    teamType: z.enum(["curr", "class", "allt"]).optional(),
+    team: z.string().optional(),
+    minRating: z.coerce.number().min(0).max(99).optional(),
+    maxRating: z.coerce.number().min(0).max(99).optional(),
+    position: z.string().optional(),
+  })),
+  async (c) => {
+    try {
+      const resolved = await resolveGameVersion(c);
+      if (!resolved.ok) return resolved.response;
+      const { gameVersion, archive } = resolved;
+      const params = c.req.valid("query");
+
+      const queryArgs: Record<string, unknown> = { limit: 10000, offset: 0 };
+      if (params.teamType) queryArgs.teamType = params.teamType;
+      if (params.team) queryArgs.teams = [params.team];
+      if (params.minRating !== undefined) queryArgs.minOverall = params.minRating;
+      if (params.maxRating !== undefined) queryArgs.maxOverall = params.maxRating;
+      const positions = resolvePositions(params.position);
+      if (positions) queryArgs.positions = positions;
+
+      const result = archive
+        ? await c.env.runQuery(api.rosterArchive.getVersionPlayers, { gameVersion, ...queryArgs })
+        : await c.env
+            .runQuery(api.players.getAllFiltered, { sortBy: "overall-desc", ...queryArgs })
+            .then((live) => ({ ...live, players: withCurrentVersion(live.players) }));
+
+      c.header("Cache-Control", "public, max-age=3600, s-maxage=3600");
+
+      return c.json(successResponse(result.players, {
+        gameVersion,
+        count: result.players.length,
+        total: result.totalCount,
+        filters: {
+          teamType: params.teamType ?? null,
+          team: params.team ?? null,
+          minRating: params.minRating ?? null,
+          maxRating: params.maxRating ?? null,
+          position: params.position ?? null,
+        },
+        capturedAt: archive?.capturedAt ?? null,
+        source: archive?.source ?? "live",
+      }));
+    } catch (error) {
+      console.error("Error fetching version bulk players:", error);
+      return c.json(errorResponse(
+        "Failed to fetch bulk players",
+        "QUERY_ERROR"
+      ), 500);
+    }
+  }
+);
+
+// GET /api/versions/:version/players/:slug - One player of one edition. When
+// the slug exists on several rosters (current, classic, all-time, or several
+// classic squads of one era), data is an array and meta.variants lists them;
+// teamType narrows the match.
+app.get("/api/versions/:version/players/:slug",
+  authMiddleware,
+  rejectUnknownParams("/api/versions/:version/players/:slug"),
+  zValidator("query", z.object({
+    teamType: z.enum(["curr", "class", "allt"]).optional(),
+  })),
+  async (c) => {
+    try {
+      const resolved = await resolveGameVersion(c);
+      if (!resolved.ok) return resolved.response;
+      const { gameVersion, archive } = resolved;
+      const slug = c.req.param("slug");
+      const { teamType } = c.req.valid("query");
+
+      const lookupArgs: { teamType?: "curr" | "class" | "allt" } = {};
+      if (teamType !== undefined) lookupArgs.teamType = teamType;
+
+      const matches: Array<Doc<"rosterArchive"> | Doc<"players">> = archive
+        ? await c.env.runQuery(api.rosterArchive.getVersionPlayerBySlug, { gameVersion, slug, ...lookupArgs })
+        : withCurrentVersion(
+            await c.env.runQuery(api.players.getPlayersBySlugs, { slugs: [slug], ...lookupArgs })
+          );
+
+      if (matches.length === 0) {
+        return c.json(errorResponse(
+          "Player not found",
+          "PLAYER_NOT_FOUND",
+          {
+            slug,
+            gameVersion,
+            teamType: teamType ?? null,
+            hint: `Slugs are the player's URL name, e.g. lebron-james. Find one with GET /api/versions/${gameVersion}/players?search=<name>.`,
+          }
+        ), 404);
+      }
+
+      matches.sort((a, b) => (TEAM_TYPE_ORDER[a.teamType] ?? 9) - (TEAM_TYPE_ORDER[b.teamType] ?? 9));
+
+      c.header("Cache-Control", "public, max-age=3600");
+
+      if (matches.length === 1) {
+        return c.json(successResponse(matches[0], { gameVersion }));
+      }
+
+      return c.json(successResponse(matches, {
+        gameVersion,
+        variants: matches.map((m) => ({ teamType: m.teamType, team: m.team })),
+      }));
+    } catch (error) {
+      console.error("Error fetching version player:", error);
+      return c.json(errorResponse(
+        "Failed to fetch player",
+        "QUERY_ERROR"
+      ), 500);
+    }
+  }
+);
+
+// GET /api/versions/:version/teams - Teams of one edition; same shape as
+// GET /api/teams
+app.get("/api/versions/:version/teams",
+  authMiddleware,
+  rejectUnknownParams("/api/versions/:version/teams"),
+  zValidator("query", z.object({
+    teamType: z.enum(["curr", "class", "allt"]).default("curr"),
+    // era is an alias for teamType (matches /api/players naming)
+    era: z.enum(["curr", "class", "allt"]).optional(),
+  })),
+  async (c) => {
+    try {
+      const resolved = await resolveGameVersion(c);
+      if (!resolved.ok) return resolved.response;
+      const { gameVersion, archive } = resolved;
+      const params = c.req.valid("query");
+      const teamType = params.era ?? params.teamType;
+
+      const teams = archive
+        ? await c.env.runQuery(api.rosterArchive.getVersionTeams, { gameVersion, teamType })
+        : await c.env.runQuery(api.players.getTeams, { teamType });
+
+      c.header("Cache-Control", "public, max-age=3600");
+
+      return c.json(successResponse(teams, {
+        gameVersion,
+        count: teams.length,
+      }));
+    } catch (error) {
+      console.error("Error fetching version teams:", error);
+      return c.json(errorResponse(
+        "Failed to fetch teams",
+        "QUERY_ERROR"
       ), 500);
     }
   }

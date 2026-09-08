@@ -440,4 +440,100 @@ export default defineSchema({
     capturedAt: v.number(), // epoch ms when the snapshot was taken
     metrics: v.record(v.string(), v.number()),
   }).index("by_date", ["date"]),
+
+  /**
+   * Roster Archive - one row per (gameVersion, teamType, team, slug) holding
+   * a player's final record for a past NBA 2K edition. `team` is part of the
+   * key because classic eras repeat a slug across squads (michael-jordan on
+   * several Bulls rosters). Additive beside the live `players` table: the
+   * current edition is always served from the live tables, never from here,
+   * so the live API, SEO pages, cohorts, and dossiers are untouched. Populated by scripts/import-roster-archive.mjs (external
+   * datasets) and rosterArchive.freezeCurrentVersion (copies the live table
+   * before a season bump). Rows for an archived edition never change.
+   *
+   * LANDMINE: never `.collect()` this table without a gameVersion index; it
+   * grows by ~1.9k rows per archived edition.
+   */
+  rosterArchive: defineTable({
+    gameVersion: v.string(), // "2K26"
+    slug: v.string(),
+    name: v.string(),
+    team: v.string(),
+    teamType: v.union(v.literal("curr"), v.literal("class"), v.literal("allt")),
+    overall: v.number(),
+
+    positions: v.optional(v.array(v.string())),
+    height: v.optional(v.string()),
+    weight: v.optional(v.string()),
+    wingspan: v.optional(v.string()),
+    college: v.optional(v.string()),
+    archetype: v.optional(v.string()),
+    playerImage: v.optional(v.string()),
+    teamImg: v.optional(v.string()),
+    attributes: v.optional(v.record(v.string(), v.number())),
+    badges: v.optional(
+      v.object({
+        total: v.optional(v.number()),
+        legendary: v.optional(v.number()),
+        hallOfFame: v.optional(v.number()),
+        gold: v.optional(v.number()),
+        silver: v.optional(v.number()),
+        bronze: v.optional(v.number()),
+        list: v.optional(
+          v.array(
+            v.object({
+              name: v.string(),
+              tier: v.string(),
+              category: v.optional(v.string()),
+            })
+          )
+        ),
+        // Datasets that carry only the top few badges (no full list)
+        top: v.optional(v.array(v.object({ name: v.string(), tier: v.string() }))),
+      })
+    ),
+    hotZones: v.optional(v.any()),
+    ratingHistory: v.optional(
+      v.array(
+        v.object({
+          gameVersion: v.string(),
+          overall: v.number(),
+          delta: v.optional(v.number()),
+        })
+      )
+    ),
+
+    // Provenance
+    source: v.string(), // e.g. "blacktop-sync-2026-08-08" | "freeze"
+    capturedAt: v.string(), // ISO timestamp the data was captured at its source
+    importedAt: v.string(), // ISO timestamp the row was written here
+  })
+    .index("by_version", ["gameVersion"])
+    .index("by_version_and_type", ["gameVersion", "teamType"])
+    .index("by_version_and_slug", ["gameVersion", "slug"])
+    .index("by_version_team_type", ["gameVersion", "team", "teamType"]),
+
+  /**
+   * Roster Versions - one doc per archived edition present in rosterArchive.
+   * Written by rosterArchive.finalizeVersion / freezeCurrentVersion after the
+   * rows land. Its presence is what makes /api/versions/:version serve the
+   * archive for every edition except CURRENT_GAME_VERSION, which always reads
+   * the live tables (a doc for the current edition is a standby snapshot that
+   * takes over once the season constant is bumped).
+   */
+  rosterVersions: defineTable({
+    gameVersion: v.string(), // "2K26"
+    label: v.string(), // "NBA 2K26"
+    status: v.literal("archived"),
+    playerCount: v.number(),
+    teamTypeCounts: v.object({
+      curr: v.number(),
+      class: v.number(),
+      allt: v.number(),
+    }),
+    capturedAt: v.string(), // ISO timestamp
+    source: v.string(),
+    note: v.optional(v.string()),
+    updatedAt: v.string(), // ISO timestamp
+  }).index("by_version", ["gameVersion"]),
 });
