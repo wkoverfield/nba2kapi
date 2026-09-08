@@ -357,6 +357,25 @@ curl 'https://api.nba2kapi.com/api/teams/Los%20Angeles%20Lakers/roster' \
   -H 'X-API-Key: your_api_key_here'
 ```
 
+#### Versioned rosters
+
+Rosters and ratings by game edition, for clients still on last season's game. `:version` is an edition key like `2K26` (case-insensitive; anything not shaped like `2K` plus two digits returns `400 INVALID_VERSION`, and an edition that is not archived returns `404 VERSION_NOT_FOUND` with `details.availableVersions`). The current edition (`2K27`) answers at the same paths from the live database, so one URL shape covers every season. Every row from a versioned route carries `gameVersion`. 2K26 is the final pre-2K27-reveal snapshot captured 2026-08-08 (1,889 players); archived editions do not change.
+
+- `GET /api/versions`: editions available, current first, then newest archived (no auth required; 60 requests/minute per IP). Each entry: `gameVersion`, `label`, `status` (`current` or `archived`), `playerCount`, plus `teamTypeCounts`, `capturedAt`, and `source` for archived editions.
+- `GET /api/versions/:version/players`: players in one edition; params `era` or `teamType` (`curr` default, `class`, `allt`, `all`), `team`, `position` (exact or `guard`, `wing`, `big`), `minRating`, `maxRating`, `search`, `limit` (1 to 100, default 50), `offset`. Meta: `gameVersion`, `count`, `total`, `hasMore`, `offset`, `limit`.
+- `GET /api/versions/:version/players/bulk`: the whole matching set in one call (cap 10,000, cached 1 hour with ETag); params `teamType`, `team`, `minRating`, `maxRating`, `position`. Meta: `gameVersion`, `count`, `total`, `filters`, `capturedAt`, `source`.
+- `GET /api/versions/:version/players/:slug`: one player in one edition; optional `teamType`. Without it, a slug that exists in more than one era returns an array under `data` with `meta.variants`.
+- `GET /api/versions/:version/teams`: teams in one edition, same shape as `/api/teams`; params `era` or `teamType`.
+
+```bash
+# Editions available (no auth required)
+curl 'https://api.nba2kapi.com/api/versions'
+
+# 2K26 Denver Nuggets, top five by overall
+curl 'https://api.nba2kapi.com/api/versions/2K26/players?team=Denver%20Nuggets&limit=5' \
+  -H 'X-API-Key: your_api_key_here'
+```
+
 #### GET /api/stats
 
 Get database statistics (no auth required).
@@ -404,6 +423,8 @@ Health check endpoint for service monitoring (no auth required).
 - `INVALID_API_KEY`: Invalid or expired API key
 - `RATE_LIMIT_EXCEEDED`: Too many requests
 - `PLAYER_NOT_FOUND`: Player not found
+- `INVALID_VERSION`: Version path segment is not shaped like `2K` plus two digits
+- `VERSION_NOT_FOUND`: Edition is not archived (see `details.availableVersions`)
 - `INVALID_PARAMETERS`: Invalid query parameters
 - `INVALID_INPUT`: Invalid input data (e.g., search query too long)
 
@@ -492,6 +513,23 @@ Health check endpoint for service monitoring (no auth required).
 
 ```bash
 npx convex deploy
+```
+
+### Season rollover
+
+The scraper overwrites the live `players` table in place and `reconcileRoster` deletes departed players, so the outgoing edition survives only if it is frozen into the roster archive first. Before bumping `CURRENT_GAME_VERSION` in `convex/gameVersion.js`, and before 2kratings starts publishing next-season rating reveals (mid-August), run:
+
+```bash
+npx convex run --prod rosterArchive:freezeCurrentVersion
+```
+
+This copies every live player record under the current edition key and registers the edition in `rosterVersions`; rerunning is a no-op unless `{"overwrite": true}` is passed. Archived datasets kept in `data/roster-archive/` are imported with the script below (`CONVEX_URL` is required; there is no production default):
+
+```bash
+CONVEX_URL=https://your-deployment.convex.cloud ADMIN_API_KEY=... \
+  node scripts/import-roster-archive.mjs data/roster-archive/2K26.json \
+  --version 2K26 --source blacktop-sync-2026-08-08 --captured-at 2026-08-08T06:51:10Z \
+  --label "NBA 2K26"
 ```
 
 ### Automated Scraping

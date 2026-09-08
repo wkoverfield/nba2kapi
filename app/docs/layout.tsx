@@ -24,6 +24,7 @@ const DOCS_NAV = [
     items: [
       { title: "Players", href: "/docs/endpoints/players" },
       { title: "Teams", href: "/docs/endpoints/teams" },
+      { title: "Versions", href: "/docs/endpoints/versions" },
       { title: "Search", href: "/docs/endpoints/search" },
     ],
   },

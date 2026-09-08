@@ -31,6 +31,7 @@ Auth: X-API-Key header (free key at https://nba2kapi.com/dashboard, 500 requests
 - GET /api/teams — teams with roster averages
 - GET /api/teams/{team}/roster — full roster (accepts names or slugs)
 - GET /api/badges — badge reference
+- GET /api/versions: game editions available (current plus archived, e.g. 2K26); players and teams per edition under /api/versions/{version}/...
 `;
 
 export const LLMS_FULL = `# nba2kapi — complete API reference
@@ -175,6 +176,70 @@ Full roster for one team. \`{team}\` accepts the full name
 Badge reference. Params: \`category\`, \`gameVersion\`. Also:
 \`/api/badges/categories\`, \`/api/badges/{slug}\`,
 \`/api/badges/{slug}/players\` (params: \`tier\`, \`limit\`).
+
+## Versions
+
+Rosters and ratings by game edition, for clients still on last season's
+game. \`{version}\` is an edition key like \`2K26\` (case-insensitive,
+normalized to uppercase \`2K\` plus two digits; anything else is
+\`400 INVALID_VERSION\`; an edition that is not archived is
+\`404 VERSION_NOT_FOUND\` with \`details.availableVersions\`). The current
+edition (\`2K27\`) answers at the same paths from the live database, so one
+URL shape covers every season. Every row from a versioned route carries
+\`gameVersion\`. 2K26 is the final pre-2K27-reveal snapshot captured
+2026-08-08 (1,889 players; overall, positions, physicals, every attribute,
+badge counts with the top three badges). Archived editions do not change.
+
+- \`GET /api/versions\`: no key required, 60 requests/minute per IP. Data:
+  \`[{ gameVersion, label, status: "current" | "archived", playerCount,
+  teamTypeCounts?, capturedAt?, source? }]\`, current first, then newest
+  archived. Cached 1 hour.
+- \`GET /api/versions/{version}/players\`: key required. Params: \`era\`
+  (\`curr\` default | \`class\` | \`allt\` | \`all\`; \`teamType\` alias),
+  \`team\`, \`position\` (exact or \`guard\` / \`wing\` / \`big\`),
+  \`minRating\` / \`maxRating\`, \`search\`, \`limit\` (1 to 100, default
+  50), \`offset\` (0 or more). Sorted overall desc, then name. Meta:
+  \`{ gameVersion, count, total, hasMore, offset, limit }\`.
+- \`GET /api/versions/{version}/players/bulk\`: key required. The whole
+  matching set in one call, sorted overall desc, capped at 10,000 rows;
+  one request against the rate limit. Params: \`teamType\`, \`team\`,
+  \`minRating\`, \`maxRating\`, \`position\`. Cached 1 hour with ETag. Meta:
+  \`{ gameVersion, count, total, filters, capturedAt, source }\`.
+- \`GET /api/versions/{version}/players/{slug}\`: key required. One player
+  in one edition. Param: \`teamType\`. Omit it and, when the slug exists in
+  more than one era, \`data\` is an array of every variant with
+  \`meta.variants\`. Unknown slug: \`404 PLAYER_NOT_FOUND\`.
+- \`GET /api/versions/{version}/teams\`: key required. Same shape as
+  \`/api/teams\`. Params: \`era\` (\`curr\` default | \`class\` | \`allt\`;
+  \`teamType\` alias).
+
+\`\`\`bash
+curl 'https://api.nba2kapi.com/api/versions/2K26/players?team=Denver%20Nuggets&limit=5' \\
+  -H 'X-API-Key: YOUR_KEY'
+\`\`\`
+
+Response (truncated):
+
+\`\`\`json
+{
+  "success": true,
+  "data": [
+    {
+      "gameVersion": "2K26",
+      "slug": "nikola-jokic",
+      "name": "Nikola Jokic",
+      "team": "Denver Nuggets",
+      "teamType": "curr",
+      "overall": 98,
+      "positions": ["C"],
+      "height": "6'11\\"",
+      "attributes": { "closeShot": 99, "midRangeShot": 98 },
+      "badges": { "total": 24, "hallOfFame": 6 }
+    }
+  ],
+  "meta": { "gameVersion": "2K26", "count": 5, "total": 14, "hasMore": true, "offset": 0, "limit": 5 }
+}
+\`\`\`
 
 ## Errors
 
