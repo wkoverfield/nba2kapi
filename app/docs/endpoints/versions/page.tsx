@@ -93,8 +93,9 @@ export default function VersionsEndpointPage() {
 
       <DocLabel>RESPONSE</DocLabel>
       <DocP>
-        A list of editions, current first, then newest archived. Each entry carries the fields
-        below.
+        A list of editions under <code>data</code>, current first, then newest archived, with{" "}
+        <code>meta</code> carrying <code>count</code> and <code>current</code> (the current edition
+        key). Each entry carries the fields below.
       </DocP>
       <div className="mt-2.5">
         <ParamsTable
@@ -135,7 +136,7 @@ export default function VersionsEndpointPage() {
             },
             {
               name: "teamTypeCounts",
-              type: "object · archived only",
+              type: "object",
               desc: (
                 <>
                   Player counts per era: <code>{"{ curr, class, allt }"}</code>.
@@ -148,6 +149,22 @@ export default function VersionsEndpointPage() {
               desc: (
                 <>
                   When the snapshot was taken (ISO 8601) and where it came from.
+                </>
+              ),
+            },
+            {
+              name: "note",
+              type: "string · optional",
+              desc: <>Free-text provenance note set when the edition was archived.</>,
+            },
+            {
+              name: "frozenAt / frozenSource",
+              type: "string · current only, optional",
+              desc: (
+                <>
+                  Present when a standby snapshot of the current edition already exists in the
+                  archive. The current edition is still served live; the snapshot takes over once
+                  the season rolls over.
                 </>
               ),
             },
@@ -222,7 +239,7 @@ export default function VersionsEndpointPage() {
               type: "number",
               desc: (
                 <>
-                  Page size (1 to 100, default 50) and the number of rows to skip (0 or more).
+                  Page size (1 to 100, default 50) and the number of rows to skip (0 or more).{" "}
                   <code>meta</code> carries <code>gameVersion</code>, <code>count</code>,{" "}
                   <code>total</code>, <code>hasMore</code>, <code>offset</code>, and{" "}
                   <code>limit</code>.
@@ -236,7 +253,9 @@ export default function VersionsEndpointPage() {
       <DocLabel>GET /API/VERSIONS/:VERSION/PLAYERS/BULK</DocLabel>
       <DocP>
         The whole matching set for one edition in a single call, sorted by overall descending,
-        capped at 10,000 rows. Costs one request against your rate limit.
+        capped at 10,000 rows. Costs one request against your rate limit. <code>meta</code> carries{" "}
+        <code>gameVersion</code>, <code>count</code>, <code>total</code>, <code>filters</code>,{" "}
+        <code>capturedAt</code>, and <code>source</code>.
       </DocP>
       <div className="mt-2.5">
         <ParamsTable
@@ -272,9 +291,7 @@ export default function VersionsEndpointPage() {
           ]}
         />
       </div>
-      <FinePrint>
-        META: GAMEVERSION · COUNT · TOTAL · FILTERS · CAPTUREDAT · SOURCE. CACHED 1H WITH ETAG.
-      </FinePrint>
+      <FinePrint>CACHED 1H WITH ETAG.</FinePrint>
 
       <DocLabel>GET /API/VERSIONS/:VERSION/PLAYERS/:SLUG</DocLabel>
       <DocP>
@@ -299,8 +316,10 @@ export default function VersionsEndpointPage() {
               desc: (
                 <>
                   <code>curr</code>, <code>class</code>, or <code>allt</code>. Omit it and, when the
-                  slug exists in more than one era, <code>data</code> is an array of every variant
-                  with the count under <code>meta.variants</code>.
+                  slug is on more than one roster (another era, or several classic squads),{" "}
+                  <code>data</code> is an array with one entry per roster and{" "}
+                  <code>meta.variants</code> lists each <code>{"{ teamType, team }"}</code>.{" "}
+                  <code>teamType</code> narrows to one era but can still return several rosters.
                 </>
               ),
             },
@@ -310,7 +329,8 @@ export default function VersionsEndpointPage() {
 
       <DocLabel>GET /API/VERSIONS/:VERSION/TEAMS</DocLabel>
       <DocP>
-        Teams in one edition with player count, average rating, logo, and top overall. Same shape
+        Teams in one edition. Each row is <code>teamName</code>, <code>teamType</code>,{" "}
+        <code>playerCount</code>, <code>averageRating</code>, and <code>logo</code>, the same shape
         as <Link href="/docs/endpoints/teams">/api/teams</Link>.
       </DocP>
       <div className="mt-2.5">

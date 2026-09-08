@@ -13,7 +13,7 @@ import { Id } from "./_generated/dataModel";
  * Takes the same amount of time regardless of where strings differ.
  * IMPORTANT: No early return on length mismatch - that would leak length info.
  */
-function constantTimeCompare(a: string, b: string): boolean {
+export function constantTimeCompare(a: string, b: string): boolean {
   const maxLen = Math.max(a.length, b.length);
   let result = a.length ^ b.length; // Length difference contributes to result
 

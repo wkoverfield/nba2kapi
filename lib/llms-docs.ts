@@ -192,8 +192,11 @@ badge counts with the top three badges). Archived editions do not change.
 
 - \`GET /api/versions\`: no key required, 60 requests/minute per IP. Data:
   \`[{ gameVersion, label, status: "current" | "archived", playerCount,
-  teamTypeCounts?, capturedAt?, source? }]\`, current first, then newest
-  archived. Cached 1 hour.
+  teamTypeCounts, note?, capturedAt?, source?, frozenAt?, frozenSource? }]\`,
+  current first, then newest archived. \`capturedAt\` and \`source\` are
+  present for archived editions; \`frozenAt\` and \`frozenSource\` appear
+  on the current entry when a standby snapshot of it exists (the current
+  edition is still served live). Meta: \`{ count, current }\`. Cached 1 hour.
 - \`GET /api/versions/{version}/players\`: key required. Params: \`era\`
   (\`curr\` default | \`class\` | \`allt\` | \`all\`; \`teamType\` alias),
   \`team\`, \`position\` (exact or \`guard\` / \`wing\` / \`big\`),
@@ -206,12 +209,15 @@ badge counts with the top three badges). Archived editions do not change.
   \`minRating\`, \`maxRating\`, \`position\`. Cached 1 hour with ETag. Meta:
   \`{ gameVersion, count, total, filters, capturedAt, source }\`.
 - \`GET /api/versions/{version}/players/{slug}\`: key required. One player
-  in one edition. Param: \`teamType\`. Omit it and, when the slug exists in
-  more than one era, \`data\` is an array of every variant with
-  \`meta.variants\`. Unknown slug: \`404 PLAYER_NOT_FOUND\`.
-- \`GET /api/versions/{version}/teams\`: key required. Same shape as
-  \`/api/teams\`. Params: \`era\` (\`curr\` default | \`class\` | \`allt\`;
-  \`teamType\` alias).
+  in one edition. Param: \`teamType\`. Omit it and, when the slug is on more
+  than one roster (another era, or several classic squads), \`data\` is an
+  array with one entry per roster and \`meta.variants\` lists each
+  \`{ teamType, team }\`; \`teamType\` narrows to one era but can still
+  return several rosters. Unknown slug: \`404 PLAYER_NOT_FOUND\`.
+- \`GET /api/versions/{version}/teams\`: key required. Each row is
+  \`teamName, teamType, playerCount, averageRating, logo\`, the same shape
+  as \`/api/teams\`. Params: \`era\` (\`curr\` default | \`class\` |
+  \`allt\`; \`teamType\` alias).
 
 \`\`\`bash
 curl 'https://api.nba2kapi.com/api/versions/2K26/players?team=Denver%20Nuggets&limit=5' \\

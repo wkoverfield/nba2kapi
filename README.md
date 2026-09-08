@@ -361,11 +361,11 @@ curl 'https://api.nba2kapi.com/api/teams/Los%20Angeles%20Lakers/roster' \
 
 Rosters and ratings by game edition, for clients still on last season's game. `:version` is an edition key like `2K26` (case-insensitive; anything not shaped like `2K` plus two digits returns `400 INVALID_VERSION`, and an edition that is not archived returns `404 VERSION_NOT_FOUND` with `details.availableVersions`). The current edition (`2K27`) answers at the same paths from the live database, so one URL shape covers every season. Every row from a versioned route carries `gameVersion`. 2K26 is the final pre-2K27-reveal snapshot captured 2026-08-08 (1,889 players); archived editions do not change.
 
-- `GET /api/versions`: editions available, current first, then newest archived (no auth required; 60 requests/minute per IP). Each entry: `gameVersion`, `label`, `status` (`current` or `archived`), `playerCount`, plus `teamTypeCounts`, `capturedAt`, and `source` for archived editions.
+- `GET /api/versions`: editions available, current first, then newest archived (no auth required; 60 requests/minute per IP). Each entry: `gameVersion`, `label`, `status` (`current` or `archived`), `playerCount`, `teamTypeCounts`, optional `note`, plus `capturedAt` and `source` for archived editions; the current entry carries `frozenAt` and `frozenSource` when a standby snapshot of it exists. Meta: `count`, `current`.
 - `GET /api/versions/:version/players`: players in one edition; params `era` or `teamType` (`curr` default, `class`, `allt`, `all`), `team`, `position` (exact or `guard`, `wing`, `big`), `minRating`, `maxRating`, `search`, `limit` (1 to 100, default 50), `offset`. Meta: `gameVersion`, `count`, `total`, `hasMore`, `offset`, `limit`.
 - `GET /api/versions/:version/players/bulk`: the whole matching set in one call (cap 10,000, cached 1 hour with ETag); params `teamType`, `team`, `minRating`, `maxRating`, `position`. Meta: `gameVersion`, `count`, `total`, `filters`, `capturedAt`, `source`.
-- `GET /api/versions/:version/players/:slug`: one player in one edition; optional `teamType`. Without it, a slug that exists in more than one era returns an array under `data` with `meta.variants`.
-- `GET /api/versions/:version/teams`: teams in one edition, same shape as `/api/teams`; params `era` or `teamType`.
+- `GET /api/versions/:version/players/:slug`: one player in one edition; optional `teamType`. Without it, a slug on more than one roster (another era, or several classic squads) returns an array under `data` with one entry per roster and `meta.variants` listing each `{ teamType, team }`; `teamType` narrows to one era but can still return several rosters.
+- `GET /api/versions/:version/teams`: teams in one edition; each row is `teamName`, `teamType`, `playerCount`, `averageRating`, `logo`, the same shape as `/api/teams`; params `era` or `teamType`.
 
 ```bash
 # Editions available (no auth required)
@@ -523,7 +523,7 @@ The scraper overwrites the live `players` table in place and `reconcileRoster` d
 npx convex run --prod rosterArchive:freezeCurrentVersion
 ```
 
-This copies every live player record under the current edition key and registers the edition in `rosterVersions`; rerunning is a no-op unless `{"overwrite": true}` is passed. Archived datasets kept in `data/roster-archive/` are imported with the script below (`CONVEX_URL` is required; there is no production default):
+This copies every live player record under the current edition key and registers the edition in `rosterVersions`; rerunning refuses with an error unless `{"overwrite": true}` is passed, which replaces the rows in place and prunes rows the rerun did not write. The current edition always follows the live scrape, even after it has been frozen; the snapshot is served from the archive only after `CURRENT_GAME_VERSION` is bumped, at which point the outgoing edition becomes an archived one. Archived datasets kept in `data/roster-archive/` are imported with the script below (`CONVEX_URL` is required; there is no production default). Rerunning the import replaces rows in place and prunes rows the rerun did not write:
 
 ```bash
 CONVEX_URL=https://your-deployment.convex.cloud ADMIN_API_KEY=... \

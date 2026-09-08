@@ -1,19 +1,24 @@
 /**
  * Roster archive: past NBA 2K editions, served by /api/versions/:version/*.
  *
- * Tables: `rosterArchive` (one row per gameVersion + teamType + slug) and
- * `rosterVersions` (one doc per archived edition). Both live beside the live
- * `players` table and never feed the current-version API.
+ * Tables: `rosterArchive` (one row per gameVersion + teamType + team + slug;
+ * `team` is part of the key because classic eras repeat a slug across squads,
+ * e.g. michael-jordan on several Bulls rosters) and `rosterVersions` (one doc
+ * per archived edition). Both live beside the live `players` table and never
+ * feed the current-version API: the current edition always reads live, an
+ * archived edition always reads here.
  *
  * Writers:
  *   - adminImportBatch + finalizeVersion: external datasets, driven by
- *     scripts/import-roster-archive.mjs (batches of at most 200 rows).
+ *     scripts/import-roster-archive.mjs (batches of at most 200 rows, one
+ *     `importedAt` stamp per run; finalizeVersion prunes rows of the edition
+ *     that the run did not write).
  *   - freezeCurrentVersion: copies the live `players` table under a version
  *     label. Season rollover runbook: run it BEFORE bumping CURRENT_GAME_VERSION
  *     and before 2kratings starts publishing next-season reveals (mid-August):
  *       npx convex run --prod rosterArchive:freezeCurrentVersion
  *
- * Readers (public queries, no PII): listVersions, getVersion,
+ * Readers (public queries, no PII): listVersions, listVersionKeys, getVersion,
  * getVersionPlayers, getVersionPlayerBySlug, getVersionTeams.
  *
  * LANDMINE: every read of rosterArchive goes through a gameVersion index. The
@@ -21,11 +26,13 @@
  */
 
 import {
+  action,
   internalAction,
   internalMutation,
   internalQuery,
   mutation,
   query,
+  ActionCtx,
   MutationCtx,
   QueryCtx,
 } from "./_generated/server";
@@ -33,6 +40,7 @@ import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
 import { Doc } from "./_generated/dataModel";
 import { CURRENT_GAME_VERSION } from "./gameVersion";
+import { constantTimeCompare } from "./apiKeys";
 
 const teamTypeValidator = v.union(v.literal("curr"), v.literal("class"), v.literal("allt"));
 type TeamType = "curr" | "class" | "allt";
@@ -62,12 +70,26 @@ type VersionSummary = {
   note?: string;
 };
 
+/** The synthesized entry for CURRENT_GAME_VERSION in listVersions. */
+type CurrentSummary = {
+  gameVersion: string;
+  label: string;
+  status: "current";
+  playerCount: number;
+  teamTypeCounts: TeamTypeCounts;
+  /** Set when a standby snapshot of the current edition exists in the archive. */
+  frozenAt?: string;
+  frozenSource?: string;
+};
+
 type FreezeResult = VersionSummary & {
   liveRows: number;
   inserted: number;
   updated: number;
   pruned: number;
 };
+
+type FinalizeResult = VersionSummary & { pruned: number };
 
 function assertGameVersion(gameVersion: string) {
   if (!VERSION_PATTERN.test(gameVersion)) {
@@ -76,7 +98,8 @@ function assertGameVersion(gameVersion: string) {
 }
 
 function requireAdminKey(adminKey: string) {
-  if (adminKey !== process.env.ADMIN_API_KEY) {
+  const expected = process.env.ADMIN_API_KEY;
+  if (!expected || !constantTimeCompare(adminKey, expected)) {
     throw new Error("Unauthorized: Invalid admin key");
   }
 }
@@ -306,7 +329,9 @@ function publicVersion(doc: Doc<"rosterVersions">): VersionSummary {
 
 /**
  * Upsert up to IMPORT_BATCH_LIMIT players into one archived edition.
- * Requires ADMIN_API_KEY. Unknown fields on each player are dropped.
+ * Requires ADMIN_API_KEY. Unknown fields on each player are dropped. Pass the
+ * same `importedAt` stamp to every batch of one run so finalizeVersion can
+ * prune rows the run did not write; omitted, each batch stamps itself.
  */
 export const adminImportBatch = mutation({
   args: {
@@ -314,6 +339,7 @@ export const adminImportBatch = mutation({
     gameVersion: v.string(),
     source: v.string(),
     capturedAt: v.string(),
+    importedAt: v.optional(v.string()),
     players: v.array(v.any()),
   },
   handler: async (ctx, args) => {
@@ -322,24 +348,20 @@ export const adminImportBatch = mutation({
       gameVersion: args.gameVersion,
       source: args.source,
       capturedAt: args.capturedAt,
+      ...(args.importedAt !== undefined && { importedAt: args.importedAt }),
       players: args.players,
     });
   },
 });
 
-/**
- * Recount an archived edition and write (or refresh) its rosterVersions doc.
- * Requires ADMIN_API_KEY. Run after the last adminImportBatch.
- */
-export const finalizeVersion = mutation({
+/** Recount an edition and write (or refresh) its rosterVersions doc. */
+export const writeVersionSummary = internalMutation({
   args: {
-    adminKey: v.string(),
     gameVersion: v.string(),
     label: v.optional(v.string()),
     note: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
-    requireAdminKey(args.adminKey);
+  handler: async (ctx, args): Promise<VersionSummary> => {
     assertGameVersion(args.gameVersion);
     const { playerCount, teamTypeCounts, sample } = await countVersion(ctx, args.gameVersion);
     if (!sample) {
@@ -357,6 +379,39 @@ export const finalizeVersion = mutation({
       ...(args.note !== undefined && { note: args.note }),
     });
     return publicVersion(doc as Doc<"rosterVersions">);
+  },
+});
+
+/**
+ * Finish an import: when `importedAt` is given, prune rows of the edition
+ * that do not carry that stamp (a corrected dataset that dropped players),
+ * then recount and write (or refresh) the rosterVersions doc. Requires
+ * ADMIN_API_KEY. Run after the last adminImportBatch of a run.
+ */
+export const finalizeVersion = action({
+  args: {
+    adminKey: v.string(),
+    gameVersion: v.string(),
+    importedAt: v.optional(v.string()),
+    label: v.optional(v.string()),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args): Promise<FinalizeResult> => {
+    requireAdminKey(args.adminKey);
+    assertGameVersion(args.gameVersion);
+    let pruned = 0;
+    if (args.importedAt !== undefined) {
+      pruned = (await pruneVersion(ctx, args.gameVersion, args.importedAt)).pruned;
+    }
+    const version: VersionSummary = await ctx.runMutation(
+      internal.rosterArchive.writeVersionSummary,
+      {
+        gameVersion: args.gameVersion,
+        ...(args.label !== undefined && { label: args.label }),
+        ...(args.note !== undefined && { note: args.note }),
+      }
+    );
+    return { ...version, pruned };
   },
 });
 
@@ -470,6 +525,37 @@ export const upsertVersionDoc = internalMutation({
 });
 
 /**
+ * Delete every row of an edition not stamped `keepImportedAt`, one page per
+ * transaction, and count what remains per era.
+ */
+async function pruneVersion(ctx: ActionCtx, gameVersion: string, keepImportedAt: string) {
+  const teamTypeCounts: TeamTypeCounts = { curr: 0, class: 0, allt: 0 };
+  let pruned = 0;
+  for (const teamType of TEAM_TYPES) {
+    let cursor: string | null = null;
+    let isDone = false;
+    while (!isDone) {
+      const res: {
+        isDone: boolean;
+        continueCursor: string;
+        kept: number;
+        pruned: number;
+      } = await ctx.runMutation(internal.rosterArchive.reconcileVersionPage, {
+        gameVersion,
+        teamType,
+        keepImportedAt,
+        paginationOpts: { numItems: FREEZE_PAGE_SIZE, cursor },
+      });
+      teamTypeCounts[teamType] += res.kept;
+      pruned += res.pruned;
+      isDone = res.isDone;
+      cursor = res.continueCursor;
+    }
+  }
+  return { teamTypeCounts, pruned };
+}
+
+/**
  * Copy the live `players` table into the archive under a version label
  * (default CURRENT_GAME_VERSION) with source "freeze". Refuses when that
  * version already has a rosterVersions doc unless `overwrite` is true.
@@ -538,29 +624,7 @@ export const freezeCurrentVersion = internalAction({
 
     // Reconcile: drop rows an earlier freeze wrote that this run did not
     // touch, and count what the archive actually holds per era.
-    const teamTypeCounts: TeamTypeCounts = { curr: 0, class: 0, allt: 0 };
-    let pruned = 0;
-    for (const teamType of TEAM_TYPES) {
-      let cursor: string | null = null;
-      let isDone = false;
-      while (!isDone) {
-        const res: {
-          isDone: boolean;
-          continueCursor: string;
-          kept: number;
-          pruned: number;
-        } = await ctx.runMutation(internal.rosterArchive.reconcileVersionPage, {
-          gameVersion,
-          teamType,
-          keepImportedAt: importedAt,
-          paginationOpts: { numItems: FREEZE_PAGE_SIZE, cursor },
-        });
-        teamTypeCounts[teamType] += res.kept;
-        pruned += res.pruned;
-        isDone = res.isDone;
-        cursor = res.continueCursor;
-      }
-    }
+    const { teamTypeCounts, pruned } = await pruneVersion(ctx, gameVersion, importedAt);
     const playerCount = teamTypeCounts.curr + teamTypeCounts.class + teamTypeCounts.allt;
 
     const version: VersionSummary = await ctx.runMutation(internal.rosterArchive.upsertVersionDoc, {
@@ -600,36 +664,37 @@ export const getVersion = query({
 
 /**
  * Every edition the API serves: the current edition first (synthesized from
- * CURRENT_GAME_VERSION), then archived editions newest first. When the
- * current edition has already been frozen, its entry carries the archive's
- * counts and provenance because that is what /api/versions/:version serves.
+ * CURRENT_GAME_VERSION with live counts, because the versioned routes always
+ * serve the current edition from the live tables), then archived editions
+ * newest first. A rosterVersions doc for the current edition is a standby
+ * snapshot: it is not listed as a second row, but the current entry carries
+ * its `frozenAt` / `frozenSource` so operators can see it exists.
  */
 export const listVersions = query({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<Array<CurrentSummary | VersionSummary>> => {
     const archived = await ctx.db.query("rosterVersions").collect();
     const currentArchive = archived.find((doc) => doc.gameVersion === CURRENT_GAME_VERSION);
 
-    let current;
-    if (currentArchive) {
-      current = { ...publicVersion(currentArchive), status: "current" as const };
-    } else {
-      const teamTypeCounts: TeamTypeCounts = { curr: 0, class: 0, allt: 0 };
-      for (const teamType of TEAM_TYPES) {
-        const rows = await ctx.db
-          .query("players")
-          .withIndex("by_teamType", (q) => q.eq("teamType", teamType))
-          .collect();
-        teamTypeCounts[teamType] = rows.length;
-      }
-      current = {
-        gameVersion: CURRENT_GAME_VERSION,
-        label: versionLabel(CURRENT_GAME_VERSION),
-        status: "current" as const,
-        playerCount: teamTypeCounts.curr + teamTypeCounts.class + teamTypeCounts.allt,
-        teamTypeCounts,
-      };
+    const teamTypeCounts: TeamTypeCounts = { curr: 0, class: 0, allt: 0 };
+    for (const teamType of TEAM_TYPES) {
+      const rows = await ctx.db
+        .query("players")
+        .withIndex("by_teamType", (q) => q.eq("teamType", teamType))
+        .collect();
+      teamTypeCounts[teamType] = rows.length;
     }
+    const current: CurrentSummary = {
+      gameVersion: CURRENT_GAME_VERSION,
+      label: versionLabel(CURRENT_GAME_VERSION),
+      status: "current",
+      playerCount: teamTypeCounts.curr + teamTypeCounts.class + teamTypeCounts.allt,
+      teamTypeCounts,
+      ...(currentArchive && {
+        frozenAt: currentArchive.capturedAt,
+        frozenSource: currentArchive.source,
+      }),
+    };
 
     const rest = archived
       .filter((doc) => doc.gameVersion !== CURRENT_GAME_VERSION)
@@ -637,6 +702,23 @@ export const listVersions = query({
       .map(publicVersion);
 
     return [current, ...rest];
+  },
+});
+
+/**
+ * Edition keys the versioned routes accept: the current edition first, then
+ * archived editions newest first. Reads only rosterVersions (the 404 path of
+ * every versioned route calls this).
+ */
+export const listVersionKeys = query({
+  args: {},
+  handler: async (ctx): Promise<string[]> => {
+    const archived = await ctx.db.query("rosterVersions").collect();
+    const rest = archived
+      .map((doc) => doc.gameVersion)
+      .filter((key) => key !== CURRENT_GAME_VERSION)
+      .sort((a, b) => b.localeCompare(a));
+    return [CURRENT_GAME_VERSION, ...rest];
   },
 });
 

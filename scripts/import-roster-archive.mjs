@@ -10,16 +10,24 @@
  * (Blacktop `cats`), upserts them in batches of 200 through
  * rosterArchive.adminImportBatch, then calls rosterArchive.finalizeVersion so
  * /api/versions lists the edition. Rerunning is safe: rows are keyed on
- * (gameVersion, teamType, slug).
+ * (gameVersion, teamType, team, slug), because classic eras repeat a slug
+ * across squads (michael-jordan on several Bulls rosters). Every batch of one
+ * run carries the same `importedAt` stamp, and finalizeVersion prunes rows of
+ * the edition that the run did not write, so a corrected dataset that dropped
+ * players leaves no stale rows behind.
  *
  * CONVEX_URL is required and has no default: point it at dev or prod on
  * purpose. It must be the .convex.cloud URL (ConvexHttpClient), not .convex.site.
+ * Function references go through `anyApi`, so no `npx convex codegen` is
+ * needed before running this on a fresh clone.
  */
 
 import fs from "fs";
 import path from "path";
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "../convex/_generated/api.js";
+import { anyApi } from "convex/server";
+
+const api = anyApi;
 
 const BATCH_SIZE = 200;
 const DROPPED_FIELDS = ["cats"];
@@ -94,6 +102,9 @@ async function main() {
   );
 
   const client = new ConvexHttpClient(convexUrl);
+  // One stamp for the whole run: finalizeVersion keeps rows carrying it and
+  // prunes anything else under the edition.
+  const importedAt = new Date().toISOString();
   let inserted = 0;
   let updated = 0;
   for (let start = 0; start < players.length; start += BATCH_SIZE) {
@@ -103,6 +114,7 @@ async function main() {
       gameVersion,
       source,
       capturedAt,
+      importedAt,
       players: batch,
     });
     inserted += result.inserted;
@@ -113,12 +125,12 @@ async function main() {
     );
   }
 
-  const finalizeArgs = { adminKey, gameVersion };
+  const finalizeArgs = { adminKey, gameVersion, importedAt };
   if (label !== undefined) finalizeArgs.label = label;
   if (note !== undefined) finalizeArgs.note = note;
-  const version = await client.mutation(api.rosterArchive.finalizeVersion, finalizeArgs);
+  const version = await client.action(api.rosterArchive.finalizeVersion, finalizeArgs);
 
-  console.log(`\nDone: ${inserted} inserted, ${updated} updated`);
+  console.log(`\nDone: ${inserted} inserted, ${updated} updated, ${version.pruned} pruned`);
   console.log(
     `${version.gameVersion} (${version.label}): ${version.playerCount} players ` +
       `(curr ${version.teamTypeCounts.curr}, class ${version.teamTypeCounts.class}, allt ${version.teamTypeCounts.allt})`

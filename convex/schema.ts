@@ -442,11 +442,12 @@ export default defineSchema({
   }).index("by_date", ["date"]),
 
   /**
-   * Roster Archive - one row per (gameVersion, teamType, slug) holding a
-   * player's final record for a past NBA 2K edition. Additive beside the live
-   * `players` table: the current edition is never read from here while it is
-   * still being scraped, so the live API, SEO pages, cohorts, and dossiers are
-   * untouched. Populated by scripts/import-roster-archive.mjs (external
+   * Roster Archive - one row per (gameVersion, teamType, team, slug) holding
+   * a player's final record for a past NBA 2K edition. `team` is part of the
+   * key because classic eras repeat a slug across squads (michael-jordan on
+   * several Bulls rosters). Additive beside the live `players` table: the
+   * current edition is always served from the live tables, never from here,
+   * so the live API, SEO pages, cohorts, and dossiers are untouched. Populated by scripts/import-roster-archive.mjs (external
    * datasets) and rosterArchive.freezeCurrentVersion (copies the live table
    * before a season bump). Rows for an archived edition never change.
    *
@@ -515,8 +516,10 @@ export default defineSchema({
   /**
    * Roster Versions - one doc per archived edition present in rosterArchive.
    * Written by rosterArchive.finalizeVersion / freezeCurrentVersion after the
-   * rows land; its presence is what makes /api/versions/:version serve the
-   * archive instead of the live tables.
+   * rows land. Its presence is what makes /api/versions/:version serve the
+   * archive for every edition except CURRENT_GAME_VERSION, which always reads
+   * the live tables (a doc for the current edition is a standby snapshot that
+   * takes over once the season constant is bumped).
    */
   rosterVersions: defineTable({
     gameVersion: v.string(), // "2K26"

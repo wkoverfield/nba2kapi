@@ -1103,9 +1103,11 @@ app.get("/api/players/search",
 // ============================================================================
 //
 // One URL shape for every edition: /api/versions/{version}/... The current
-// edition (CURRENT_GAME_VERSION) proxies to the live tables until it has been
-// frozen into the archive; archived editions read rosterArchive. Registered
-// ahead of /api/players/:id, and the bulk route ahead of the :slug route.
+// edition (CURRENT_GAME_VERSION) always proxies to the live tables, even once
+// a freeze snapshot of it exists; archived editions read rosterArchive. After
+// the season constant is bumped the outgoing edition becomes archived and
+// reads from the archive. Registered ahead of /api/players/:id, and the bulk
+// route ahead of the :slug route.
 
 const GAME_VERSION_PATTERN = /^2K\d{2}$/;
 
@@ -1124,10 +1126,11 @@ type ResolvedVersion =
   | { ok: false; response: Response };
 
 /**
- * Normalize the :version path param and decide where it is served from.
- * 400 INVALID_VERSION for anything that is not 2K\d{2}; 404 VERSION_NOT_FOUND
- * (with details.availableVersions) for a well-formed edition the API does not
- * have.
+ * Normalize the :version path param and decide where it is served from: the
+ * current edition is always live (archive: null), any other edition must have
+ * a rosterVersions doc. 400 INVALID_VERSION for anything that is not 2K\d{2};
+ * 404 VERSION_NOT_FOUND (with details.availableVersions) for a well-formed
+ * edition the API does not have.
  */
 async function resolveGameVersion(c: any): Promise<ResolvedVersion> {
   const rawVersion = c.req.param("version");
@@ -1146,9 +1149,13 @@ async function resolveGameVersion(c: any): Promise<ResolvedVersion> {
     };
   }
 
+  if (gameVersion === CURRENT_GAME_VERSION) {
+    return { ok: true, gameVersion, archive: null };
+  }
+
   const archive = await c.env.runQuery(api.rosterArchive.getVersion, { gameVersion });
-  if (!archive && gameVersion !== CURRENT_GAME_VERSION) {
-    const versions: { gameVersion: string }[] = await c.env.runQuery(api.rosterArchive.listVersions, {});
+  if (!archive) {
+    const availableVersions: string[] = await c.env.runQuery(api.rosterArchive.listVersionKeys, {});
     return {
       ok: false,
       response: c.json(errorResponse(
@@ -1156,7 +1163,7 @@ async function resolveGameVersion(c: any): Promise<ResolvedVersion> {
         "VERSION_NOT_FOUND",
         {
           version: gameVersion,
-          availableVersions: versions.map((entry) => entry.gameVersion),
+          availableVersions,
           hint: "GET /api/versions lists every edition this API serves.",
         }
       ), 404),
@@ -1174,6 +1181,11 @@ function resolvePositions(position: string | undefined): string[] | undefined {
 }
 
 const TEAM_TYPE_ORDER: Record<string, number> = { curr: 0, class: 1, allt: 2 };
+
+/** Live rows carry no edition key of their own; stamp the current one. */
+function withCurrentVersion<T extends object>(rows: T[]): Array<T & { gameVersion: string }> {
+  return rows.map((row) => ({ ...row, gameVersion: CURRENT_GAME_VERSION }));
+}
 
 // GET /api/versions - Every edition the API serves (no key required)
 app.get("/api/versions",
@@ -1235,7 +1247,9 @@ app.get("/api/versions/:version/players",
 
       const result = archive
         ? await c.env.runQuery(api.rosterArchive.getVersionPlayers, { gameVersion, ...queryArgs })
-        : await c.env.runQuery(api.players.getAllFiltered, { sortBy: "overall-desc", ...queryArgs });
+        : await c.env
+            .runQuery(api.players.getAllFiltered, { sortBy: "overall-desc", ...queryArgs })
+            .then((live) => ({ ...live, players: withCurrentVersion(live.players) }));
 
       c.header("Cache-Control", "public, max-age=3600");
 
@@ -1290,7 +1304,9 @@ app.get("/api/versions/:version/players/bulk",
 
       const result = archive
         ? await c.env.runQuery(api.rosterArchive.getVersionPlayers, { gameVersion, ...queryArgs })
-        : await c.env.runQuery(api.players.getAllFiltered, { sortBy: "overall-desc", ...queryArgs });
+        : await c.env
+            .runQuery(api.players.getAllFiltered, { sortBy: "overall-desc", ...queryArgs })
+            .then((live) => ({ ...live, players: withCurrentVersion(live.players) }));
 
       c.header("Cache-Control", "public, max-age=3600, s-maxage=3600");
 
@@ -1341,7 +1357,9 @@ app.get("/api/versions/:version/players/:slug",
 
       const matches: Array<Doc<"rosterArchive"> | Doc<"players">> = archive
         ? await c.env.runQuery(api.rosterArchive.getVersionPlayerBySlug, { gameVersion, slug, ...lookupArgs })
-        : await c.env.runQuery(api.players.getPlayersBySlugs, { slugs: [slug], ...lookupArgs });
+        : withCurrentVersion(
+            await c.env.runQuery(api.players.getPlayersBySlugs, { slugs: [slug], ...lookupArgs })
+          );
 
       if (matches.length === 0) {
         return c.json(errorResponse(
