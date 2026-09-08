@@ -279,7 +279,8 @@ async function writeVersionDoc(
   ctx: MutationCtx,
   args: {
     gameVersion: string;
-    label: string;
+    /** Only written when provided; an existing label survives a rerun. */
+    label?: string;
     playerCount: number;
     teamTypeCounts: TeamTypeCounts;
     capturedAt: string;
@@ -293,7 +294,7 @@ async function writeVersionDoc(
     .withIndex("by_version", (q) => q.eq("gameVersion", args.gameVersion))
     .first();
   const fields = {
-    label: args.label,
+    ...(args.label !== undefined && { label: args.label }),
     playerCount: args.playerCount,
     teamTypeCounts: args.teamTypeCounts,
     capturedAt: args.capturedAt,
@@ -305,7 +306,12 @@ async function writeVersionDoc(
     await ctx.db.patch(existing._id, fields);
     return { ...existing, ...fields };
   }
-  const doc = { gameVersion: args.gameVersion, status: "archived" as const, ...fields };
+  const doc = {
+    gameVersion: args.gameVersion,
+    status: "archived" as const,
+    label: args.label ?? versionLabel(args.gameVersion),
+    ...fields,
+  };
   const _id = await ctx.db.insert("rosterVersions", doc);
   return { _id, ...doc };
 }
@@ -371,7 +377,7 @@ export const writeVersionSummary = internalMutation({
     }
     const doc = await writeVersionDoc(ctx, {
       gameVersion: args.gameVersion,
-      label: args.label ?? versionLabel(args.gameVersion),
+      ...(args.label !== undefined && { label: args.label }),
       playerCount,
       teamTypeCounts,
       capturedAt: sample.capturedAt,
@@ -524,11 +530,36 @@ export const upsertVersionDoc = internalMutation({
   },
 });
 
+/** True when at least one row of the edition carries `importedAt`. */
+export const hasImportStamp = internalQuery({
+  args: { gameVersion: v.string(), importedAt: v.string() },
+  handler: async (ctx, args) => {
+    const row = await ctx.db
+      .query("rosterArchive")
+      .withIndex("by_version", (q) => q.eq("gameVersion", args.gameVersion))
+      .filter((q) => q.eq(q.field("importedAt"), args.importedAt))
+      .first();
+    return row !== null;
+  },
+});
+
 /**
  * Delete every row of an edition not stamped `keepImportedAt`, one page per
- * transaction, and count what remains per era.
+ * transaction, and count what remains per era. Refuses when no row carries
+ * the stamp: a mistyped stamp or the wrong edition would otherwise delete
+ * the whole edition.
  */
 async function pruneVersion(ctx: ActionCtx, gameVersion: string, keepImportedAt: string) {
+  const stamped: boolean = await ctx.runQuery(internal.rosterArchive.hasImportStamp, {
+    gameVersion,
+    importedAt: keepImportedAt,
+  });
+  if (!stamped) {
+    throw new Error(
+      `No rows of ${gameVersion} carry importedAt ${keepImportedAt}; refusing to prune ` +
+        `because it would delete the whole edition`
+    );
+  }
   const teamTypeCounts: TeamTypeCounts = { curr: 0, class: 0, allt: 0 };
   let pruned = 0;
   for (const teamType of TEAM_TYPES) {
