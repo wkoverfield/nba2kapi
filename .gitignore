@@ -44,3 +44,6 @@ out/
 # Vercel
 .vercel
 .claude/
+
+# Quilt (local agent coordination ledger)
+.quilt/
