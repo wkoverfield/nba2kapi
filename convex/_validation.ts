@@ -248,6 +248,27 @@ export const VALID_PARAMS_BY_ENDPOINT: Record<string, Set<string>> = {
   "/api/badges/:slug": new Set([]),
   "/api/badges/:slug/players": new Set(["tier", "limit"]),
   "/api/dashboard/usage": new Set([]),
+  "/api/versions": new Set([]),
+  "/api/versions/:version/players": new Set([
+    "teamType",
+    "era",
+    "team",
+    "position",
+    "minRating",
+    "maxRating",
+    "search",
+    "limit",
+    "offset",
+  ]),
+  "/api/versions/:version/players/bulk": new Set([
+    "teamType",
+    "team",
+    "minRating",
+    "maxRating",
+    "position",
+  ]),
+  "/api/versions/:version/players/:slug": new Set(["teamType"]),
+  "/api/versions/:version/teams": new Set(["teamType", "era"]),
 };
 
 // Register every attribute range filter (<alias>_gte / <alias>_lte) as a valid
