@@ -68,12 +68,36 @@ export const getTeamBySlug = query({
 /**
  * The Board: every team of an era ranked by average roster rating, with the
  * best player attached. One row per team, slim payload.
+ *
+ * Reads the aggregates stored on `teams` docs (rebuilt at scrape time by
+ * cohorts.ts). Falls back to scanning players only while the era has no
+ * teams rows or rows written before the board fields existed.
  */
 export const getBoard = query({
   args: {
     teamType: v.union(v.literal("curr"), v.literal("class"), v.literal("allt")),
   },
   handler: async (ctx, args) => {
+    const teamDocs = await ctx.db
+      .query("teams")
+      .withIndex("by_teamType", (q) => q.eq("teamType", args.teamType))
+      .collect();
+    if (
+      teamDocs.length > 0 &&
+      teamDocs.every((t) => t.avgRating !== undefined && t.bestPlayer !== undefined)
+    ) {
+      return teamDocs
+        .map((t) => ({
+          team: t.name,
+          slug: t.slug,
+          logo: t.logo ?? null,
+          playerCount: t.playerCount ?? 0,
+          avgRating: t.avgRating!,
+          bestPlayer: t.bestPlayer!,
+        }))
+        .sort((a, b) => b.avgRating - a.avgRating || a.team.localeCompare(b.team));
+    }
+
     const players = await ctx.db
       .query("players")
       .withIndex("by_teamType", (q) => q.eq("teamType", args.teamType))
@@ -119,10 +143,22 @@ export const getBoard = query({
 
 /**
  * team name → logo URL map across all eras (command palette icons).
+ *
+ * Built from the logo stored on `teams` docs; scans players only while no
+ * teams row carries a logo yet (pre-rebuild).
  */
 export const getTeamLogoMap = query({
   args: {},
   handler: async (ctx) => {
+    const teamDocs = await ctx.db.query("teams").collect();
+    if (teamDocs.some((t) => t.logo !== undefined)) {
+      const map: Record<string, string> = {};
+      for (const t of teamDocs) {
+        if (t.logo && !map[t.name]) map[t.name] = t.logo;
+      }
+      return map;
+    }
+
     const players = await ctx.db.query("players").collect();
     const map: Record<string, string> = {};
     for (const p of players) {

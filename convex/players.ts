@@ -792,6 +792,39 @@ export const getTeams = query({
  */
 export const getStats = query({
   handler: async (ctx) => {
+    // Per-era totals are precomputed at scrape time (cohorts.ts eraStats).
+    // Scan players only while an era's row is missing.
+    const eras = ["curr", "class", "allt"] as const;
+    const eraDocs = await Promise.all(
+      eras.map((teamType) =>
+        ctx.db
+          .query("eraStats")
+          .withIndex("by_teamType", (q) => q.eq("teamType", teamType))
+          .first()
+      )
+    );
+    if (eraDocs.every((d) => d !== null)) {
+      const docs = eraDocs as NonNullable<(typeof eraDocs)[number]>[];
+      const totalPlayers = docs.reduce((s, d) => s + d.playerCount, 0);
+      const sumOverall = docs.reduce((s, d) => s + d.sumOverall, 0);
+      const teamNames = new Set(docs.flatMap((d) => d.teamNames));
+      const lastUpdated = docs.reduce<string | null>(
+        (latest, d) => (d.lastUpdated && (!latest || d.lastUpdated > latest) ? d.lastUpdated : latest),
+        null
+      );
+      return {
+        totalPlayers,
+        byType: {
+          curr: docs[0].playerCount,
+          class: docs[1].playerCount,
+          allt: docs[2].playerCount,
+        },
+        uniqueTeams: teamNames.size,
+        avgOverall: totalPlayers > 0 ? Math.round(sumOverall / totalPlayers) : 0,
+        lastUpdated,
+      };
+    }
+
     const players = await ctx.db.query("players").collect();
 
     const stats = {

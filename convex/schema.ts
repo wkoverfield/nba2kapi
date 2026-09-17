@@ -167,9 +167,37 @@ export default defineSchema({
     teamType: v.union(v.literal("curr"), v.literal("class"), v.literal("allt")),
     name: v.string(), // display name exactly as stored on player docs
     updatedAt: v.string(), // ISO timestamp
+    // Board aggregates (teams.getBoard), rebuilt with the rest of the row.
+    // Optional only for rows written before these fields existed; getBoard
+    // falls back to scanning players until the era is rebuilt.
+    logo: v.optional(v.union(v.string(), v.null())),
+    playerCount: v.optional(v.number()),
+    avgRating: v.optional(v.number()),
+    bestPlayer: v.optional(
+      v.object({
+        name: v.string(),
+        slug: v.string(),
+        overall: v.number(),
+        playerImage: v.union(v.string(), v.null()),
+      })
+    ),
   })
     .index("by_slug_and_type", ["slug", "teamType"])
     .index("by_teamType", ["teamType"]),
+
+  /**
+   * Per-era roster totals behind players.getStats. One row per era,
+   * rebuilt with cohortStats/teams after each scrape. getStats scans players
+   * only while an era's row is missing.
+   */
+  eraStats: defineTable({
+    teamType: v.union(v.literal("curr"), v.literal("class"), v.literal("allt")),
+    playerCount: v.number(),
+    sumOverall: v.number(),
+    teamNames: v.array(v.string()), // distinct team display names in the era
+    lastUpdated: v.union(v.string(), v.null()), // max players.lastUpdated (ISO)
+    updatedAt: v.string(), // ISO timestamp of the rebuild
+  }).index("by_teamType", ["teamType"]),
 
   /**
    * API Keys table - stores user API keys for authentication
