@@ -1,5 +1,6 @@
 /**
- * Rebuild pipeline for the precomputed `cohortStats` and `teams` tables.
+ * Rebuild pipeline for the precomputed `cohortStats`, `teams`, and `eraStats`
+ * tables.
  *
  * These tables are derived views over `players`, refreshed after every scrape
  * (see .github/workflows/scrape.yml) and runnable standalone as a backfill:
@@ -42,6 +43,28 @@ type SlimPlayer = {
   overall: number;
   positions: string[] | null;
   attributes: Record<string, number> | null;
+  playerImage: string | null;
+  teamImg: string | null;
+  lastUpdated: string;
+};
+
+/** Board row shape stored on `teams` docs (see teams.getBoard). */
+const boardFieldsValidator = {
+  logo: v.union(v.string(), v.null()),
+  playerCount: v.number(),
+  avgRating: v.number(),
+  bestPlayer: v.object({
+    name: v.string(),
+    slug: v.string(),
+    overall: v.number(),
+    playerImage: v.union(v.string(), v.null()),
+  }),
+};
+type BoardFields = {
+  logo: string | null;
+  playerCount: number;
+  avgRating: number;
+  bestPlayer: { name: string; slug: string; overall: number; playerImage: string | null };
 };
 
 /**
@@ -74,6 +97,9 @@ export const playersPage = internalQuery({
           overall: p.overall,
           positions: p.positions ?? null,
           attributes: p.attributes ?? null,
+          playerImage: p.playerImage ?? null,
+          teamImg: p.teamImg ?? null,
+          lastUpdated: p.lastUpdated,
         })
       ),
     };
@@ -164,7 +190,7 @@ export const pruneCohortStats = internalMutation({
 export const replaceTeamsForEra = internalMutation({
   args: {
     teamType: teamTypeValidator,
-    teams: v.array(v.object({ slug: v.string(), name: v.string() })),
+    teams: v.array(v.object({ slug: v.string(), name: v.string(), ...boardFieldsValidator })),
   },
   handler: async (ctx, args) => {
     const now = new Date().toISOString();
@@ -180,17 +206,32 @@ export const replaceTeamsForEra = internalMutation({
     let deleted = 0;
     for (const team of args.teams) {
       const current = existingBySlug.get(team.slug);
+      const fields = {
+        name: team.name,
+        logo: team.logo,
+        playerCount: team.playerCount,
+        avgRating: team.avgRating,
+        bestPlayer: team.bestPlayer,
+      };
       if (!current) {
         await ctx.db.insert("teams", {
           slug: team.slug,
           teamType: args.teamType,
-          name: team.name,
+          ...fields,
           updatedAt: now,
         });
         inserted++;
-      } else if (current.name !== team.name) {
-        await ctx.db.patch(current._id, { name: team.name, updatedAt: now });
-        updated++;
+      } else {
+        const same =
+          current.name === fields.name &&
+          current.logo === fields.logo &&
+          current.playerCount === fields.playerCount &&
+          current.avgRating === fields.avgRating &&
+          JSON.stringify(current.bestPlayer) === JSON.stringify(fields.bestPlayer);
+        if (!same) {
+          await ctx.db.patch(current._id, { ...fields, updatedAt: now });
+          updated++;
+        }
       }
     }
     for (const doc of existing) {
@@ -202,6 +243,62 @@ export const replaceTeamsForEra = internalMutation({
     return { inserted, updated, deleted };
   },
 });
+
+/**
+ * Upsert the era's roster totals (players.getStats reads these).
+ */
+export const writeEraStats = internalMutation({
+  args: {
+    teamType: teamTypeValidator,
+    playerCount: v.number(),
+    sumOverall: v.number(),
+    teamNames: v.array(v.string()),
+    lastUpdated: v.union(v.string(), v.null()),
+  },
+  handler: async (ctx, args) => {
+    const doc = { ...args, updatedAt: new Date().toISOString() };
+    const existing = await ctx.db
+      .query("eraStats")
+      .withIndex("by_teamType", (q) => q.eq("teamType", args.teamType))
+      .first();
+    if (existing) await ctx.db.replace(existing._id, doc);
+    else await ctx.db.insert("eraStats", doc);
+  },
+});
+
+/**
+ * Board aggregates per team, in era-index order. Mirrors what teams.getBoard
+ * computed from a live scan: first-seen logo wins, best player is the first
+ * strictly-highest overall.
+ */
+function buildBoardRows(players: SlimPlayer[]): Array<{ slug: string; name: string } & BoardFields> {
+  type Agg = { team: string; logo: string | null; count: number; sum: number; best: SlimPlayer };
+  const byTeam = new Map<string, Agg>();
+  for (const p of players) {
+    let agg = byTeam.get(p.team);
+    if (!agg) {
+      agg = { team: p.team, logo: p.teamImg, count: 0, sum: 0, best: p };
+      byTeam.set(p.team, agg);
+    }
+    agg.count++;
+    agg.sum += p.overall;
+    if (!agg.logo && p.teamImg) agg.logo = p.teamImg;
+    if (p.overall > agg.best.overall) agg.best = p;
+  }
+  return [...byTeam.values()].map((t) => ({
+    slug: teamSlug(t.team),
+    name: t.team,
+    logo: t.logo,
+    playerCount: t.count,
+    avgRating: Math.round((t.sum / t.count) * 10) / 10,
+    bestPlayer: {
+      name: t.best.name,
+      slug: t.best.slug,
+      overall: t.best.overall,
+      playerImage: t.best.playerImage,
+    },
+  }));
+}
 
 /**
  * Build one cohortStats doc from the cohort's players (already in era-index
@@ -328,15 +425,26 @@ export const rebuildAll = internalAction({
         keepPositions: docs.map((d) => d.primaryPosition),
       });
 
-      // Teams table for the era
-      const teamsBySlug = new Map<string, string>();
-      for (const p of players) {
-        const slug = teamSlug(p.team);
-        if (!teamsBySlug.has(slug)) teamsBySlug.set(slug, p.team);
-      }
+      // Teams table for the era, with board aggregates
+      const boardRows = buildBoardRows(players);
       const teamsResult: EraRebuildSummary["teamsResult"] = await ctx.runMutation(internal.cohorts.replaceTeamsForEra, {
         teamType,
-        teams: [...teamsBySlug.entries()].map(([slug, name]) => ({ slug, name })),
+        teams: boardRows,
+      });
+
+      // Era totals for players.getStats
+      let sumOverall = 0;
+      let lastUpdated: string | null = null;
+      for (const p of players) {
+        sumOverall += p.overall;
+        if (lastUpdated === null || p.lastUpdated > lastUpdated) lastUpdated = p.lastUpdated;
+      }
+      await ctx.runMutation(internal.cohorts.writeEraStats, {
+        teamType,
+        playerCount: players.length,
+        sumOverall,
+        teamNames: boardRows.map((r) => r.name),
+        lastUpdated,
       });
 
       summary.push({
@@ -344,7 +452,7 @@ export const rebuildAll = internalAction({
         players: players.length,
         cohortDocs: docs.length,
         positions: [...byPosition.keys()].sort(),
-        teams: teamsBySlug.size,
+        teams: boardRows.length,
         teamsResult,
       });
     }
