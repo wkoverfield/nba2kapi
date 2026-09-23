@@ -229,9 +229,18 @@ export async function scrapePlayerDetails(page, basicPlayer) {
           const imgSrc = imgEl.getAttribute('data-src') || '';
           const description = descEl ? descEl.textContent.trim() : '';
 
-          // Extract tier from image filename
-          const tierMatch = imgSrc.match(/-(legendary|hof|gold|silver|bronze)(?:-badge)?\.png(?:[?#].*)?$/i);
-          const tier = tierMatch ? TIER_BY_TOKEN[tierMatch[1].toLowerCase()] : '';
+          // Extract tier from image filename. Legendary badges ship without a
+          // tier suffix (`23-interceptor.png`), so a numbered badge file with
+          // no tier token is Legendary — without this they parse as tierless
+          // and the card is dropped, losing the badge entirely.
+          const file = (imgSrc.split('/').pop() || '').split(/[?#]/)[0];
+          const tierMatch = file.match(/-(legendary|hof|gold|silver|bronze)(?:-badge)?\.png$/i);
+          let tier = '';
+          if (tierMatch) {
+            tier = TIER_BY_TOKEN[tierMatch[1].toLowerCase()];
+          } else if (/^\d+-[a-z0-9-]+\.png$/i.test(file)) {
+            tier = 'Legendary';
+          }
 
           if (name && tier) {
             const badgeKey = `${name.toLowerCase().trim()}|${tier.toLowerCase().trim()}`;
