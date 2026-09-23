@@ -15,6 +15,8 @@ import { ATTRIBUTE_CATEGORIES } from "@/convex/attributeCategories";
 import { getAttributeDisplayName } from "@/lib/attribute-normalizer";
 import { depthOrder } from "@/lib/depth-chart";
 import { CURRENT_GAME_VERSION } from "@/convex/gameVersion";
+import { RatingHistoryChart } from "@/components/player/rating-history-chart";
+import { CategoryRadar } from "@/components/player/category-radar";
 import { API_KEY_STORAGE_KEY } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -68,8 +70,6 @@ const TIER_STYLES: Record<string, string> = {
   Silver: "overall-silver",
   Bronze: "bg-[linear-gradient(#a9743b,#6d4420)]",
 };
-
-const TIER_CUTOFFS = [99, 97, 95, 92, 90, 87, 84, 80, 75, 70];
 
 function slugifyTeam(team: string) {
   return team.toLowerCase().replace(/[^a-z0-9]+/g, "-");
@@ -208,74 +208,31 @@ function PlayerDossier({
     };
   }, [dossier]);
 
-  // History chart: in-season movement when 2kratings has charted it
+  // History series: in-season movement when 2kratings has charted it
   // (2+ milestones), otherwise their game-to-game overalls.
-  const historyChart = useMemo(() => {
+  const historySeries = useMemo(() => {
     if (!dossier) return null;
     const movement = dossier.seasonMovement ?? [];
     const useMovement = movement.length >= 2;
-    const source = useMovement
+    const points = useMovement
       ? movement.map((m) => ({ label: shortMilestone(m.label), overall: m.overall }))
       : dossier.history.map((h) => ({ label: h.gameVersion, overall: h.overall }));
-    if (source.length < 2) return null;
-    const values = source.map((h) => h.overall);
-    const min = Math.min(...values) - 0.5;
-    const max = Math.max(...values) + 0.5;
-    const sx = (i: number) => 24 + (i / (values.length - 1)) * 372;
-    const sy = (v: number) => 130 - ((v - min) / (max - min)) * 105;
-    const cutoff = TIER_CUTOFFS.find((c) => c > min && c <= max + 0.5) ?? null;
-    // At most 4 tick labels so milestone names never collide
-    const tickIdx = [...new Set([0, Math.floor((source.length - 1) / 3), Math.floor(((source.length - 1) * 2) / 3), source.length - 1])];
-    return {
-      mode: useMovement ? ("season" as const) : ("games" as const),
-      count: source.length,
-      line: values.map((v, i) => `${sx(i).toFixed(1)},${sy(v).toFixed(1)}`).join(" "),
-      dots: values.map((v, i) => ({ x: sx(i), y: sy(v) })),
-      band: cutoff !== null ? { y: sy(cutoff), label: `${cutoff} — ${getRatingTier(cutoff).toUpperCase()}` } : null,
-      ticks: tickIdx.map((i) => ({ x: sx(i), label: source[i].label })),
-      delta: values[values.length - 1] - values[0],
-    };
+    if (points.length < 2) return null;
+    return { mode: useMovement ? ("season" as const) : ("games" as const), points };
   }, [dossier]);
 
-  // Radar geometry
-  const radar = useMemo(() => {
+  // Radar axes: player value against the positional average
+  const radarAxes = useMemo(() => {
     if (!dossier || !player) return null;
     const byKey = Object.fromEntries(dossier.categories.map((c) => [c.key, c.score]));
     const avgByKey = Object.fromEntries(dossier.categories.map((c) => [c.key, c.avg]));
-    const axes = RADAR_AXES.map((a) => ({
-      ...a,
+    return RADAR_AXES.map((a) => ({
+      key: a.key,
+      label: a.label,
+      fullLabel: a.key === "overall" ? "Overall" : (CATEGORY_LABELS[a.key] ?? a.label),
       value: a.key === "overall" ? player.overall : (byKey[a.key] as number | null),
       average: a.key === "overall" ? dossier.overallAvg : (avgByKey[a.key] as number | null),
     }));
-    const cx = 105;
-    const cy = 92;
-    const r = 62;
-    const pt = (i: number, rr: number) => {
-      const angle = ((i * (360 / axes.length) - 90) * Math.PI) / 180;
-      return { x: +(cx + rr * Math.cos(angle)).toFixed(1), y: +(cy + rr * Math.sin(angle)).toFixed(1) };
-    };
-    const rings = [0.5, 1].map((f) =>
-      axes.map((_, i) => {
-        const p = pt(i, r * f);
-        return `${p.x},${p.y}`;
-      }).join(" ")
-    );
-    const dots = axes.map((a, i) => pt(i, ((a.value ?? 0) / 99) * r));
-    const path = dots.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ") + " Z";
-    const avgDots = axes.map((a, i) => pt(i, ((a.average ?? 0) / 99) * r));
-    const avgPath = avgDots.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ") + " Z";
-    const ticks = axes.map((a, i) => {
-      const p = pt(i, r + 14);
-      const dx = p.x - cx;
-      return {
-        label: a.label,
-        value: a.value ?? "—",
-        x: p.x,
-        y: p.y,
-        anchor: (Math.abs(dx) < 8 ? "middle" : dx > 0 ? "start" : "end") as "middle" | "start" | "end",
-      };
-    });
-    return { rings, dots, path, avgPath, ticks };
   }, [dossier, player]);
 
   const badgeShelf = useMemo(() => {
@@ -616,67 +573,16 @@ function PlayerDossier({
           {/* Rating history */}
           <div className="rounded-[14px] border border-[#e5e2da] bg-white px-[18px] py-3.5">
             <div className={cn(CARD_LABEL, "mb-1.5")}>
-              {historyChart?.mode === "season"
+              {historySeries?.mode === "season"
                 ? `OVERALL — THE ${CURRENT_GAME_VERSION} SEASON`
                 : "OVERALL — GAME TO GAME"}
             </div>
-            {historyChart ? (
-              <>
-                <svg viewBox="0 0 396 150" className="block h-auto w-full overflow-visible">
-                  {historyChart.band && (
-                    <>
-                      <line
-                        x1="24"
-                        x2="396"
-                        y1={historyChart.band.y}
-                        y2={historyChart.band.y}
-                        stroke="#f9a205"
-                        strokeWidth="1"
-                        strokeDasharray="3 5"
-                        opacity="0.6"
-                      />
-                      <text
-                        x="392"
-                        y={historyChart.band.y}
-                        textAnchor="end"
-                        dy="-4"
-                        className="fill-[#b98404] font-plex text-[7.5px]"
-                      >
-                        {historyChart.band.label}
-                      </text>
-                    </>
-                  )}
-                  <polyline
-                    points={historyChart.line}
-                    fill="none"
-                    stroke="#1a1918"
-                    strokeWidth="2"
-                    strokeLinejoin="round"
-                  />
-                  {historyChart.dots.map((d, i) => (
-                    <circle key={i} cx={d.x} cy={d.y} r="2.5" fill="#1a1918" />
-                  ))}
-                  {historyChart.ticks.map((t) => (
-                    <text
-                      key={t.label + t.x}
-                      x={t.x}
-                      y="146"
-                      textAnchor="middle"
-                      className="fill-[#b5b0a1] font-plex text-[8px]"
-                    >
-                      {t.label}
-                    </text>
-                  ))}
-                </svg>
-                <div className="mt-1.5 font-plex text-[8px] text-[#b5b0a1]">
-                  {historyChart.delta >= 0 ? "+" : ""}
-                  {historyChart.delta}{" "}
-                  {historyChart.mode === "season"
-                    ? `ACROSS ${historyChart.count} MILESTONES THIS SEASON`
-                    : `ACROSS ${historyChart.count} GAMES`}{" "}
-                  · GET /api/players/slug/{slug}
-                </div>
-              </>
+            {historySeries ? (
+              <RatingHistoryChart
+                mode={historySeries.mode}
+                points={historySeries.points}
+                slug={slug}
+              />
             ) : (
               <div className="flex h-[150px] items-center justify-center font-plex text-[9px] text-[#b5b0a1]">
                 {dossier ? "ONE GAME OF DATA — HISTORY BUILDS EACH 2K RELEASE" : "…"}
@@ -694,28 +600,8 @@ function PlayerDossier({
               </div>
             </div>
             <div className="flex justify-center">
-              {radar ? (
-                <svg width="210" height="184" viewBox="0 0 210 184" className="overflow-visible">
-                  {radar.rings.map((ring) => (
-                    <polygon key={ring} points={ring} fill="none" stroke="#e5e2da" strokeWidth="1" />
-                  ))}
-                  <path d={radar.avgPath} fill="#d3a21d" fillOpacity="0.06" stroke="#b98404" strokeWidth="1.5" strokeDasharray="4 4" />
-                  <path d={radar.path} fill="#1a1918" fillOpacity="0.08" stroke="#1a1918" strokeWidth="2" />
-                  {radar.dots.map((d, i) => (
-                    <circle key={i} cx={d.x} cy={d.y} r="2.5" fill="#1a1918" />
-                  ))}
-                  {radar.ticks.map((t) => (
-                    <text
-                      key={t.label}
-                      x={t.x}
-                      y={t.y}
-                      textAnchor={t.anchor}
-                      className="fill-[#8a8577] font-plex text-[8.5px]"
-                    >
-                      {t.label} <tspan className="fill-[#1a1918] font-bold">{t.value}</tspan>
-                    </text>
-                  ))}
-                </svg>
+              {radarAxes ? (
+                <CategoryRadar axes={radarAxes} position={dossier?.primaryPosition ?? "POS"} />
               ) : (
                 <div className="h-[184px] w-[210px] animate-pulse rounded bg-[#f1efe8]" />
               )}
