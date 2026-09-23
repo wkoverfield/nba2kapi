@@ -17,6 +17,7 @@ import { depthOrder } from "@/lib/depth-chart";
 import { CURRENT_GAME_VERSION } from "@/convex/gameVersion";
 import { RatingHistoryChart } from "@/components/player/rating-history-chart";
 import { CategoryRadar } from "@/components/player/category-radar";
+import { BadgeIcon } from "@/components/ui/badge-icon";
 import { API_KEY_STORAGE_KEY } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -675,11 +676,7 @@ function PlayerDossier({
                         href={`/badges?badge=${c.slug}&tier=${encodeURIComponent(row.tier)}`}
                         className="group relative inline-flex items-center gap-1.5 rounded-full border border-[#e5e2da] bg-[#faf9f5] py-1 pr-3 pl-2 text-[12px] font-semibold text-[#1a1918]"
                       >
-                        {c.imageUrl && (
-                          <span className="relative h-4 w-4 shrink-0">
-                            <Image src={c.imageUrl} alt="" fill sizes="16px" className="object-contain" />
-                          </span>
-                        )}
+                        <BadgeIcon src={c.imageUrl} size={16} />
                         {c.name}
                         {c.description && (
                           <span className="pointer-events-none absolute -top-[30px] left-0 z-10 hidden max-w-[280px] rounded-[6px] bg-[#1a1918] px-2.5 py-1.5 font-plex text-[8px] leading-[1.5] font-normal whitespace-normal text-[#faf9f5] shadow-[0_8px_16px_-8px_rgba(26,25,24,0.5)] group-hover:block">

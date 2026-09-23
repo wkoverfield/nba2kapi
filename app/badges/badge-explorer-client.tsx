@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Image from "next/image";
+import { BadgeIcon } from "@/components/ui/badge-icon";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
@@ -95,13 +95,11 @@ export function BadgeExplorerClient({ badges }: { badges: DirectoryBadge[] }) {
                   const topTier = initialTier(badge);
                   return (
                     <button key={badge.slug} type="button" onClick={() => selectBadge(badge)} className={cn("inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] font-semibold transition-[border-color,transform] active:scale-[.97]", selectedSlug === badge.slug ? TIER_STYLE[topTier]?.active : "border-[#e5e2da] bg-white hover:border-[#1a1918]") }>
-                      {badge.imageUrl ? (
-                        <span className="relative h-[18px] w-[18px] shrink-0">
-                          <Image src={badge.imageUrl} alt="" fill sizes="18px" className="object-contain" />
-                        </span>
-                      ) : (
-                        <span className={cn("h-2.5 w-2.5 rounded-[3px]", TIER_STYLE[topTier]?.dot ?? "bg-[#57534a]")} />
-                      )}
+                      <BadgeIcon
+                        src={badge.imageUrl}
+                        size={18}
+                        fallback={<span className={cn("h-2.5 w-2.5 rounded-[3px]", TIER_STYLE[topTier]?.dot ?? "bg-[#57534a]")} />}
+                      />
                       {badge.name}
                     </button>
                   );
@@ -116,7 +114,13 @@ export function BadgeExplorerClient({ badges }: { badges: DirectoryBadge[] }) {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className={cn("relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[13px] font-display text-[18px] font-bold text-white shadow-[0_8px_18px_-9px_rgba(26,25,24,.6)]", selectedBadge?.imageUrl ? "bg-[#1a1918]" : (TIER_STYLE[tier]?.dot ?? "bg-[#1a1918]"))}>
-                  {selectedBadge?.imageUrl ? <Image src={selectedBadge.imageUrl} alt={`${selectedBadge.name} badge`} fill sizes="64px" className="object-contain p-1.5" /> : selectedBadge?.name.split(" ").map((part) => part[0]).join("").slice(0, 2)}
+                  <BadgeIcon
+                    src={selectedBadge?.imageUrl}
+                    alt={selectedBadge ? `${selectedBadge.name} badge` : ""}
+                    size={64}
+                    className="p-1.5"
+                    fallback={selectedBadge?.name.split(" ").map((part) => part[0]).join("").slice(0, 2)}
+                  />
                 </div>
                 <div><p className="font-plex text-[8px] tracking-[.12em] text-[#8a8577]">{selectedBadge?.category.toUpperCase()}</p><h2 className="font-display text-[28px] font-bold tracking-[-.03em]">{selectedBadge?.name}</h2></div>
               </div>
