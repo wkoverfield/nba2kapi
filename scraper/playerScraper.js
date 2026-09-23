@@ -180,7 +180,10 @@ export async function scrapePlayerDetails(page, basicPlayer) {
       const badgeElements = document.querySelectorAll('.badge-count');
 
       badgeElements.forEach(el => {
-        const title = el.getAttribute('data-original-title') || '';
+        // Bootstrap's tooltip used to move `title` into `data-original-title`
+        // on init; uninitialised tooltips leave the label in `title`, so read
+        // whichever is populated or every count parses as 0.
+        const title = el.getAttribute('data-original-title') || el.getAttribute('title') || '';
         const value = parseInt(el.textContent.trim()) || 0;
 
         if (title.includes('Total')) badges.total = value;
@@ -252,6 +255,26 @@ export async function scrapePlayerDetails(page, basicPlayer) {
 
       if (badgeList.length > 0) {
         badges.list = badgeList;
+
+        // The badge list is the source of truth for the counts. Derive any the
+        // count elements did not yield, so a markup change on that block
+        // degrades to a recount rather than to zeros.
+        const TIER_FIELD = {
+          'Legendary': 'legendary',
+          'Hall of Fame': 'hallOfFame',
+          'Gold': 'gold',
+          'Silver': 'silver',
+          'Bronze': 'bronze',
+        };
+        const derived = { total: badgeList.length };
+        for (const field of Object.values(TIER_FIELD)) derived[field] = 0;
+        for (const b of badgeList) {
+          const field = TIER_FIELD[b.tier];
+          if (field) derived[field]++;
+        }
+        for (const [field, count] of Object.entries(derived)) {
+          if (typeof badges[field] !== 'number') badges[field] = count;
+        }
       }
 
       details.badges = badges;
