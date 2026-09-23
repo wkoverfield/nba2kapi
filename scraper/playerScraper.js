@@ -199,25 +199,36 @@ export async function scrapePlayerDetails(page, basicPlayer) {
       const seenBadgeKeys = new Set();
       const badgeCards = document.querySelectorAll('.badge-card');
 
+      // Tier lives only in the badge image filename, under either of two
+      // 2kratings naming schemes:
+      //   <slug>-<tier>-badge.png      (legacy)
+      //   <NN>-<slug>-<tier>.png       (current)
+      // Match the trailing tier token so both parse.
+      const TIER_BY_TOKEN = {
+        legendary: 'Legendary',
+        hof: 'Hall of Fame',
+        gold: 'Gold',
+        silver: 'Silver',
+        bronze: 'Bronze',
+      };
+
       for (const card of badgeCards) {
         const nameEl = card.querySelector('h4.text-white');
         const categoryEl = card.querySelector('.badge-pill');
-        const imgEl = card.querySelector('img[data-src*="badge"], img[src*="badge"]');
+        const imgEl = card.querySelector('img');
         const descEl = card.querySelector('.badge-description, p.description, [class*="desc"]');
 
         if (nameEl && imgEl) {
           const name = nameEl.textContent.trim();
           const category = categoryEl ? categoryEl.textContent.trim() : '';
-          const imgSrc = imgEl.getAttribute('data-src') || imgEl.src || '';
+          // Lazy-loaded: the real file is in data-src, while src holds a 1x1
+          // placeholder that carries no tier and must never be stored.
+          const imgSrc = imgEl.getAttribute('data-src') || '';
           const description = descEl ? descEl.textContent.trim() : '';
 
           // Extract tier from image filename
-          let tier = '';
-          if (imgSrc.includes('-legendary-badge.png')) tier = 'Legendary';
-          else if (imgSrc.includes('-hof-badge.png')) tier = 'Hall of Fame';
-          else if (imgSrc.includes('-gold-badge.png')) tier = 'Gold';
-          else if (imgSrc.includes('-silver-badge.png')) tier = 'Silver';
-          else if (imgSrc.includes('-bronze-badge.png')) tier = 'Bronze';
+          const tierMatch = imgSrc.match(/-(legendary|hof|gold|silver|bronze)(?:-badge)?\.png(?:[?#].*)?$/i);
+          const tier = tierMatch ? TIER_BY_TOKEN[tierMatch[1].toLowerCase()] : '';
 
           if (name && tier) {
             const badgeKey = `${name.toLowerCase().trim()}|${tier.toLowerCase().trim()}`;
