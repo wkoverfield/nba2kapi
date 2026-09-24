@@ -430,8 +430,18 @@ export const syncBadgesFromPlayers = internalMutation({
       { name: string; category: string; description?: string; imageUrl?: string }
     >();
 
+    // Freshest copy of a badge wins. A badge's name, category, description and
+    // image URL all live on every player who holds it, and those copies drift
+    // as 2kratings changes them — notably its badge image filenames, which
+    // strand older copies on a 404. Without an order, whichever player the
+    // table happened to return first decided the record, so a partial re-scrape
+    // could leave a repaired badge pointing back at a stale image.
+    const freshestFirst = [...players].sort((a, b) =>
+      (b.lastUpdated ?? "").localeCompare(a.lastUpdated ?? "")
+    );
+
     // Collect unique badges from all players
-    for (const player of players) {
+    for (const player of freshestFirst) {
       const badgeList = player.badges?.list || [];
       for (const badge of badgeList) {
         const slug = slugify(badge.name);
@@ -498,9 +508,9 @@ export const linkPlayerBadgesFromData = internalMutation({
 
     for (const player of players) {
       const badgeList = player.badges?.list || [];
-      if (badgeList.length === 0) continue;
 
-      // Delete existing links
+      // Delete existing links. This runs before the empty check so a player who
+      // has lost every badge still gets their old links removed.
       const existing = await ctx.db
         .query("playerBadges")
         .withIndex("by_playerId", (q) => q.eq("playerId", player._id))
@@ -508,6 +518,11 @@ export const linkPlayerBadgesFromData = internalMutation({
 
       for (const link of existing) {
         await ctx.db.delete(link._id);
+      }
+
+      if (badgeList.length === 0) {
+        if (existing.length > 0) playersProcessed++;
+        continue;
       }
 
       // Create new links
@@ -555,13 +570,20 @@ export const linkPlayerBadgesBatch = internalMutation({
 
     for (const player of page.page) {
       const badgeList = player.badges?.list ?? [];
-      if (badgeList.length === 0) continue;
 
+      // Clear before the empty check: a player who has lost every badge still
+      // needs their old links removed, or a badge 2K has retired keeps showing
+      // holders that no longer hold it.
       const existing = await ctx.db
         .query("playerBadges")
         .withIndex("by_playerId", (q) => q.eq("playerId", player._id))
         .collect();
       for (const link of existing) await ctx.db.delete(link._id);
+
+      if (badgeList.length === 0) {
+        if (existing.length > 0) playersProcessed++;
+        continue;
+      }
 
       const seen = new Set<string>();
       for (const badge of badgeList) {
