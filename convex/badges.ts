@@ -508,9 +508,9 @@ export const linkPlayerBadgesFromData = internalMutation({
 
     for (const player of players) {
       const badgeList = player.badges?.list || [];
-      if (badgeList.length === 0) continue;
 
-      // Delete existing links
+      // Delete existing links. This runs before the empty check so a player who
+      // has lost every badge still gets their old links removed.
       const existing = await ctx.db
         .query("playerBadges")
         .withIndex("by_playerId", (q) => q.eq("playerId", player._id))
@@ -518,6 +518,11 @@ export const linkPlayerBadgesFromData = internalMutation({
 
       for (const link of existing) {
         await ctx.db.delete(link._id);
+      }
+
+      if (badgeList.length === 0) {
+        if (existing.length > 0) playersProcessed++;
+        continue;
       }
 
       // Create new links
@@ -565,13 +570,20 @@ export const linkPlayerBadgesBatch = internalMutation({
 
     for (const player of page.page) {
       const badgeList = player.badges?.list ?? [];
-      if (badgeList.length === 0) continue;
 
+      // Clear before the empty check: a player who has lost every badge still
+      // needs their old links removed, or a badge 2K has retired keeps showing
+      // holders that no longer hold it.
       const existing = await ctx.db
         .query("playerBadges")
         .withIndex("by_playerId", (q) => q.eq("playerId", player._id))
         .collect();
       for (const link of existing) await ctx.db.delete(link._id);
+
+      if (badgeList.length === 0) {
+        if (existing.length > 0) playersProcessed++;
+        continue;
+      }
 
       const seen = new Set<string>();
       for (const badge of badgeList) {
