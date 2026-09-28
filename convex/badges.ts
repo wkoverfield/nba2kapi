@@ -18,6 +18,16 @@ function slugify(name: string): string {
     .replace(/^-|-$/g, "");
 }
 
+/**
+ * Whether a badge belongs to the edition the site currently serves. A badge's
+ * `gameVersion` is the latest edition a scrape saw a player holding it, so a
+ * badge 2K retires keeps its last edition and drops out of current listings
+ * without being deleted. Docs with no edition are treated as current.
+ */
+export function isCurrentEditionBadge(badge: { gameVersion?: string }): boolean {
+  return !badge.gameVersion || badge.gameVersion === CURRENT_GAME_VERSION;
+}
+
 type ScrapedBadge = {
   name: string;
   tier: string;
@@ -90,7 +100,14 @@ export async function syncPlayerBadgeLinks(
       result.badgesCreated++;
     } else {
       badgeId = doc._id;
-      const patch: { category?: string; description?: string; imageUrl?: string } = {};
+      const patch: {
+        category?: string;
+        description?: string;
+        imageUrl?: string;
+        gameVersion?: string;
+      } = {};
+      // A player holds this badge in the current edition, so it is current.
+      if (doc.gameVersion !== CURRENT_GAME_VERSION) patch.gameVersion = CURRENT_GAME_VERSION;
       if (entry.category && entry.category !== doc.category) patch.category = entry.category;
       if (entry.description && entry.description !== doc.description) {
         patch.description = entry.description;
@@ -461,6 +478,7 @@ export const getBadgeDirectory = query({
       byBadge.set(key, aggregate);
     }
     return badges
+      .filter(isCurrentEditionBadge)
       .map((badge) => {
         const aggregate = byBadge.get(String(badge._id));
         return {
