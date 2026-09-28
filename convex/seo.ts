@@ -1,4 +1,5 @@
 import { query } from "./_generated/server";
+import { isCurrentEditionBadge } from "./badges";
 
 /** Lean canonical inventory for XML sitemaps. */
 export const getIndexableEntities = query({
@@ -37,6 +38,7 @@ export const getIndexableEntities = query({
         (a, b) => a.teamType.localeCompare(b.teamType) || a.slug.localeCompare(b.slug)
       ),
       badges: (await ctx.db.query("badges").collect())
+        .filter(isCurrentEditionBadge)
         .map((badge) => ({ slug: badge.slug }))
         .sort((a, b) => a.slug.localeCompare(b.slug)),
     };
