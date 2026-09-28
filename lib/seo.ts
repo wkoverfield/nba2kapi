@@ -2,6 +2,9 @@ import { CURRENT_GAME_VERSION } from "@/convex/gameVersion";
 
 export const SITE_URL = "https://nba2kapi.com";
 
+/** Vercel CDN cache tag on /sitemap.xml; invalidated by POST /api/revalidate. */
+export const SITEMAP_CACHE_TAG = "sitemap";
+
 export const ERA_LABELS = {
   curr: "Current",
   class: "Classic",
