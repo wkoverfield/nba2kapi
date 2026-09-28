@@ -1,0 +1,49 @@
+name: Revalidate pages
+
+# Manual cache invalidation for data changes made outside a scrape run: a
+# hand-run reconcile or prune, or re-posting a scrape diff that failed to post
+# (the scrape workflow keeps it as an artifact). Scrape runs revalidate their
+# own diff; this posts an explicit list to the same /api/revalidate endpoint.
+# Pages not listed stay cached until the 30-day backstop.
+
+on:
+  workflow_dispatch:
+    inputs:
+      players:
+        description: 'Player slugs whose pages changed (comma-separated)'
+        required: false
+        default: ''
+      teams:
+        description: 'Team slugs whose pages changed (comma-separated)'
+        required: false
+        default: ''
+      deleted:
+        description: 'Player slugs removed from the dataset (comma-separated); their pages re-render as 404s'
+        required: false
+        default: ''
+
+jobs:
+  revalidate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post to /api/revalidate
+        env:
+          REVALIDATE_URL: ${{ secrets.REVALIDATE_URL }}
+          REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+          # Inputs arrive through env rather than inline expansion so a slug
+          # list can never be read as shell.
+          PLAYERS: ${{ inputs.players }}
+          TEAMS: ${{ inputs.teams }}
+          DELETED: ${{ inputs.deleted }}
+        run: |
+          if [ -z "$REVALIDATE_URL" ] || [ -z "$REVALIDATE_SECRET" ]; then
+            echo "::error::REVALIDATE_URL / REVALIDATE_SECRET not configured."
+            exit 1
+          fi
+          jq -n --arg secret "$REVALIDATE_SECRET" --arg p "$PLAYERS" --arg t "$TEAMS" --arg d "$DELETED" '
+            def slugs: split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0));
+            {secret: $secret, players: ($p | slugs), teams: ($t | slugs), deleted: ($d | slugs)}
+          ' > revalidate-body.json
+          curl -sS --fail-with-body --max-time 60 -X POST "$REVALIDATE_URL/api/revalidate" \
+            -H 'Content-Type: application/json' --data @revalidate-body.json
+          rm -f revalidate-body.json
