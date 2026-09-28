@@ -1,6 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
+import { invalidateByTag } from "@vercel/functions";
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
+import { SITEMAP_CACHE_TAG } from "@/lib/seo";
 
 /**
  * On-demand cache invalidation for statically cached SEO pages.
@@ -11,6 +13,9 @@ import { NextResponse } from "next/server";
  * - teams: team slugs whose /teams/[slug] pages changed
  * - deleted: player slugs removed from the dataset; their pages are
  *   revalidated too so the cached copy re-renders into a 404
+ *
+ * Every authorized POST also invalidates the /sitemap.xml CDN entry by its
+ * cache tag, so the sitemap re-renders on its next request.
  *
  * The scrape pipeline posts the diff of an ingest run here so only touched
  * pages re-render; everything else stays served from the full route cache
@@ -55,7 +60,7 @@ export async function POST(request: Request) {
   for (const slug of teamSlugs) {
     revalidatePath(`/teams/${slug}`);
   }
-  revalidatePath("/sitemap.xml");
+  await invalidateByTag(SITEMAP_CACHE_TAG);
 
   return NextResponse.json({
     revalidated: {
