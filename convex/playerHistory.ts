@@ -7,6 +7,7 @@ import { mutation, query, internalMutation, MutationCtx } from "./_generated/ser
 import { v } from "convex/values";
 import { CURRENT_GAME_VERSION } from "./gameVersion";
 import { Id } from "./_generated/dataModel";
+import { syncPlayerBadgeLinks } from "./badges";
 
 // Badge tier ranking for comparison
 const TIER_RANK: Record<string, number> = {
@@ -193,8 +194,9 @@ async function upsertWithHistoryHelper(
 
       // Update the player
       await ctx.db.patch(existing._id, patchData);
+      const badgeLinks = await syncPlayerBadgeLinks(ctx, existing._id, args.badges);
 
-      return { _id: existing._id, action: "updated" as const, hasChanges: true };
+      return { _id: existing._id, action: "updated" as const, hasChanges: true, badgeLinks };
     } else {
       // No rating/attribute/badge changes worth a history entry, but still
       // refresh the player doc from the latest scrape. detectChanges only gates
@@ -202,7 +204,11 @@ async function upsertWithHistoryHelper(
       // lists, image URLs, etc. Patching here keeps those fields current (and
       // lets backfills land) without spamming history. Idempotent on re-patch.
       await ctx.db.patch(existing._id, patchData);
-      return { _id: existing._id, action: "no_change" as const, hasChanges: false };
+      // Links are synced even with no history-worthy change: they can drift
+      // from the player's own list (a hand-run import, or a scrape that
+      // predates this sync), and a matching list writes nothing.
+      const badgeLinks = await syncPlayerBadgeLinks(ctx, existing._id, args.badges);
+      return { _id: existing._id, action: "no_change" as const, hasChanges: false, badgeLinks };
     }
   } else {
     // New player - create initial history entry
@@ -226,8 +232,9 @@ async function upsertWithHistoryHelper(
     if (args.hotZones) initialEntry.hotZones = args.hotZones;
 
     await ctx.db.insert("playerRatingHistory", initialEntry);
+    const badgeLinks = await syncPlayerBadgeLinks(ctx, playerId, args.badges);
 
-    return { _id: playerId, action: "inserted" as const, hasChanges: true };
+    return { _id: playerId, action: "inserted" as const, hasChanges: true, badgeLinks };
   }
 }
 

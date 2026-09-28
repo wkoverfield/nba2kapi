@@ -3,7 +3,7 @@
  * Normalized badge storage and player-badge relationships
  */
 
-import { mutation, query, internalMutation } from "./_generated/server";
+import { mutation, query, internalMutation, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { CURRENT_GAME_VERSION } from "./gameVersion";
 import { Id } from "./_generated/dataModel";
@@ -16,6 +16,117 @@ function slugify(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+type ScrapedBadge = {
+  name: string;
+  tier: string;
+  category?: string;
+  description?: string;
+  imageUrl?: string;
+};
+
+/**
+ * The 2kratings image file a badge URL names, with the tier removed:
+ * `20-high-flying-denier-gold.png` and the Legendary `20-high-flying-denier.png`
+ * both give `20-high-flying-denier`. A badge doc keeps one image for every tier,
+ * so a different tier never justifies rewriting it; a different stem means the
+ * file was renamed upstream and the stored URL is stale.
+ */
+function badgeImageStem(url?: string): string | null {
+  if (!url) return null;
+  const file = url.split(/[?#]/)[0].split("/").pop() ?? "";
+  return file
+    .replace(/\.png$/i, "")
+    .replace(/-badge$/i, "")
+    .replace(/-(legendary|hof|gold|silver|bronze)$/i, "");
+}
+
+/**
+ * Bring one player's badge links, and the badge docs they point at, in line
+ * with the badge object scraped for that player.
+ *
+ * A badge object with neither a list nor a count is ignored rather than read as
+ * "holds nothing": that shape is what a broken badge selector produces, and
+ * trusting it would strip every player's badge shelf on a bad scrape. Counts
+ * with no list is a player who genuinely holds no badges, and clears them.
+ *
+ * Only differences are written, so a re-scrape that changes nothing writes
+ * nothing and invalidates no subscriptions.
+ */
+export async function syncPlayerBadgeLinks(
+  ctx: MutationCtx,
+  playerId: Id<"players">,
+  badges: { total?: unknown; list?: ScrapedBadge[] } | undefined
+) {
+  const result = { linksInserted: 0, linksDeleted: 0, badgesCreated: 0, badgesUpdated: 0 };
+  const list = Array.isArray(badges?.list) ? badges.list : undefined;
+  if (!badges || (!list && typeof badges.total !== "number")) return result;
+
+  const now = new Date().toISOString();
+  const wanted = new Map<string, { badgeId: Id<"badges">; tier: string }>();
+
+  for (const entry of list ?? []) {
+    const slug = slugify(entry.name);
+    if (!slug || !entry.tier) continue;
+
+    const doc = await ctx.db
+      .query("badges")
+      .withIndex("by_slug", (q) => q.eq("slug", slug))
+      .first();
+
+    let badgeId: Id<"badges">;
+    if (!doc) {
+      badgeId = await ctx.db.insert("badges", {
+        name: entry.name,
+        slug,
+        category: entry.category || "Unknown",
+        gameVersion: CURRENT_GAME_VERSION,
+        lastUpdated: now,
+        createdAt: now,
+        ...(entry.description ? { description: entry.description } : {}),
+        ...(entry.imageUrl ? { imageUrl: entry.imageUrl } : {}),
+      });
+      result.badgesCreated++;
+    } else {
+      badgeId = doc._id;
+      const patch: { category?: string; description?: string; imageUrl?: string } = {};
+      if (entry.category && entry.category !== doc.category) patch.category = entry.category;
+      if (entry.description && entry.description !== doc.description) {
+        patch.description = entry.description;
+      }
+      if (entry.imageUrl && badgeImageStem(entry.imageUrl) !== badgeImageStem(doc.imageUrl)) {
+        patch.imageUrl = entry.imageUrl;
+      }
+      if (Object.keys(patch).length > 0) {
+        await ctx.db.patch(doc._id, { ...patch, lastUpdated: now });
+        result.badgesUpdated++;
+      }
+    }
+    wanted.set(`${badgeId}|${entry.tier}`, { badgeId, tier: entry.tier });
+  }
+
+  const existing = await ctx.db
+    .query("playerBadges")
+    .withIndex("by_playerId", (q) => q.eq("playerId", playerId))
+    .collect();
+  const kept = new Set<string>();
+  for (const link of existing) {
+    const key = `${link.badgeId}|${link.tier}`;
+    if (wanted.has(key) && !kept.has(key)) {
+      kept.add(key);
+      continue;
+    }
+    await ctx.db.delete(link._id);
+    result.linksDeleted++;
+  }
+  for (const [key, { badgeId, tier }] of wanted) {
+    if (kept.has(key)) continue;
+    await ctx.db.insert("playerBadges", { playerId, badgeId, tier });
+    result.linksInserted++;
+  }
+
+  return result;
 }
 
 /**
@@ -496,57 +607,45 @@ export const syncBadgesFromPlayers = internalMutation({
   },
 });
 
+type RelinkTotals = {
+  playersChanged: number;
+  linksInserted: number;
+  linksDeleted: number;
+  badgesCreated: number;
+  badgesUpdated: number;
+};
+
+async function relinkPlayers(
+  ctx: MutationCtx,
+  players: { _id: Id<"players">; badges?: { total?: unknown; list?: ScrapedBadge[] } }[]
+): Promise<RelinkTotals> {
+  const totals: RelinkTotals = {
+    playersChanged: 0,
+    linksInserted: 0,
+    linksDeleted: 0,
+    badgesCreated: 0,
+    badgesUpdated: 0,
+  };
+  for (const player of players) {
+    const r = await syncPlayerBadgeLinks(ctx, player._id, player.badges);
+    if (r.linksInserted || r.linksDeleted) totals.playersChanged++;
+    totals.linksInserted += r.linksInserted;
+    totals.linksDeleted += r.linksDeleted;
+    totals.badgesCreated += r.badgesCreated;
+    totals.badgesUpdated += r.badgesUpdated;
+  }
+  return totals;
+}
+
 /**
- * Create player-badge links from existing player data (for migration)
+ * Rebuild every player's badge links from the badge list stored on the player.
+ * Scrapes keep links current on their own (see syncPlayerBadgeLinks); this is
+ * for repairing drift after a hand-run import.
  */
 export const linkPlayerBadgesFromData = internalMutation({
   handler: async (ctx) => {
     const players = await ctx.db.query("players").collect();
-
-    let totalLinks = 0;
-    let playersProcessed = 0;
-
-    for (const player of players) {
-      const badgeList = player.badges?.list || [];
-
-      // Delete existing links. This runs before the empty check so a player who
-      // has lost every badge still gets their old links removed.
-      const existing = await ctx.db
-        .query("playerBadges")
-        .withIndex("by_playerId", (q) => q.eq("playerId", player._id))
-        .collect();
-
-      for (const link of existing) {
-        await ctx.db.delete(link._id);
-      }
-
-      if (badgeList.length === 0) {
-        if (existing.length > 0) playersProcessed++;
-        continue;
-      }
-
-      // Create new links
-      for (const badge of badgeList) {
-        const slug = slugify(badge.name);
-        const badgeDoc = await ctx.db
-          .query("badges")
-          .withIndex("by_slug", (q) => q.eq("slug", slug))
-          .first();
-
-        if (badgeDoc) {
-          await ctx.db.insert("playerBadges", {
-            playerId: player._id,
-            badgeId: badgeDoc._id,
-            tier: badge.tier,
-          });
-          totalLinks++;
-        }
-      }
-
-      playersProcessed++;
-    }
-
-    return { playersProcessed, totalLinks };
+    return await relinkPlayers(ctx, players);
   },
 });
 
@@ -565,52 +664,12 @@ export const linkPlayerBadgesBatch = internalMutation({
   },
   handler: async (ctx, args) => {
     const page = await ctx.db.query("players").paginate(args.paginationOpts);
-    let totalLinks = 0;
-    let playersProcessed = 0;
-
-    for (const player of page.page) {
-      const badgeList = player.badges?.list ?? [];
-
-      // Clear before the empty check: a player who has lost every badge still
-      // needs their old links removed, or a badge 2K has retired keeps showing
-      // holders that no longer hold it.
-      const existing = await ctx.db
-        .query("playerBadges")
-        .withIndex("by_playerId", (q) => q.eq("playerId", player._id))
-        .collect();
-      for (const link of existing) await ctx.db.delete(link._id);
-
-      if (badgeList.length === 0) {
-        if (existing.length > 0) playersProcessed++;
-        continue;
-      }
-
-      const seen = new Set<string>();
-      for (const badge of badgeList) {
-        const slug = slugify(badge.name);
-        const key = `${slug}:${badge.tier}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        const badgeDoc = await ctx.db
-          .query("badges")
-          .withIndex("by_slug", (q) => q.eq("slug", slug))
-          .first();
-        if (!badgeDoc) continue;
-        await ctx.db.insert("playerBadges", {
-          playerId: player._id,
-          badgeId: badgeDoc._id,
-          tier: badge.tier,
-        });
-        totalLinks++;
-      }
-      playersProcessed++;
-    }
-
+    const totals = await relinkPlayers(ctx, page.page);
     return {
       continueCursor: page.continueCursor,
       isDone: page.isDone,
-      playersProcessed,
-      totalLinks,
+      playersScanned: page.page.length,
+      ...totals,
     };
   },
 });
