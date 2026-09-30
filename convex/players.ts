@@ -7,6 +7,8 @@ import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { ATTRIBUTE_CATEGORIES } from "./attributeCategories";
 import type { Doc } from "./_generated/dataModel";
+import { filterPlayers } from "./playerFilters";
+import { slugify } from "./slug";
 
 /**
  * Insert a single player into the database
@@ -924,106 +926,9 @@ export const getAllFiltered = query({
       players = await ctx.db.query("players").collect();
     }
 
-    // Filter by search query (name)
-    if (args.search) {
-      const searchLower = args.search.toLowerCase();
-      players = players.filter((p) =>
-        p.name.toLowerCase().includes(searchLower)
-      );
-    }
-
-    // Filter by multiple teams if provided and not already filtered by index
-    if (args.teams && args.teams.length > 1) {
-      players = players.filter((p) => args.teams!.includes(p.team));
-    }
-
-    // Filter by positions
-    if (args.positions && args.positions.length > 0) {
-      players = players.filter((p) =>
-        p.positions?.some((pos) => args.positions!.includes(pos))
-      );
-    }
-
-    // Filter by overall rating range
-    if (args.minOverall !== undefined) {
-      players = players.filter((p) => p.overall >= args.minOverall!);
-    }
-    if (args.maxOverall !== undefined) {
-      players = players.filter((p) => p.overall <= args.maxOverall!);
-    }
-
-    // Filter by attribute ranges
-    if (args.attributeFilters && args.attributeFilters.length > 0) {
-      players = players.filter((p) =>
-        args.attributeFilters!.every((f) => {
-          const value = p.attributes?.[f.key];
-          if (value === undefined) return false;
-          if (f.gte !== undefined && value < f.gte) return false;
-          if (f.lte !== undefined && value > f.lte) return false;
-          return true;
-        })
-      );
-    }
-
-    // Badge filters use the normalized relationship index. Badge tier is
-    // intentionally optional so `?badge=deadeye` means any tier.
-    if (args.badgeSlug) {
-      const badge = await ctx.db
-        .query("badges")
-        .withIndex("by_slug", (q) => q.eq("slug", args.badgeSlug!))
-        .first();
-      if (!badge) {
-        players = [];
-      } else {
-        let links = await ctx.db
-          .query("playerBadges")
-          .withIndex("by_badgeId", (q) => q.eq("badgeId", badge._id))
-          .collect();
-        if (args.badgeTier) links = links.filter((link) => link.tier === args.badgeTier);
-        const playerIds = new Set(links.map((link) => String(link.playerId)));
-        players = players.filter((player) => playerIds.has(String(player._id)));
-      }
-    }
-
-    // Sort players
-    if (args.sortByAttribute) {
-      const { key, dir } = args.sortByAttribute;
-      const sign = dir === "asc" ? 1 : -1;
-      players.sort((a, b) => {
-        const av = a.attributes?.[key];
-        const bv = b.attributes?.[key];
-        if (av === undefined && bv === undefined) return b.overall - a.overall;
-        if (av === undefined) return 1;
-        if (bv === undefined) return -1;
-        const d = sign * (av - bv);
-        return d !== 0 ? d : b.overall - a.overall;
-      });
-    } else {
-      const sortBy = args.sortBy || "overall-desc";
-      if (sortBy === "overall-desc") {
-        players.sort((a, b) => b.overall - a.overall);
-      } else if (sortBy === "overall-asc") {
-        players.sort((a, b) => a.overall - b.overall);
-      } else if (sortBy === "name-asc") {
-        players.sort((a, b) => a.name.localeCompare(b.name));
-      } else if (sortBy === "name-desc") {
-        players.sort((a, b) => b.name.localeCompare(a.name));
-      }
-    }
-
-    // Get total count before pagination
-    const totalCount = players.length;
-
-    // Apply pagination
-    const offset = args.offset || 0;
-    const limit = args.limit || 50;
-    players = players.slice(offset, offset + limit);
-
-    return {
-      players,
-      totalCount,
-      hasMore: offset + limit < totalCount,
-    };
+    // Filtering, sorting, and pagination are shared with the browser-side
+    // Playground so both answer the same query the same way.
+    return filterPlayers(players, args);
   },
 });
 
@@ -1033,41 +938,78 @@ export const getAllFiltered = query({
  * browser, so this returns one slim row per player instead of full documents.
  * cats are rounded category means used by the Whiteboard tape/duels.
  */
+function catScore(attrs: Record<string, number> | undefined, keys: readonly string[]) {
+  if (!attrs) return null;
+  const vals = keys.map((k) => attrs[k]).filter((n): n is number => typeof n === "number");
+  return vals.length ? Math.round(vals.reduce((s, n) => s + n, 0) / vals.length) : null;
+}
+
+/**
+ * Slim pool row for the browser-side engines (Playground, Compare, Lineups,
+ * command palette, home demo). Carries everything the shared player filter
+ * needs so the Playground can answer any query locally; badge slugs use the
+ * same slugify as the badge link table.
+ */
+function poolRow(p: Doc<"players">) {
+  const badgeList = (p.badges?.list ?? []) as { name: string; tier: string }[];
+  return {
+    // Insertion order. The API's unfiltered scan returns players in this
+    // order, so the pool keeps it to sort ties identically.
+    order: p._creationTime,
+    name: p.name,
+    slug: p.slug,
+    team: p.team,
+    teamType: p.teamType,
+    positions: p.positions ?? [],
+    overall: p.overall,
+    height: p.height ?? null,
+    playerImage: p.playerImage ?? null,
+    attributes: p.attributes ?? {},
+    badges: badgeList.map((badge) => ({
+      name: badge.name,
+      tier: badge.tier,
+      slug: slugify(badge.name),
+    })),
+    threePointShot: p.attributes?.threePointShot ?? null,
+    speed: p.attributes?.speed ?? null,
+    drivingDunk: p.attributes?.drivingDunk ?? null,
+    perimeterDefense: p.attributes?.perimeterDefense ?? null,
+    cats: {
+      ins: catScore(p.attributes, ATTRIBUTE_CATEGORIES.insideScoring),
+      out: catScore(p.attributes, ATTRIBUTE_CATEGORIES.outsideScoring),
+      ply: catScore(p.attributes, ATTRIBUTE_CATEGORIES.playmaking),
+      ath: catScore(p.attributes, ATTRIBUTE_CATEGORIES.athleticism),
+      reb: catScore(p.attributes, ATTRIBUTE_CATEGORIES.rebounding),
+      def: catScore(p.attributes, ATTRIBUTE_CATEGORIES.defending),
+    },
+  };
+}
+
+/**
+ * One era of the pool (see poolRow). Served to browsers through the
+ * statically cached /api/pool/[era] route, so this runs once per scrape,
+ * not once per visitor.
+ */
+export const getPoolSlice = query({
+  args: { teamType: v.union(v.literal("curr"), v.literal("class"), v.literal("allt")) },
+  handler: async (ctx, args) => {
+    const players = await ctx.db
+      .query("players")
+      .withIndex("by_teamType", (q) => q.eq("teamType", args.teamType))
+      .collect();
+    return players.map(poolRow);
+  },
+});
+
+/**
+ * Whole-table pool. Kept for bundles that still subscribe to it; new code
+ * loads /api/pool instead.
+ */
 export const getPlaygroundPlayers = query({
   args: {},
   handler: async (ctx) => {
     const players = await ctx.db.query("players").collect();
-    const catScore = (attrs: Record<string, number> | undefined, keys: readonly string[]) => {
-      if (!attrs) return null;
-      const vals = keys.map((k) => attrs[k]).filter((n): n is number => typeof n === "number");
-      return vals.length ? Math.round(vals.reduce((s, n) => s + n, 0) / vals.length) : null;
-    };
-    return players.map((p) => ({
-      name: p.name,
-      slug: p.slug,
-      team: p.team,
-      teamType: p.teamType,
-      positions: p.positions ?? [],
-      overall: p.overall,
-      playerImage: p.playerImage ?? null,
-      attributes: p.attributes ?? {},
-      badges: (p.badges?.list ?? []).map((badge) => ({
-        name: badge.name,
-        tier: badge.tier,
-      })),
-      threePointShot: p.attributes?.threePointShot ?? null,
-      speed: p.attributes?.speed ?? null,
-      drivingDunk: p.attributes?.drivingDunk ?? null,
-      perimeterDefense: p.attributes?.perimeterDefense ?? null,
-      cats: {
-        ins: catScore(p.attributes, ATTRIBUTE_CATEGORIES.insideScoring),
-        out: catScore(p.attributes, ATTRIBUTE_CATEGORIES.outsideScoring),
-        ply: catScore(p.attributes, ATTRIBUTE_CATEGORIES.playmaking),
-        ath: catScore(p.attributes, ATTRIBUTE_CATEGORIES.athleticism),
-        reb: catScore(p.attributes, ATTRIBUTE_CATEGORIES.rebounding),
-        def: catScore(p.attributes, ATTRIBUTE_CATEGORIES.defending),
-      },
-    }));
+    return players.map(poolRow);
   },
 });
 

@@ -15,6 +15,8 @@ import { getRatingClasses, getRatingTier, getAttributeColor } from "@/lib/rating
 import { getTeamAbbreviation } from "@/lib/team-abbr";
 import { API_KEY_STORAGE_KEY } from "@/lib/constants";
 import { CURRENT_GAME_VERSION } from "@/convex/gameVersion";
+import { filterPlayers } from "@/convex/playerFilters";
+import { usePlayerPool } from "@/lib/player-pool";
 import { cn } from "@/lib/utils";
 
 const RISE_IN =
@@ -148,12 +150,13 @@ export default function Home() {
   const router = useRouter();
 
   const stats = useQuery(api.players.getStats);
-  const topPlayers = useQuery(api.players.getAllFiltered, {
-    teamType: "curr",
-    sortBy: "overall-desc",
-    limit: 9,
-  });
-  const demoPlayers = useQuery(api.players.getPlaygroundPlayers) as DemoPlayer[] | undefined;
+  // One pool load feeds both the top-nine strip and the interactive demo.
+  const pool = usePlayerPool("all");
+  const topPlayers = useMemo(
+    () => (pool ? filterPlayers(pool, { teamType: "curr", sortBy: "overall-desc", limit: 9 }) : undefined),
+    [pool]
+  );
+  const demoPlayers = pool as DemoPlayer[] | undefined;
 
   const demoResults = useMemo(() => {
     if (!demoPlayers) return [];

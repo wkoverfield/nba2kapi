@@ -1,6 +1,10 @@
 {
   "extends": "../node_modules/convex/tsconfig.json",
   "compilerOptions": {
+    // The inherited config points rootDir at the convex package's own src;
+    // TypeScript then rejects any helper here that is first reached through
+    // an import (TS6059). Root this project at the convex folder.
+    "rootDir": ".",
     "target": "ES2021",
     "lib": ["ES2021"],
     "moduleResolution": "node",

@@ -7,16 +7,7 @@ import { mutation, query, internalMutation, MutationCtx } from "./_generated/ser
 import { v } from "convex/values";
 import { CURRENT_GAME_VERSION } from "./gameVersion";
 import { Id } from "./_generated/dataModel";
-
-/**
- * Create URL-friendly slug from badge name
- */
-function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
+import { slugify } from "./slug";
 
 /**
  * Whether a badge belongs to the edition the site currently serves. A badge's

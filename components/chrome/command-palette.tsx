@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Search } from "lucide-react";
 import { useQuery } from "convex/react";
+import { usePlayerPool } from "@/lib/player-pool";
 import { api } from "@/convex/_generated/api";
 import { Headshot } from "@/components/ui/headshot";
 import { getTeamAbbreviation, getTeamConference, formatTeamShortName } from "@/lib/team-abbr";
@@ -104,11 +105,8 @@ export function CommandPalette({
     }
   }, [open]);
 
-  // Lazy: the dataset is only subscribed after the palette first opens.
-  const players = useQuery(
-    api.players.getPlaygroundPlayers,
-    everOpened ? {} : "skip"
-  ) as PoolPlayer[] | undefined;
+  // Lazy: the pool is only fetched after the palette first opens.
+  const players = usePlayerPool(everOpened ? "all" : null) as PoolPlayer[] | undefined;
   const logoMap = useQuery(api.teams.getTeamLogoMap, everOpened ? {} : "skip") as
     | Record<string, string>
     | undefined;
