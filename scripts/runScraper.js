@@ -93,6 +93,54 @@ async function runScraper(options = {}) {
   const changedPlayerSlugs = new Set(); // added + updated players
   const deletedPlayerSlugs = new Set(); // removed by reconcile
   const affectedTeamSlugs = new Set(); // teams of any player above
+  // "slug|team" of every player successfully uploaded this run; reconcile
+  // prunes anything in the era that is not in this set.
+  const seenKeys = new Set();
+
+  const recordUploadResult = (entry, result) => {
+    seenKeys.add(`${entry.slug}|${entry.player.team}`);
+    if (result.action === 'inserted') {
+      playersAdded++;
+      changedPlayerSlugs.add(entry.slug);
+      affectedTeamSlugs.add(teamSlug(entry.player.team || entry.teamName));
+    } else if (result.action === 'updated') {
+      playersUpdated++;
+      changedPlayerSlugs.add(entry.slug);
+      affectedTeamSlugs.add(teamSlug(entry.player.team || entry.teamName));
+    } else {
+      playersUnchanged++;
+    }
+  };
+
+  // One transaction per roster: every live query on the players table
+  // re-runs once per committed transaction, so a batch of 18 costs one
+  // re-run instead of 18. Falls back to per-player uploads if the batch
+  // itself is rejected, so a single bad row cannot lose a whole team.
+  const uploadBatch = async (entries, teamName) => {
+    if (entries.length === 0) return;
+    try {
+      const results = await client.mutation(api.playerHistory.adminUpsertPlayersWithHistory, {
+        adminKey: ADMIN_API_KEY,
+        players: entries.map((e) => e.player),
+      });
+      results.forEach((result, i) => recordUploadResult(entries[i], result));
+    } catch (error) {
+      console.error(`Batch upload failed for ${teamName} (${entries.length} players), retrying one by one: ${error.message}`);
+      for (const entry of entries) {
+        try {
+          const result = await client.mutation(api.playerHistory.adminUpsertPlayerWithHistory, {
+            adminKey: ADMIN_API_KEY,
+            ...entry.player,
+          });
+          recordUploadResult(entry, result);
+        } catch (err) {
+          const errorMsg = `Error uploading player ${entry.player.name}: ${err.message}`;
+          console.error(errorMsg);
+          errors.push(errorMsg);
+        }
+      }
+    }
+  };
 
   console.log(`Starting scrape job ${jobId} for team type: ${teamType}`);
 
@@ -125,6 +173,7 @@ async function runScraper(options = {}) {
           // soft-block signature — track it so reconcile won't prune that
           // team's players as "departed".
           if (basicPlayers.length === 0) emptyTeams++;
+          const pending = [];
 
           // Scrape detailed data for each player
           for (const basicPlayer of basicPlayers) {
@@ -154,24 +203,8 @@ async function runScraper(options = {}) {
               // Remove playerMisc (not in schema)
               delete fullPlayer.playerMisc;
 
-              // Upsert to Convex with history tracking
-              const result = await client.mutation(api.playerHistory.adminUpsertPlayerWithHistory, {
-                adminKey: ADMIN_API_KEY,
-                ...fullPlayer,
-              });
-
-              if (result.action === 'inserted') {
-                playersAdded++;
-                changedPlayerSlugs.add(slug);
-                affectedTeamSlugs.add(teamSlug(fullPlayer.team || team.teamName));
-              } else if (result.action === 'updated') {
-                playersUpdated++;
-                changedPlayerSlugs.add(slug);
-                affectedTeamSlugs.add(teamSlug(fullPlayer.team || team.teamName));
-              } else {
-                playersUnchanged++;
-              }
-
+              // Queued for one batched upsert per roster (see uploadBatch)
+              pending.push({ slug, teamName: team.teamName, player: fullPlayer });
               playersScraped++;
 
             } catch (error) {
@@ -188,6 +221,7 @@ async function runScraper(options = {}) {
             }
           }
 
+          await uploadBatch(pending, team.teamName);
           teamsScraped++;
 
         } catch (error) {
@@ -229,6 +263,7 @@ async function runScraper(options = {}) {
           adminKey: ADMIN_API_KEY,
           teamType,
           runStartedAt: startTime,
+          seenKeys: [...seenKeys],
           scrapedCount: playersScraped,
           dryRun: process.env.RECONCILE_DRY_RUN === 'true',
         });

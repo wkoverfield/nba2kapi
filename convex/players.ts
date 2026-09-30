@@ -214,7 +214,11 @@ export const reconcileRoster = mutation({
   args: {
     adminKey: v.string(),
     teamType: v.union(v.literal("curr"), v.literal("class"), v.literal("allt")),
-    runStartedAt: v.string(), // ISO; players with lastUpdated < this weren't seen this run
+    runStartedAt: v.string(), // ISO; fallback: players with lastUpdated < this weren't seen this run
+    // "slug|team" keys of every player the run saw. Preferred over
+    // runStartedAt: an unchanged player is no longer patched by the scrape,
+    // so its lastUpdated no longer proves it was seen.
+    seenKeys: v.optional(v.array(v.string())),
     scrapedCount: v.number(),
     dryRun: v.optional(v.boolean()),
   },
@@ -222,6 +226,7 @@ export const reconcileRoster = mutation({
     if (args.adminKey !== process.env.ADMIN_API_KEY) {
       throw new Error("Unauthorized: Invalid admin key");
     }
+    const seen = args.seenKeys ? new Set(args.seenKeys) : null;
 
     const MAX_PRUNE_FRACTION = 0.4; // never remove >40% of a teamType in one run
 
@@ -232,8 +237,10 @@ export const reconcileRoster = mutation({
     const existingCount = players.length;
 
     // ISO 8601 strings sort lexicographically, so `<` is a valid time comparison.
-    const orphans = players.filter(
-      (p) => !p.lastUpdated || p.lastUpdated < args.runStartedAt
+    const orphans = players.filter((p) =>
+      seen
+        ? !seen.has(`${p.slug}|${p.team}`)
+        : !p.lastUpdated || p.lastUpdated < args.runStartedAt
     );
     const orphanCount = orphans.length;
 
