@@ -432,19 +432,17 @@ export const rebuildAll = internalAction({
         teams: boardRows,
       });
 
-      // Era totals for players.getStats
+      // Era totals for players.getStats. lastUpdated is the rebuild time, which
+      // follows every scrape: player rows are only patched when a field
+      // changed, so their own lastUpdated no longer tracks the last refresh.
       let sumOverall = 0;
-      let lastUpdated: string | null = null;
-      for (const p of players) {
-        sumOverall += p.overall;
-        if (lastUpdated === null || p.lastUpdated > lastUpdated) lastUpdated = p.lastUpdated;
-      }
+      for (const p of players) sumOverall += p.overall;
       await ctx.runMutation(internal.cohorts.writeEraStats, {
         teamType,
         playerCount: players.length,
         sumOverall,
         teamNames: boardRows.map((r) => r.name),
-        lastUpdated,
+        lastUpdated: players.length > 0 ? new Date().toISOString() : null,
       });
 
       summary.push({

@@ -202,8 +202,17 @@ async function upsertWithHistoryHelper(
       // refresh the player doc from the latest scrape. detectChanges only gates
       // HISTORY creation — it ignores metadata like `college`, cleaned-up badge
       // lists, image URLs, etc. Patching here keeps those fields current (and
-      // lets backfills land) without spamming history. Idempotent on re-patch.
-      await ctx.db.patch(existing._id, patchData);
+      // lets backfills land) without spamming history. Skipped entirely when
+      // nothing differs: a patch that changes no field still re-runs every
+      // subscribed query that read this document.
+      const differs = Object.entries(patchData).some(
+        ([k, value]) =>
+          k !== "lastUpdated" &&
+          JSON.stringify(value) !== JSON.stringify((existing as Record<string, unknown>)[k])
+      );
+      if (differs) {
+        await ctx.db.patch(existing._id, patchData);
+      }
       // Links are synced even with no history-worthy change: they can drift
       // from the player's own list (a hand-run import, or a scrape that
       // predates this sync), and a matching list writes nothing.
@@ -242,46 +251,72 @@ async function upsertWithHistoryHelper(
  * Admin-protected upsert with history tracking
  * For use by the scraper script
  */
+const playerUpsertFields = {
+  name: v.string(),
+  slug: v.string(),
+  playerUrl: v.optional(v.string()),
+  team: v.string(),
+  teamType: v.union(v.literal("curr"), v.literal("class"), v.literal("allt")),
+  overall: v.number(),
+  positions: v.optional(v.array(v.string())),
+  height: v.optional(v.string()),
+  weight: v.optional(v.string()),
+  wingspan: v.optional(v.string()),
+  archetype: v.optional(v.string()),
+  build: v.optional(v.string()),
+  college: v.optional(v.string()),
+  playerImage: v.optional(v.string()),
+  teamImg: v.optional(v.string()),
+  attributes: v.optional(v.record(v.string(), v.number())),
+  badges: v.optional(v.any()),
+  hotZones: v.optional(v.any()),
+  ratingHistory: v.optional(v.array(v.any())),
+  seasonMovement: v.optional(
+    v.array(v.object({ label: v.string(), overall: v.number() }))
+  ),
+  gameVersion: v.optional(v.string()),
+  scrapeJobId: v.optional(v.string()),
+  lastUpdated: v.string(),
+  createdAt: v.optional(v.string()),
+};
+
+function requireAdminKey(provided: string) {
+  const envKey = process.env.ADMIN_API_KEY;
+  if (provided !== envKey) {
+    throw new Error(`Unauthorized: Invalid admin key. Provided starts with: ${provided?.substring(0, 5)}, Expected starts with: ${envKey?.substring(0, 5)}`);
+  }
+}
+
 export const adminUpsertPlayerWithHistory = mutation({
   args: {
     adminKey: v.string(),
-    name: v.string(),
-    slug: v.string(),
-    playerUrl: v.optional(v.string()),
-    team: v.string(),
-    teamType: v.union(v.literal("curr"), v.literal("class"), v.literal("allt")),
-    overall: v.number(),
-    positions: v.optional(v.array(v.string())),
-    height: v.optional(v.string()),
-    weight: v.optional(v.string()),
-    wingspan: v.optional(v.string()),
-    archetype: v.optional(v.string()),
-    build: v.optional(v.string()),
-    college: v.optional(v.string()),
-    playerImage: v.optional(v.string()),
-    teamImg: v.optional(v.string()),
-    attributes: v.optional(v.record(v.string(), v.number())),
-    badges: v.optional(v.any()),
-    hotZones: v.optional(v.any()),
-    ratingHistory: v.optional(v.array(v.any())),
-    seasonMovement: v.optional(
-      v.array(v.object({ label: v.string(), overall: v.number() }))
-    ),
-    gameVersion: v.optional(v.string()),
-    scrapeJobId: v.optional(v.string()),
-    lastUpdated: v.string(),
-    createdAt: v.optional(v.string()),
+    ...playerUpsertFields,
   },
   handler: async (ctx, args) => {
-    const envKey = process.env.ADMIN_API_KEY;
-    console.log(`Admin key check: provided=${args.adminKey?.substring(0, 5)}..., env=${envKey?.substring(0, 5)}...`);
-
-    if (args.adminKey !== envKey) {
-      throw new Error(`Unauthorized: Invalid admin key. Provided starts with: ${args.adminKey?.substring(0, 5)}, Expected starts with: ${envKey?.substring(0, 5)}`);
-    }
-
+    requireAdminKey(args.adminKey);
     const { adminKey, ...playerData } = args;
     return await upsertWithHistoryHelper(ctx, playerData);
+  },
+});
+
+/**
+ * Batch form of adminUpsertPlayerWithHistory: one transaction for a whole
+ * roster. Every live query that reads the players table re-runs once per
+ * committed transaction, so a roster of 18 players costs one re-run instead
+ * of 18. Results come back in input order.
+ */
+export const adminUpsertPlayersWithHistory = mutation({
+  args: {
+    adminKey: v.string(),
+    players: v.array(v.object(playerUpsertFields)),
+  },
+  handler: async (ctx, args) => {
+    requireAdminKey(args.adminKey);
+    const results = [];
+    for (const playerData of args.players) {
+      results.push(await upsertWithHistoryHelper(ctx, playerData));
+    }
+    return results;
   },
 });
 

@@ -195,7 +195,7 @@ export default defineSchema({
     playerCount: v.number(),
     sumOverall: v.number(),
     teamNames: v.array(v.string()), // distinct team display names in the era
-    lastUpdated: v.union(v.string(), v.null()), // max players.lastUpdated (ISO)
+    lastUpdated: v.union(v.string(), v.null()), // ISO time of the last rebuild (runs after each scrape)
     updatedAt: v.string(), // ISO timestamp of the rebuild
   }).index("by_teamType", ["teamType"]),
 
