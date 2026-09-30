@@ -15,7 +15,9 @@ import { SITEMAP_CACHE_TAG } from "@/lib/seo";
  *   revalidated too so the cached copy re-renders into a 404
  *
  * Every authorized POST also invalidates the /sitemap.xml CDN entry by its
- * cache tag, so the sitemap re-renders on its next request.
+ * cache tag, so the sitemap re-renders on its next request, and revalidates
+ * the /api/pool/[era] routes the interactive pages load their player pool
+ * from.
  *
  * The scrape pipeline posts the diff of an ingest run here so only touched
  * pages re-render; everything else stays served from the full route cache
@@ -61,13 +63,17 @@ export async function POST(request: Request) {
     revalidatePath(`/teams/${slug}`);
   }
   await invalidateByTag(SITEMAP_CACHE_TAG);
+  const poolEras = ["curr", "class", "allt", "all"];
+  for (const era of poolEras) {
+    revalidatePath(`/api/pool/${era}`);
+  }
 
   return NextResponse.json({
     revalidated: {
       players: players.length,
       teams: teamSlugs.length,
       deleted: deleted.length,
-      paths: playerSlugs.length + teamSlugs.length + 1,
+      paths: playerSlugs.length + teamSlugs.length + 1 + poolEras.length,
     },
   });
 }

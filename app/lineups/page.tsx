@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
+import { usePlayerPool } from "@/lib/player-pool";
 import {
   DndContext,
   DragEndEvent,
@@ -426,7 +427,7 @@ function Whiteboard() {
     fn();
   };
 
-  const players = useQuery(api.players.getPlaygroundPlayers) as PoolPlayer[] | undefined;
+  const players = usePlayerPool("all") as PoolPlayer[] | undefined;
   const selectedSlugs = useMemo(
     () => [...new Set([...yours, ...opps].filter((p): p is PoolPlayer => p !== null).map((p) => p.slug))],
     [yours, opps]
