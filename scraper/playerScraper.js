@@ -5,7 +5,7 @@
  */
 
 import { SCRAPER_OPTIONS } from './config.js';
-import { normalizeUrl, logProgress, logError, delay, slugify , gotoThroughChallenge } from './utils.js';
+import { normalizeUrl, logProgress, logError, delayInRange, slugify , gotoThroughChallenge } from './utils.js';
 
 /**
  * Scrape detailed player data from individual player page
@@ -543,7 +543,7 @@ export async function scrapePlayersDetails(page, basicPlayers, concurrency = 1) 
 
     // Add delay between players to avoid rate limiting
     if (i < total - 1) {
-      await delay(SCRAPER_OPTIONS.delayBetweenPlayers);
+      await delayInRange(SCRAPER_OPTIONS.delayBetweenPlayers);
     }
   }
 
