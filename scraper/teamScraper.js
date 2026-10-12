@@ -4,7 +4,7 @@
  */
 
 import { BASE_URL, TEAM_SELECTORS, TEAM_TYPES, EXTRA_TEAMS, SCRAPER_OPTIONS } from './config.js';
-import { normalizeUrl, logProgress, logError, delay, parseIntSafe, gotoThroughChallenge } from './utils.js';
+import { normalizeUrl, logProgress, logError, delayInRange, parseIntSafe, gotoThroughChallenge } from './utils.js';
 
 /**
  * Scrape team links from the team listing page
@@ -155,7 +155,7 @@ export async function scrapeTeamRoster(page, team, teamType) {
     logProgress(`Found ${players.length} players on ${team.teamName}`);
 
     // Add delay between teams to avoid rate limiting
-    await delay(SCRAPER_OPTIONS.delayBetweenTeams);
+    await delayInRange(SCRAPER_OPTIONS.delayBetweenTeams);
 
     return players;
   } catch (error) {

@@ -159,9 +159,11 @@ export const SCRAPER_OPTIONS = {
   waitUntil: 'domcontentloaded',
   timeout: 30000,
 
-  // Delays (milliseconds) to avoid rate limiting
-  delayBetweenTeams: 1000,
-  delayBetweenPlayers: 500,
+  // Delay ranges (milliseconds, [min, max]) between page loads. Each wait is
+  // drawn at random from its range: evenly spaced, rapid requests are what the
+  // source's bot protection flags.
+  delayBetweenTeams: [2000, 4000],
+  delayBetweenPlayers: [1500, 3000],
 
   // Retry configuration
   maxRetries: 3,

@@ -204,6 +204,15 @@ export function delay(ms) {
 }
 
 /**
+ * Delay execution for a random duration within a range
+ * @param {[number, number]} range - [min, max] milliseconds
+ * @returns {Promise<void>}
+ */
+export function delayInRange([min, max]) {
+  return delay(min + Math.random() * (max - min));
+}
+
+/**
  * Retry function with exponential backoff
  * @param {Function} fn - Async function to retry
  * @param {number} maxRetries - Maximum number of retries
