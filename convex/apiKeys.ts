@@ -1,10 +1,20 @@
 /**
  * API Key Management
- * Mutations and queries for API key operations
+ * Mutations and queries for API key operations.
+ *
+ * Everything that creates keys, counts requests, or changes key state is
+ * internal and reached through convex/http.ts. The public functions below
+ * require the key itself as proof of ownership.
  */
 
-import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import {
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+  MutationCtx,
+} from "./_generated/server";
+import { ConvexError, v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 
 /**
@@ -28,6 +38,12 @@ export function constantTimeCompare(a: string, b: string): boolean {
 
 // Maximum number of active API keys allowed per email address
 const MAX_KEYS_PER_EMAIL = 3;
+
+const MAX_PURPOSE_LENGTH = 500;
+
+// Shared hourly bucket for the legacy createApiKey mutation (see below).
+const LEGACY_CREATE_BUCKET = "legacy:createApiKey";
+const LEGACY_CREATE_LIMIT = 10;
 
 /**
  * Generate a unique API key with 2k_ prefix
@@ -57,9 +73,126 @@ function generateApiKey(): string {
   return `2k_${result.join('')}`;
 }
 
+type KeyFields = { email: string; name: string; purpose?: string };
+
+type IssueResult =
+  | { ok: true; apiKey: string; id: Id<"apiKeys">; rateLimit: number }
+  | { ok: false; code: "INVALID_EMAIL" | "KEY_LIMIT_EXCEEDED"; message: string };
+
+const KEY_LIMIT_MESSAGE =
+  `Maximum ${MAX_KEYS_PER_EMAIL} active API keys per email. ` +
+  `Please deactivate an existing key first.`;
+
 /**
- * Create a new API key
- * Uses optimistic concurrency control to handle race conditions
+ * Insert a new key for an email, enforcing MAX_KEYS_PER_EMAIL.
+ * Uses optimistic concurrency control to handle race conditions.
+ */
+async function insertApiKey(ctx: MutationCtx, args: KeyFields): Promise<IssueResult> {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(args.email)) {
+    return { ok: false, code: "INVALID_EMAIL", message: "Invalid email format" };
+  }
+
+  // Check existing active keys for this email (may be stale due to race conditions)
+  const existingKeys = await ctx.db
+    .query("apiKeys")
+    .withIndex("by_email", (q) => q.eq("email", args.email))
+    .filter((q) => q.eq(q.field("isActive"), true))
+    .collect();
+
+  if (existingKeys.length >= MAX_KEYS_PER_EMAIL) {
+    return { ok: false, code: "KEY_LIMIT_EXCEEDED", message: KEY_LIMIT_MESSAGE };
+  }
+
+  const key = generateApiKey();
+  const purpose = args.purpose?.trim().slice(0, MAX_PURPOSE_LENGTH);
+
+  const apiKeyId = await ctx.db.insert("apiKeys", {
+    key,
+    email: args.email,
+    name: args.name,
+    ...(purpose ? { purpose } : {}),
+    requestCount: 0,
+    rateLimit: 500, // Default: 500 requests per hour
+    isActive: true,
+    createdAt: new Date().toISOString(),
+  });
+
+  // Re-check after insert to handle race conditions (optimistic concurrency)
+  // If two requests came in simultaneously, both passed the initial check,
+  // but now we can see the true count after both inserts
+  const finalCount = await ctx.db
+    .query("apiKeys")
+    .withIndex("by_email", (q) => q.eq("email", args.email))
+    .filter((q) => q.eq(q.field("isActive"), true))
+    .collect();
+
+  if (finalCount.length > MAX_KEYS_PER_EMAIL) {
+    // Race condition occurred - rollback by deleting our insert
+    await ctx.db.delete(apiKeyId);
+    return { ok: false, code: "KEY_LIMIT_EXCEEDED", message: KEY_LIMIT_MESSAGE };
+  }
+
+  return { ok: true, apiKey: key, id: apiKeyId, rateLimit: 500 };
+}
+
+/**
+ * Consume one slot from a fixed-window registration bucket.
+ * Buckets are rows in registrationAttempts keyed by `ip` (a client IP, or a
+ * shared bucket name for callers without one).
+ */
+async function consumeRegistrationSlot(
+  ctx: MutationCtx,
+  bucket: string,
+  limit: number,
+): Promise<{ allowed: boolean; remaining: number }> {
+  const WINDOW_MS = 3600000; // 1 hour in milliseconds
+  const now = Date.now();
+
+  const existing = await ctx.db
+    .query("registrationAttempts")
+    .withIndex("by_ip", (q) => q.eq("ip", bucket))
+    .first();
+
+  // No record or expired window - start fresh
+  if (!existing || (now - existing.windowStart) > WINDOW_MS) {
+    if (existing) {
+      await ctx.db.patch(existing._id, { count: 1, windowStart: now });
+    } else {
+      await ctx.db.insert("registrationAttempts", { ip: bucket, count: 1, windowStart: now });
+    }
+    return { allowed: true, remaining: limit - 1 };
+  }
+
+  // Within window - check if at limit
+  if (existing.count >= limit) {
+    return { allowed: false, remaining: 0 };
+  }
+
+  await ctx.db.patch(existing._id, { count: existing.count + 1 });
+  return { allowed: true, remaining: limit - existing.count - 1 };
+}
+
+/**
+ * Create a new API key. Internal: the only public path is POST /api/register,
+ * which applies the per-IP registration limit before calling this.
+ */
+export const issueApiKey = internalMutation({
+  args: {
+    email: v.string(),
+    name: v.string(),
+    purpose: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => insertApiKey(ctx, args),
+});
+
+/**
+ * Legacy public entry point for key creation.
+ *
+ * Exists only for browser bundles loaded before key creation moved to
+ * POST /api/register; removing it would break those open tabs. Mutations have
+ * no client IP, so instead of the per-IP limit it draws from one shared hourly
+ * bucket, on top of the per-email limit. Remove in the next release.
  */
 export const createApiKey = mutation({
   args: {
@@ -68,63 +201,16 @@ export const createApiKey = mutation({
     purpose: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(args.email)) {
-      throw new Error("Invalid email format");
+    const slot = await consumeRegistrationSlot(ctx, LEGACY_CREATE_BUCKET, LEGACY_CREATE_LIMIT);
+    if (!slot.allowed) {
+      throw new ConvexError("This page is out of date. Reload the page and try again.");
     }
 
-    // Check existing active keys for this email (may be stale due to race conditions)
-    const existingKeys = await ctx.db
-      .query("apiKeys")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
-      .filter((q) => q.eq(q.field("isActive"), true))
-      .collect();
-
-    if (existingKeys.length >= MAX_KEYS_PER_EMAIL) {
-      throw new Error(
-        `Maximum ${MAX_KEYS_PER_EMAIL} active API keys per email. ` +
-        `Please deactivate an existing key first.`
-      );
+    const result = await insertApiKey(ctx, args);
+    if (!result.ok) {
+      throw new ConvexError(result.message);
     }
-
-    // Generate unique API key
-    const key = generateApiKey();
-
-    // Create API key record
-    const apiKeyId = await ctx.db.insert("apiKeys", {
-      key,
-      email: args.email,
-      name: args.name,
-      requestCount: 0,
-      rateLimit: 500, // Default: 500 requests per hour
-      isActive: true,
-      createdAt: new Date().toISOString(),
-    });
-
-    // Re-check after insert to handle race conditions (optimistic concurrency)
-    // If two requests came in simultaneously, both passed the initial check,
-    // but now we can see the true count after both inserts
-    const finalCount = await ctx.db
-      .query("apiKeys")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
-      .filter((q) => q.eq(q.field("isActive"), true))
-      .collect();
-
-    if (finalCount.length > MAX_KEYS_PER_EMAIL) {
-      // Race condition occurred - rollback by deleting our insert
-      await ctx.db.delete(apiKeyId);
-      throw new Error(
-        `Maximum ${MAX_KEYS_PER_EMAIL} active API keys per email. ` +
-        `Please deactivate an existing key first.`
-      );
-    }
-
-    return {
-      apiKey: key,
-      id: apiKeyId,
-      rateLimit: 500,
-    };
+    return { apiKey: result.apiKey, id: result.id, rateLimit: result.rateLimit };
   },
 });
 
@@ -132,7 +218,7 @@ export const createApiKey = mutation({
  * Validate an API key
  * Uses constant-time comparison to prevent timing attacks
  */
-export const validateApiKey = query({
+export const validateApiKey = internalQuery({
   args: { key: v.string() },
   handler: async (ctx, args) => {
     const apiKey = await ctx.db
@@ -158,7 +244,7 @@ export const validateApiKey = query({
  * Check and consume rate limit (atomic - prevents race conditions)
  * This is a mutation because it increments the counter atomically
  */
-export const checkRateLimit = mutation({
+export const checkRateLimit = internalMutation({
   args: { key: v.string() },
   handler: async (ctx, args) => {
     const apiKey = await ctx.db
@@ -223,7 +309,7 @@ export const checkRateLimit = mutation({
 /**
  * Log an API request (for analytics only - counting is done in checkRateLimit)
  */
-export const logRequest = mutation({
+export const logRequest = internalMutation({
   args: {
     apiKeyId: v.id("apiKeys"),
     endpoint: v.string(),
@@ -254,9 +340,9 @@ export const logRequest = mutation({
 });
 
 /**
- * Deactivate an API key
+ * Deactivate an API key by id (operator use, e.g. `npx convex run`).
  */
-export const deactivateApiKey = mutation({
+export const deactivateApiKey = internalMutation({
   args: { keyId: v.id("apiKeys") },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.keyId, {
@@ -268,7 +354,8 @@ export const deactivateApiKey = mutation({
 });
 
 /**
- * Regenerate an API key (creates new key, deactivates old one)
+ * Regenerate an API key (creates new key, deactivates old one).
+ * Public: the caller proves ownership by presenting the current key.
  */
 export const regenerateApiKey = mutation({
   args: { oldKey: v.string() },
@@ -298,6 +385,7 @@ export const regenerateApiKey = mutation({
       key: newKey,
       email: existingKey.email,
       name: existingKey.name,
+      ...(existingKey.purpose ? { purpose: existingKey.purpose } : {}),
       requestCount: 0,
       rateLimit: existingKey.rateLimit,
       isActive: true,
@@ -382,43 +470,10 @@ export const getApiKeyStats = query({
  * Check registration rate limit (database-backed for serverless compatibility)
  * Limits API key registrations per IP address to prevent abuse
  */
-export const checkRegistrationRateLimit = mutation({
+export const checkRegistrationRateLimit = internalMutation({
   args: { ip: v.string() },
   handler: async (ctx, args) => {
-    const LIMIT = 5; // Max registrations per window
-    const WINDOW_MS = 3600000; // 1 hour in milliseconds
-    const now = Date.now();
-
-    // Look up existing record for this IP
-    const existing = await ctx.db
-      .query("registrationAttempts")
-      .withIndex("by_ip", (q) => q.eq("ip", args.ip))
-      .first();
-
-    // No record or expired window - start fresh
-    if (!existing || (now - existing.windowStart) > WINDOW_MS) {
-      if (existing) {
-        // Reset existing record
-        await ctx.db.patch(existing._id, { count: 1, windowStart: now });
-      } else {
-        // Create new record
-        await ctx.db.insert("registrationAttempts", {
-          ip: args.ip,
-          count: 1,
-          windowStart: now,
-        });
-      }
-      return { allowed: true, remaining: LIMIT - 1 };
-    }
-
-    // Within window - check if at limit
-    if (existing.count >= LIMIT) {
-      return { allowed: false, remaining: 0 };
-    }
-
-    // Increment counter
-    await ctx.db.patch(existing._id, { count: existing.count + 1 });
-    return { allowed: true, remaining: LIMIT - existing.count - 1 };
+    return consumeRegistrationSlot(ctx, args.ip, 5); // Max 5 registrations per hour per IP
   },
 });
 
@@ -428,7 +483,7 @@ export const checkRegistrationRateLimit = mutation({
  * Returns { allowed, remaining, limit, resetAt } so the caller can set standard
  * X-RateLimit-* headers regardless of allow/deny.
  */
-export const checkPublicApiRateLimit = mutation({
+export const checkPublicApiRateLimit = internalMutation({
   args: { ip: v.string() },
   handler: async (ctx, args) => {
     const LIMIT = 60; // 60 requests per minute per IP

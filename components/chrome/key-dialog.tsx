@@ -4,9 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Check } from "lucide-react";
-import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { API_KEY_STORAGE_KEY } from "@/lib/constants";
+import { API_KEY_STORAGE_KEY, CONVEX_SITE_URL } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 type KeyDialogProps = {
@@ -18,6 +16,32 @@ type KeyDialogProps = {
 const FIELD_LABEL = "mb-[5px] font-plex text-[8.5px] tracking-[0.1em] text-[#8a8577]";
 const FIELD_INPUT =
   "w-full rounded-[10px] border border-[#e5e2da] bg-[#faf9f5] px-3.5 py-2.5 font-body text-[13.5px] text-[#1a1918] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-[#b5b0a1] focus:border-[#1a1918] focus:bg-white focus:shadow-[0_0_0_3px_rgba(26,25,24,0.07)]";
+
+/**
+ * Create a key through POST /api/register, which applies the per-IP
+ * registration limit. Throws with a user-facing message on any failure.
+ */
+async function registerKey(body: { email: string; name: string; purpose?: string }) {
+  const res = await fetch(`${CONVEX_SITE_URL}/api/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }).catch(() => {
+    throw new Error("Could not reach the API. Check your connection and try again.");
+  });
+  const json = await res.json().catch(() => null);
+  if (res.ok && json?.success && typeof json.data?.apiKey === "string") {
+    return json.data.apiKey as string;
+  }
+  if (res.status === 429) {
+    throw new Error("Too many keys created from this network. Try again in an hour.");
+  }
+  if (json?.error?.code === "VALIDATION_ERROR") {
+    throw new Error("Check your name and email, then try again.");
+  }
+  const message = json?.error?.code === "KEY_LIMIT_EXCEEDED" ? json.error.message : null;
+  throw new Error(typeof message === "string" ? message : "Failed to create the key. Try again.");
+}
 
 /**
  * Two-step key creation modal (paper/editorial design): form, then the key
@@ -33,19 +57,17 @@ export function KeyDialog({ open, onOpenChange, onSuccess }: KeyDialogProps) {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const createApiKey = useMutation(api.apiKeys.createApiKey);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
     try {
-      const result = await createApiKey({ email, name, purpose: purpose || undefined });
-      setNewKey(result.apiKey);
-      localStorage.setItem(API_KEY_STORAGE_KEY, result.apiKey);
-      onSuccess?.(result.apiKey);
+      const apiKey = await registerKey({ email, name, purpose: purpose || undefined });
+      setNewKey(apiKey);
+      localStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
+      onSuccess?.(apiKey);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create the key — try again.");
+      setError(err instanceof Error ? err.message : "Failed to create the key. Try again.");
     } finally {
       setLoading(false);
     }
