@@ -9,10 +9,11 @@
  *   - pageviewsTotal   cumulative site pageviews (pageviewCounters "total")
  *   - uniquesToDate    sum of per-day unique-visitor counters (uvday:*)
  *   - apiRequestsTotal cumulative API calls, summed across all apiKeys
+ *   - publicApiRequestsTotal cumulative keyless calls (publicApiDailyCounts)
  *   - activeApiKeys    active API key count (point-in-time)
  *   - apiKeysTotal     total API key count (point-in-time)
  *
- * apiRequestsTotal is stored raw (cumulative), not as a delta: differencing two
+ * The request totals are stored raw (cumulative), not as a delta: differencing two
  * snapshots gives per-day API volume, while the raw value stays reconstructable.
  */
 
@@ -51,10 +52,17 @@ export const snapshotDailyMetrics = internalMutation({
       if (k.isActive) activeApiKeys++;
     }
 
+    // Cumulative keyless API usage: sum of every per-day shard row.
+    let publicApiRequestsTotal = 0;
+    for await (const row of ctx.db.query("publicApiDailyCounts")) {
+      publicApiRequestsTotal += row.count;
+    }
+
     const metrics: Record<string, number> = {
       pageviewsTotal,
       uniquesToDate,
       apiRequestsTotal,
+      publicApiRequestsTotal,
       activeApiKeys,
       apiKeysTotal: keys.length,
     };

@@ -421,6 +421,18 @@ export default defineSchema({
     .index("by_ip", ["ip"]),
 
   /**
+   * Keyless API traffic: requests admitted by checkPublicApiRateLimit, one
+   * row per (UTC day, shard). Each request increments a random shard so
+   * concurrent requests rarely write the same document. Never pruned: the
+   * sum over all rows is the cumulative total banked by metricsRollup.
+   */
+  publicApiDailyCounts: defineTable({
+    date: v.string(), // UTC "YYYY-MM-DD"
+    shard: v.number(), // 0..PUBLIC_COUNT_SHARDS-1
+    count: v.number(),
+  }).index("by_date_shard", ["date", "shard"]),
+
+  /**
    * Site stats (pageview analytics for the marketing/app site).
    * Cumulative counters keyed by "total" | "path:<p>" | "day:<YYYY-MM-DD>" | "uvday:<YYYY-MM-DD>".
    */
