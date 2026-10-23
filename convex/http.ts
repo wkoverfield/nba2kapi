@@ -246,7 +246,7 @@ function getClientIp(c: any): string {
  */
 async function publicIpRateLimitMiddleware(c: any, next: any) {
   const ip = getClientIp(c);
-  const result = await c.env.runMutation(api.apiKeys.checkPublicApiRateLimit, { ip });
+  const result = await c.env.runMutation(internal.apiKeys.checkPublicApiRateLimit, { ip });
 
   c.header("X-RateLimit-Limit", result.limit.toString());
   c.header("X-RateLimit-Remaining", result.remaining.toString());
@@ -286,7 +286,7 @@ async function authMiddleware(c: any, next: any) {
   }
 
   // Validate API key
-  const validation = await c.env.runQuery(api.apiKeys.validateApiKey, { key: apiKey });
+  const validation = await c.env.runQuery(internal.apiKeys.validateApiKey, { key: apiKey });
 
   if (!validation.valid) {
     return c.json(errorResponse(
@@ -298,7 +298,7 @@ async function authMiddleware(c: any, next: any) {
 
   // Check rate limit (atomic - increments counter)
   const startTime = Date.now();
-  const rateLimit = await c.env.runMutation(api.apiKeys.checkRateLimit, { key: apiKey });
+  const rateLimit = await c.env.runMutation(internal.apiKeys.checkRateLimit, { key: apiKey });
 
   if (!rateLimit.allowed) {
     c.header("X-RateLimit-Limit", rateLimit.limit?.toString() || "100");
@@ -349,7 +349,7 @@ async function authMiddleware(c: any, next: any) {
   
   // Log request - await mutation to ensure it completes
   try {
-    await c.env.runMutation(api.apiKeys.logRequest, {
+    await c.env.runMutation(internal.apiKeys.logRequest, {
       apiKeyId: rateLimit.apiKeyId as Id<"apiKeys">,
       endpoint: c.req.path,
       method: c.req.method,
@@ -463,15 +463,24 @@ app.get("/api/health", (c) => {
 app.post("/api/register",
   zValidator("json", z.object({
     email: z.string().email(),
-    name: z.string().min(1),
-    purpose: z.string().optional(),
-  })),
+    name: z.string().trim().min(1).max(100),
+    purpose: z.string().max(500).optional(),
+  }), (result, c) => {
+    if (!result.success) {
+      const fields = [...new Set(result.error.issues.map((i) => String(i.path[0] ?? "body")))];
+      return c.json(errorResponse(
+        `Invalid ${fields.join(", ")}`,
+        "VALIDATION_ERROR",
+        { fields }
+      ), 400);
+    }
+  }),
   async (c) => {
     try {
       // Rate limit by IP to prevent abuse (database-backed for serverless compatibility)
       const clientIp = getClientIp(c);
 
-      const rateCheck = await c.env.runMutation(api.apiKeys.checkRegistrationRateLimit, {
+      const rateCheck = await c.env.runMutation(internal.apiKeys.checkRegistrationRateLimit, {
         ip: clientIp,
       });
       if (!rateCheck.allowed) {
@@ -484,12 +493,15 @@ app.post("/api/register",
 
       const { email, name, purpose } = c.req.valid("json");
 
-      const createKeyArgs: any = { email, name };
-      if (purpose !== undefined) {
-        createKeyArgs.purpose = purpose;
-      }
+      const result = await c.env.runMutation(internal.apiKeys.issueApiKey, {
+        email,
+        name,
+        ...(purpose ? { purpose } : {}),
+      });
 
-      const result = await c.env.runMutation(api.apiKeys.createApiKey, createKeyArgs);
+      if (!result.ok) {
+        return c.json(errorResponse(result.message, result.code), 400);
+      }
 
       return c.json(successResponse({
         apiKey: result.apiKey,
@@ -498,15 +510,6 @@ app.post("/api/register",
       }), 201);
     } catch (error: any) {
       console.error("Registration error:", error);
-
-      // Check if it's the per-email limit error
-      if (error.message?.includes("Maximum") && error.message?.includes("active API keys")) {
-        return c.json(errorResponse(
-          error.message,
-          "KEY_LIMIT_EXCEEDED"
-        ), 400);
-      }
-
       return c.json(errorResponse(
         "Failed to create API key",
         "REGISTRATION_ERROR"

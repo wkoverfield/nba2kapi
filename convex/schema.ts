@@ -206,6 +206,7 @@ export default defineSchema({
     key: v.string(), // Generated UUID
     email: v.string(),
     name: v.string(), // Developer/project name
+    purpose: v.optional(v.string()), // Free-text "what are you building?" from signup
     userId: v.optional(v.string()), // For future user accounts
 
     // Rate limiting
