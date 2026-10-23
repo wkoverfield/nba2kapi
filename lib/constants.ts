@@ -31,4 +31,11 @@ export const CONVEX_SITE_URL =
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || `${CONVEX_SITE_URL}/api`;
 
+/**
+ * PUBLIC_API_ORIGIN - The documented public hostname for the REST API.
+ * Shown in copyable code samples; in-app fetches use CONVEX_SITE_URL so local
+ * development hits the dev deployment.
+ */
+export const PUBLIC_API_ORIGIN = "https://api.nba2kapi.com";
+
 export const API_KEY_STORAGE_KEY = "nba2k_api_key";

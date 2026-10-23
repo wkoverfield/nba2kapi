@@ -477,11 +477,30 @@ export const checkRegistrationRateLimit = internalMutation({
   },
 });
 
+// Shards per day for publicApiDailyCounts (see schema).
+const PUBLIC_COUNT_SHARDS = 8;
+
+/** Count one admitted keyless request against today's counter. */
+async function countPublicRequest(ctx: MutationCtx, now: number) {
+  const date = new Date(now).toISOString().slice(0, 10);
+  const shard = Math.floor(Math.random() * PUBLIC_COUNT_SHARDS);
+  const row = await ctx.db
+    .query("publicApiDailyCounts")
+    .withIndex("by_date_shard", (q) => q.eq("date", date).eq("shard", shard))
+    .first();
+  if (row) {
+    await ctx.db.patch(row._id, { count: row.count + 1 });
+  } else {
+    await ctx.db.insert("publicApiDailyCounts", { date, shard, count: 1 });
+  }
+}
+
 /**
  * Per-IP rate limit for unauthenticated public endpoints (e.g. /api/public/players).
  * Window: 60 seconds. Limit: 60 requests/min/IP.
  * Returns { allowed, remaining, limit, resetAt } so the caller can set standard
- * X-RateLimit-* headers regardless of allow/deny.
+ * X-RateLimit-* headers regardless of allow/deny. Admitted requests are also
+ * counted in publicApiDailyCounts.
  */
 export const checkPublicApiRateLimit = internalMutation({
   args: { ip: v.string() },
@@ -506,6 +525,7 @@ export const checkPublicApiRateLimit = internalMutation({
           windowStart: now,
         });
       }
+      await countPublicRequest(ctx, now);
       return {
         allowed: true,
         remaining: LIMIT - 1,
@@ -521,6 +541,7 @@ export const checkPublicApiRateLimit = internalMutation({
     }
 
     await ctx.db.patch(existing._id, { count: existing.count + 1 });
+    await countPublicRequest(ctx, now);
     return {
       allowed: true,
       remaining: LIMIT - existing.count - 1,
