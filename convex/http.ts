@@ -227,16 +227,33 @@ app.use("/api/*", cors({
 }));
 
 /**
- * Extract the client's real IP from request headers.
- * Cloudflare sets CF-Connecting-IP; standard proxies set X-Forwarded-For.
+ * Client address used as the per-IP rate-limit key.
+ *
+ * Only CF-Connecting-IP is trusted. Every request to the deployment passes
+ * through Cloudflare, which sets this header itself and rejects requests that
+ * try to supply it; the edge also overwrites X-Forwarded-For and drops
+ * X-Real-IP, but reading those is unnecessary. A missing header falls into a
+ * single shared "unknown" bucket rather than trusting anything client-sent.
+ *
+ * IPv6 addresses are reduced to their /64 prefix: one subscriber typically
+ * holds a whole /64, so keying on the full address would let a single client
+ * rotate through effectively unlimited buckets.
  */
 function getClientIp(c: any): string {
-  return (
-    c.req.header("CF-Connecting-IP") ||
-    c.req.header("X-Forwarded-For")?.split(",")[0]?.trim() ||
-    c.req.header("X-Real-IP") ||
-    "unknown"
-  );
+  const ip = c.req.header("CF-Connecting-IP")?.trim();
+  if (!ip) return "unknown";
+  return ip.includes(":") ? ipv6Prefix64(ip) : ip;
+}
+
+/** "2001:db8:a:b:c:d:e:f" or "2001:db8:a:b::1" -> "2001:db8:a:b::/64". */
+function ipv6Prefix64(ip: string): string {
+  const [head, tail] = ip.split("::");
+  const headParts = head ? head.split(":") : [];
+  const tailParts = tail !== undefined && tail !== "" ? tail.split(":") : [];
+  const missing = tail === undefined ? 0 : 8 - headParts.length - tailParts.length;
+  const groups = [...headParts, ...Array(Math.max(0, missing)).fill("0"), ...tailParts];
+  const prefix = groups.slice(0, 4).map((g) => (parseInt(g, 16) || 0).toString(16));
+  return `${prefix.join(":")}::/64`;
 }
 
 /**
