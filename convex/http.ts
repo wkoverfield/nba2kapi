@@ -298,7 +298,10 @@ async function authMiddleware(c: any, next: any) {
     return c.json(errorResponse(
       "API key required",
       "MISSING_API_KEY",
-      { message: "Please provide an API key in the X-API-Key header" }
+      {
+        message: "Please provide an API key in the X-API-Key header. Get a free key at https://nba2kapi.com/dashboard",
+        getApiKey: "https://nba2kapi.com/dashboard",
+      }
     ), 401);
   }
 
@@ -309,7 +312,11 @@ async function authMiddleware(c: any, next: any) {
     return c.json(errorResponse(
       "Invalid or inactive API key",
       "INVALID_API_KEY",
-      { reason: validation.reason }
+      {
+        reason: validation.reason,
+        message: "Check the key in your X-API-Key header, or get a new one at https://nba2kapi.com/dashboard",
+        getApiKey: "https://nba2kapi.com/dashboard",
+      }
     ), 401);
   }
 
