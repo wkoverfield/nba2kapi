@@ -249,7 +249,7 @@ export function KeyDialog({ open, onOpenChange, onSuccess }: KeyDialogProps) {
                 YOUR FIRST CALL
               </div>
               <div className="overflow-hidden rounded-[10px] border border-[#e5e2da] bg-[#faf9f5]">
-                <pre className="m-0 overflow-x-auto px-3.5 py-[11px] font-plex text-[10.5px] leading-[1.6] break-all whitespace-pre-wrap text-[#57534a]">
+                <pre className="m-0 overflow-x-auto px-3.5 py-[11px] font-plex text-[10px] leading-[1.6] break-all whitespace-pre-wrap text-[#57534a]">
                   curl -H &quot;X-API-Key:{" "}
                   <span className="font-bold text-[#1a1918]">{newKey}</span>&quot; \
                   {"\n"}
