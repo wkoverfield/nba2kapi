@@ -227,16 +227,33 @@ app.use("/api/*", cors({
 }));
 
 /**
- * Extract the client's real IP from request headers.
- * Cloudflare sets CF-Connecting-IP; standard proxies set X-Forwarded-For.
+ * Client address used as the per-IP rate-limit key.
+ *
+ * Only CF-Connecting-IP is trusted. Every request to the deployment passes
+ * through Cloudflare, which sets this header itself and rejects requests that
+ * try to supply it; the edge also overwrites X-Forwarded-For and drops
+ * X-Real-IP, but reading those is unnecessary. A missing header falls into a
+ * single shared "unknown" bucket rather than trusting anything client-sent.
+ *
+ * IPv6 addresses are reduced to their /64 prefix: one subscriber typically
+ * holds a whole /64, so keying on the full address would let a single client
+ * rotate through effectively unlimited buckets.
  */
 function getClientIp(c: any): string {
-  return (
-    c.req.header("CF-Connecting-IP") ||
-    c.req.header("X-Forwarded-For")?.split(",")[0]?.trim() ||
-    c.req.header("X-Real-IP") ||
-    "unknown"
-  );
+  const ip = c.req.header("CF-Connecting-IP")?.trim();
+  if (!ip) return "unknown";
+  return ip.includes(":") ? ipv6Prefix64(ip) : ip;
+}
+
+/** "2001:db8:a:b:c:d:e:f" or "2001:db8:a:b::1" -> "2001:db8:a:b::/64". */
+function ipv6Prefix64(ip: string): string {
+  const [head, tail] = ip.split("::");
+  const headParts = head ? head.split(":") : [];
+  const tailParts = tail !== undefined && tail !== "" ? tail.split(":") : [];
+  const missing = tail === undefined ? 0 : 8 - headParts.length - tailParts.length;
+  const groups = [...headParts, ...Array(Math.max(0, missing)).fill("0"), ...tailParts];
+  const prefix = groups.slice(0, 4).map((g) => (parseInt(g, 16) || 0).toString(16));
+  return `${prefix.join(":")}::/64`;
 }
 
 /**
@@ -246,7 +263,7 @@ function getClientIp(c: any): string {
  */
 async function publicIpRateLimitMiddleware(c: any, next: any) {
   const ip = getClientIp(c);
-  const result = await c.env.runMutation(api.apiKeys.checkPublicApiRateLimit, { ip });
+  const result = await c.env.runMutation(internal.apiKeys.checkPublicApiRateLimit, { ip });
 
   c.header("X-RateLimit-Limit", result.limit.toString());
   c.header("X-RateLimit-Remaining", result.remaining.toString());
@@ -286,7 +303,7 @@ async function authMiddleware(c: any, next: any) {
   }
 
   // Validate API key
-  const validation = await c.env.runQuery(api.apiKeys.validateApiKey, { key: apiKey });
+  const validation = await c.env.runQuery(internal.apiKeys.validateApiKey, { key: apiKey });
 
   if (!validation.valid) {
     return c.json(errorResponse(
@@ -298,7 +315,7 @@ async function authMiddleware(c: any, next: any) {
 
   // Check rate limit (atomic - increments counter)
   const startTime = Date.now();
-  const rateLimit = await c.env.runMutation(api.apiKeys.checkRateLimit, { key: apiKey });
+  const rateLimit = await c.env.runMutation(internal.apiKeys.checkRateLimit, { key: apiKey });
 
   if (!rateLimit.allowed) {
     c.header("X-RateLimit-Limit", rateLimit.limit?.toString() || "100");
@@ -349,7 +366,7 @@ async function authMiddleware(c: any, next: any) {
   
   // Log request - await mutation to ensure it completes
   try {
-    await c.env.runMutation(api.apiKeys.logRequest, {
+    await c.env.runMutation(internal.apiKeys.logRequest, {
       apiKeyId: rateLimit.apiKeyId as Id<"apiKeys">,
       endpoint: c.req.path,
       method: c.req.method,
@@ -463,15 +480,24 @@ app.get("/api/health", (c) => {
 app.post("/api/register",
   zValidator("json", z.object({
     email: z.string().email(),
-    name: z.string().min(1),
-    purpose: z.string().optional(),
-  })),
+    name: z.string().trim().min(1).max(100),
+    purpose: z.string().max(500).optional(),
+  }), (result, c) => {
+    if (!result.success) {
+      const fields = [...new Set(result.error.issues.map((i) => String(i.path[0] ?? "body")))];
+      return c.json(errorResponse(
+        `Invalid ${fields.join(", ")}`,
+        "VALIDATION_ERROR",
+        { fields }
+      ), 400);
+    }
+  }),
   async (c) => {
     try {
       // Rate limit by IP to prevent abuse (database-backed for serverless compatibility)
       const clientIp = getClientIp(c);
 
-      const rateCheck = await c.env.runMutation(api.apiKeys.checkRegistrationRateLimit, {
+      const rateCheck = await c.env.runMutation(internal.apiKeys.checkRegistrationRateLimit, {
         ip: clientIp,
       });
       if (!rateCheck.allowed) {
@@ -484,12 +510,15 @@ app.post("/api/register",
 
       const { email, name, purpose } = c.req.valid("json");
 
-      const createKeyArgs: any = { email, name };
-      if (purpose !== undefined) {
-        createKeyArgs.purpose = purpose;
-      }
+      const result = await c.env.runMutation(internal.apiKeys.issueApiKey, {
+        email,
+        name,
+        ...(purpose ? { purpose } : {}),
+      });
 
-      const result = await c.env.runMutation(api.apiKeys.createApiKey, createKeyArgs);
+      if (!result.ok) {
+        return c.json(errorResponse(result.message, result.code), 400);
+      }
 
       return c.json(successResponse({
         apiKey: result.apiKey,
@@ -498,15 +527,6 @@ app.post("/api/register",
       }), 201);
     } catch (error: any) {
       console.error("Registration error:", error);
-
-      // Check if it's the per-email limit error
-      if (error.message?.includes("Maximum") && error.message?.includes("active API keys")) {
-        return c.json(errorResponse(
-          error.message,
-          "KEY_LIMIT_EXCEEDED"
-        ), 400);
-      }
-
       return c.json(errorResponse(
         "Failed to create API key",
         "REGISTRATION_ERROR"
