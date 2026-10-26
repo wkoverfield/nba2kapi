@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Lock, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { fillApiKey, useStoredApiKey } from "@/lib/stored-api-key";
 
 /** Docs building blocks for the paper/editorial reskin. */
 
@@ -151,9 +152,11 @@ export function CodeRail({
 }) {
   const [lang, setLang] = useState(0);
   const [copied, setCopied] = useState(false);
+  const storedKey = useStoredApiKey();
+  const code = fillApiKey(samples[lang].code, storedKey);
 
   const copy = () => {
-    navigator.clipboard.writeText(samples[lang].code).then(() => {
+    navigator.clipboard.writeText(code).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1400);
     });
@@ -185,7 +188,7 @@ export function CodeRail({
           </button>
         </div>
         <pre className="m-0 overflow-x-auto px-4 py-3.5 font-plex text-[10px] leading-[1.7] text-white/85">
-          {samples[lang].code}
+          {code}
         </pre>
       </div>
 
