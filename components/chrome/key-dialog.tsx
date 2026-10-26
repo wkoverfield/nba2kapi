@@ -311,7 +311,7 @@ export function KeyDialog({ open, onOpenChange, onSuccess }: KeyDialogProps) {
                   onClick={() => handleClose(false)}
                   className="flex-1 cursor-pointer rounded-full bg-[#1a1918] py-2.5 text-center text-[12.5px] font-semibold text-[#faf9f5] no-underline transition-[background,transform] duration-150 select-none hover:bg-[#333] active:scale-[0.98] motion-reduce:transition-none"
                 >
-                  Go to the dashboard →
+                  Open dashboard{"\u00a0"}→
                 </Link>
                 <Link
                   href="/playground"
