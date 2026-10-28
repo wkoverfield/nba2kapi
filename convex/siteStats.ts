@@ -157,6 +157,11 @@ export const publicImpact = query({
       asOf: snap.date,
       apiKeys: m.apiKeysTotal ?? 0,
       requests: m.apiRequestsTotal ?? 0,
+      // keyed plus keyless calls
+      totalRequests: (m.apiRequestsTotal ?? 0) + (m.publicApiRequestsTotal ?? 0),
+      pageviews: m.pageviewsTotal ?? 0,
+      // per-day unique visitors summed, so a returning visitor counts once per day
+      visits: m.uniquesToDate ?? 0,
     };
   },
 });
