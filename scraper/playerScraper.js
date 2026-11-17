@@ -147,18 +147,36 @@ export async function scrapePlayerDetails(page, basicPlayer) {
         const value = parseInt(span.textContent.trim());
         if (isNaN(value)) continue;
 
-        // Get attribute name (text after the span)
-        let attributeName = li.textContent.replace(span.textContent, '').trim();
-        // Remove trailing whitespace and help icons
-        attributeName = attributeName.split('\n')[0].trim();
+        // The label is the <li>'s own text. Its sibling spans hold the value
+        // (.attribute-box), the tooltip icon and, for an attribute that moved
+        // in the latest roster update, a change marker (.exponent, "-5" or
+        // "+2"). Reading the whole textContent folds the marker into the
+        // label and yields a mis-cased key ("5 Close Shot" -> "CloseShot").
+        let attributeName = Array.from(li.childNodes)
+          .filter((node) => node.nodeType === Node.TEXT_NODE)
+          .map((node) => node.textContent)
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (!attributeName) {
+          // Label wrapped in an element: fall back to the full text minus
+          // the value, then drop any leading change marker.
+          attributeName = li.textContent
+            .replace(span.textContent, '')
+            .trim()
+            .split('\n')[0]
+            .replace(/^[+-]?\d+\s*/, '')
+            .trim();
+        }
 
-        // Convert attribute name to camelCase key
+        // Convert attribute name to camelCase key. Leading digits go first so
+        // the lowercase step always lands on a letter.
         const key = attributeName
           .replace(/[^\w\s-]/g, '')
           .replace(/\s+(.)/g, (_, c) => c.toUpperCase())
-          .replace(/^(.)/, (_, c) => c.toLowerCase())
           .replace(/-/g, '')
-          .replace(/^\d+/, ''); // Remove leading digits
+          .replace(/^\d+/, '')
+          .replace(/^(.)/, (_, c) => c.toLowerCase());
 
         // Normalize attribute names to match application expectations
         const attributeNameMap = {
