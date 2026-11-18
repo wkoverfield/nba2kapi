@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { TopNav } from "@/components/chrome/top-nav";
-import { FooterStrip } from "@/components/chrome/footer-strip";
+import { SiteFooter } from "@/components/chrome/site-footer";
 import { Headshot } from "@/components/ui/headshot";
 import { getRatingClasses } from "@/lib/rating-colors";
 import { getTeamAbbreviation, getTeamConference, formatTeamShortName } from "@/lib/team-abbr";
@@ -191,7 +191,7 @@ function Board() {
       </div>
 
       <div className="mt-12">
-        <FooterStrip width="narrow" />
+        <SiteFooter width="narrow" />
       </div>
     </div>
   );

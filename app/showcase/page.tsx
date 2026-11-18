@@ -3,7 +3,7 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { TopNav } from "@/components/chrome/top-nav";
-import { FooterStrip } from "@/components/chrome/footer-strip";
+import { SiteFooter } from "@/components/chrome/site-footer";
 import { ShowcaseCard } from "@/components/showcase/showcase-card";
 import { SubmitProjectDialog } from "@/components/showcase/submit-project-dialog";
 
@@ -47,7 +47,7 @@ export default function ShowcasePage() {
         )}
       </main>
 
-      <FooterStrip />
+      <SiteFooter />
     </div>
   );
 }

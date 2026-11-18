@@ -7,7 +7,7 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { TopNav } from "@/components/chrome/top-nav";
-import { FooterStrip } from "@/components/chrome/footer-strip";
+import { SiteFooter } from "@/components/chrome/site-footer";
 import { PlayerTable, type TablePlayer } from "@/components/ui/player-table";
 import { ATTRIBUTE_PARAM_ALIASES } from "@/convex/_validation";
 import { filterPlayers } from "@/convex/playerFilters";
@@ -752,7 +752,7 @@ function Playground() {
         </p>
       </div>
 
-      <FooterStrip width="wide" />
+      <SiteFooter width="wide" />
     </div>
   );
 }

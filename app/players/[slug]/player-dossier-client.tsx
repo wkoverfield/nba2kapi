@@ -7,7 +7,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { usePreloadedQuery, useQuery, type Preloaded } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { TopNav } from "@/components/chrome/top-nav";
-import { FooterStrip } from "@/components/chrome/footer-strip";
+import { SiteFooter } from "@/components/chrome/site-footer";
 import { Headshot } from "@/components/ui/headshot";
 import { getRatingClasses, getRatingTier, getAttributeColor } from "@/lib/rating-colors";
 import { getTeamAbbreviation, formatTeamNickname } from "@/lib/team-abbr";
@@ -269,7 +269,7 @@ function PlayerDossier({
             LOADING VERSION
           </p>
         </div>
-        <FooterStrip />
+        <SiteFooter />
       </div>
     );
   }
@@ -288,7 +288,7 @@ function PlayerDossier({
             .
           </p>
         </div>
-        <FooterStrip />
+        <SiteFooter />
       </div>
     );
   }
@@ -739,7 +739,7 @@ function PlayerDossier({
         </div>
       </div>
 
-      <FooterStrip />
+      <SiteFooter />
     </div>
   );
 }

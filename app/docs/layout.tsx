@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { TopNav } from "@/components/chrome/top-nav";
-import { FooterStrip } from "@/components/chrome/footer-strip";
+import { SiteFooter } from "@/components/chrome/site-footer";
 import { toast } from "sonner";
 import { LLMS_FULL } from "@/lib/llms-docs";
 import { API_KEY_STORAGE_KEY } from "@/lib/constants";
@@ -118,7 +118,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
         </main>
       </div>
 
-      <FooterStrip />
+      <SiteFooter />
     </div>
   );
 }

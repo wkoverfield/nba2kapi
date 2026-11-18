@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { TopNav } from "@/components/chrome/top-nav";
-import { FooterStrip } from "@/components/chrome/footer-strip";
+import { SiteFooter } from "@/components/chrome/site-footer";
 import { Headshot } from "@/components/ui/headshot";
 import { getRatingClasses } from "@/lib/rating-colors";
 import { SITE_URL, safeJsonLd } from "@/lib/seo";
@@ -50,7 +50,7 @@ export default async function BadgeDetailPage({ params }: Props) {
           </div>
         </section>
       </main>
-      <FooterStrip width="wide" />
+      <SiteFooter width="wide" />
     </div>
   );
 }

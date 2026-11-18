@@ -7,7 +7,7 @@ import { Copy, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { TopNav } from "@/components/chrome/top-nav";
-import { FooterStrip } from "@/components/chrome/footer-strip";
+import { SiteFooter } from "@/components/chrome/site-footer";
 import { KeyDialog } from "@/components/chrome/key-dialog";
 import { API_KEY_STORAGE_KEY } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -352,7 +352,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      <FooterStrip width="narrow" />
+      <SiteFooter width="narrow" />
 
       <KeyDialog
         open={showDialog}

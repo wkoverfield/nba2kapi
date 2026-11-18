@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { TopNav } from "@/components/chrome/top-nav";
-import { FooterStrip } from "@/components/chrome/footer-strip";
+import { SiteFooter } from "@/components/chrome/site-footer";
 import {
   Dialog,
   DialogContent,
@@ -304,7 +304,7 @@ export default function FeedbackPage() {
         </div>
       </main>
 
-      <FooterStrip />
+      <SiteFooter />
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { TopNav } from "@/components/chrome/top-nav";
-import { FooterStrip } from "@/components/chrome/footer-strip";
+import { SiteFooter } from "@/components/chrome/site-footer";
 import { BadgeExplorerClient } from "./badge-explorer-client";
 
 export const metadata: Metadata = {
@@ -20,7 +20,7 @@ export default async function BadgesPage() {
       <main className="mx-auto max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2 pb-12">
         <Suspense fallback={null}><BadgeExplorerClient badges={badges} /></Suspense>
       </main>
-      <FooterStrip />
+      <SiteFooter />
     </div>
   );
 }
