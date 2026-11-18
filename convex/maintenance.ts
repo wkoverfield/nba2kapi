@@ -6,6 +6,7 @@
 import { internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
+import { ATTRIBUTE_KEY_ALIASES } from "./playerHistory";
 
 /**
  * Clean up request logs older than the retention window.
@@ -148,6 +149,115 @@ export const pruneSlugMismatchedPlayers = internalMutation({
       sample: batch.slice(0, 5).map((p) => ({ name: p.name, slug: p.slug, team: p.team })),
     };
     console.log("[pruneSlugMismatchedPlayers]", JSON.stringify(result));
+    return result;
+  },
+});
+
+/**
+ * Repair playerRatingHistory entries written by a scrape that stored attribute
+ * changes under mis-cased keys ("CloseShot", "Layup") with `prev: 0`.
+ *
+ * For every "update" entry of `scrapeJobId` inside the scrapedAt window:
+ *   - each attributeChanges key is rewritten to its canonical form;
+ *   - `prev` is restored from the player's snapshot on `snapshotDate` (the
+ *     last weekly snapshot taken before that scrape);
+ *   - a change whose restored `prev` equals `new` was never a change and is
+ *     dropped;
+ *   - an attribute the snapshot does not have keeps its recorded `prev`.
+ * Entries without a snapshot only get their keys rewritten. Overall and badge
+ * fields are never touched. Idempotent: a second run patches nothing. Pass
+ * dryRun to preview.
+ */
+export const repairMiscasedAttributeHistory = internalMutation({
+  args: {
+    scrapeJobId: v.string(),
+    scrapedFrom: v.string(), // ISO, inclusive
+    scrapedTo: v.string(), // ISO, exclusive
+    snapshotDate: v.string(), // YYYY-MM-DD
+    dryRun: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const canonical = (key: string) => {
+      const camel = key.charAt(0).toLowerCase() + key.slice(1);
+      return ATTRIBUTE_KEY_ALIASES[camel] ?? camel;
+    };
+
+    const entries = await ctx.db
+      .query("playerRatingHistory")
+      .withIndex("by_scrapedAt", (q) =>
+        q.gte("scrapedAt", args.scrapedFrom).lt("scrapedAt", args.scrapedTo)
+      )
+      .collect();
+
+    let examined = 0;
+    let patched = 0;
+    let keysRenamed = 0;
+    let prevRestored = 0;
+    let changesDropped = 0;
+    let withoutSnapshot = 0;
+    const sample: { playerId: string; before: unknown; after: unknown }[] = [];
+
+    for (const entry of entries) {
+      if (entry.scrapeJobId !== args.scrapeJobId) continue;
+      if (entry.changeType !== "update" || !entry.attributeChanges) continue;
+      examined++;
+
+      const snapshot = await ctx.db
+        .query("playerSnapshots")
+        .withIndex("by_playerId_and_snapshotDate", (q) =>
+          q.eq("playerId", entry.playerId).eq("snapshotDate", args.snapshotDate)
+        )
+        .first();
+      if (!snapshot) withoutSnapshot++;
+      const before: Record<string, number> = {};
+      for (const [key, value] of Object.entries(snapshot?.attributes ?? {})) {
+        before[canonical(key)] = value;
+      }
+
+      const repaired: Record<string, { prev: number; new: number }> = {};
+      for (const [key, change] of Object.entries(entry.attributeChanges)) {
+        const name = canonical(key);
+        if (name !== key) keysRenamed++;
+        const prev = before[name];
+        if (prev === undefined) {
+          repaired[name] = change;
+        } else if (prev === change.new) {
+          changesDropped++;
+        } else {
+          if (prev !== change.prev) prevRestored++;
+          repaired[name] = { prev, new: change.new };
+        }
+      }
+
+      const sorted = (o: Record<string, { prev: number; new: number }>) =>
+        Object.keys(o)
+          .sort()
+          .map((k) => `${k}:${o[k].prev}:${o[k].new}`)
+          .join("|");
+      if (sorted(repaired) === sorted(entry.attributeChanges)) continue;
+
+      patched++;
+      if (sample.length < 3) {
+        sample.push({ playerId: entry.playerId, before: entry.attributeChanges, after: repaired });
+      }
+      if (!args.dryRun) {
+        await ctx.db.patch(entry._id, {
+          attributeChanges: Object.keys(repaired).length > 0 ? repaired : undefined,
+        });
+      }
+    }
+
+    const result = {
+      examined,
+      patched,
+      keysRenamed,
+      prevRestored,
+      changesDropped,
+      withoutSnapshot,
+      dryRun: !!args.dryRun,
+      sample,
+    };
+    console.log("[repairMiscasedAttributeHistory]", JSON.stringify(result));
     return result;
   },
 });

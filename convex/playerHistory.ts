@@ -19,7 +19,7 @@ const TIER_RANK: Record<string, number> = {
 };
 
 // Scraped labels that differ from the stored attribute name.
-const ATTRIBUTE_KEY_ALIASES: Record<string, string> = {
+export const ATTRIBUTE_KEY_ALIASES: Record<string, string> = {
   layup: "drivingLayup",
   overallDurability: "durability",
 };
@@ -30,7 +30,7 @@ const ATTRIBUTE_KEY_ALIASES: Record<string, string> = {
  * that arrives or was stored mis-cased ("CloseShot") is the same attribute as
  * "closeShot" instead of a new one whose previous value reads as 0.
  */
-function canonicalAttributes(
+export function canonicalAttributes(
   attributes: Record<string, number>
 ): Record<string, number> {
   const out: Record<string, number> = {};
@@ -307,9 +307,9 @@ const playerUpsertFields = {
 };
 
 function requireAdminKey(provided: string) {
-  const envKey = process.env.ADMIN_API_KEY;
-  if (provided !== envKey) {
-    throw new Error(`Unauthorized: Invalid admin key. Provided starts with: ${provided?.substring(0, 5)}, Expected starts with: ${envKey?.substring(0, 5)}`);
+  // The message is returned to the caller, so it must not describe the key.
+  if (provided !== process.env.ADMIN_API_KEY) {
+    throw new Error("Unauthorized: Invalid admin key");
   }
 }
 
