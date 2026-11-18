@@ -37,7 +37,11 @@ concurrency:
 
 jobs:
   scrape:
-    runs-on: ubuntu-latest
+    # LANDMINE: pinned, not ubuntu-latest. The installed Playwright release
+    # only ships Chromium for the Ubuntu versions it knows; when ubuntu-latest
+    # moved to 26.04 the browser install step failed and no scrape ran. Bump
+    # this together with the playwright dependency.
+    runs-on: ubuntu-24.04
     # Paced requests make one curr attempt ~30 min; scrape-retry.sh may take
     # up to 5 attempts, and an 'all' dispatch runs three team types in a row.
     timeout-minutes: 300
