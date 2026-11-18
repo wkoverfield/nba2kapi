@@ -577,4 +577,23 @@ export default defineSchema({
     note: v.optional(v.string()),
     updatedAt: v.string(), // ISO timestamp
   }).index("by_version", ["gameVersion"]),
+
+  /**
+   * Cron Runs - one row per run of a scheduled job, written by cronRuns.run
+   * after the job's work has committed, thrown, or stopped at the batch cap.
+   * A day with no row for a job means the run never started or the action was
+   * killed before it could record (actions are not retried). Rows older than
+   * the retention window are trimmed as new ones are written.
+   */
+  cronRuns: defineTable({
+    job: v.string(), // name as registered in crons.ts
+    startedAt: v.number(), // ms
+    finishedAt: v.number(), // ms
+    ok: v.boolean(),
+    batches: v.number(), // mutations the run executed
+    result: v.optional(v.string()), // JSON summary, partial on failure
+    error: v.optional(v.string()), // message on failure
+  })
+    .index("by_job_and_startedAt", ["job", "startedAt"])
+    .index("by_startedAt", ["startedAt"]),
 });

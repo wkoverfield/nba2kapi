@@ -32,6 +32,9 @@ export const cleanupOldLogs = internalMutation({
     batchSize: v.optional(v.number()),
     // Running total across the rescheduled batches of one cleanup pass.
     deletedSoFar: v.optional(v.number()),
+    // false when a caller drives the batches itself (cronRuns.run) and reads
+    // `done` to decide whether to call again.
+    reschedule: v.optional(v.boolean()),
   },
   handler: async (ctx, args): Promise<{ deleted: number; done: boolean }> => {
     const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
@@ -49,10 +52,12 @@ export const cleanupOldLogs = internalMutation({
     const deleted = (args.deletedSoFar ?? 0) + batch.length;
 
     if (batch.length === batchSize) {
-      await ctx.scheduler.runAfter(0, internal.maintenance.cleanupOldLogs, {
-        batchSize,
-        deletedSoFar: deleted,
-      });
+      if (args.reschedule ?? true) {
+        await ctx.scheduler.runAfter(0, internal.maintenance.cleanupOldLogs, {
+          batchSize,
+          deletedSoFar: deleted,
+        });
+      }
       return { deleted, done: false };
     }
 

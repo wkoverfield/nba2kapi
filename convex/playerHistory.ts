@@ -503,19 +503,36 @@ export const getTopRatingChanges = query({
 });
 
 /**
- * Create weekly snapshots for all players (called by cron)
+ * Create weekly snapshots of player state, one page of players per call.
+ *
+ * A single transaction over the whole players table costs one index lookup
+ * per player (Convex allows 4,096 index ranges per transaction) and reads and
+ * writes every player's attributes and badges, so it stops fitting as the
+ * table grows. Each call handles `pageSize` players and returns the cursor
+ * for the next one; the caller repeats until `done`.
+ *
+ * `snapshotDate` is fixed by the caller for the whole pass so a pass that
+ * crosses midnight UTC stays on one date. Idempotent per player and date.
  */
 export const createWeeklySnapshots = internalMutation({
-  handler: async (ctx) => {
-    const players = await ctx.db.query("players").collect();
-    const snapshotDate = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+  args: {
+    snapshotDate: v.optional(v.string()), // YYYY-MM-DD, defaults to today UTC
+    cursor: v.optional(v.union(v.string(), v.null())),
+    pageSize: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
     const now = new Date().toISOString();
+    const snapshotDate = args.snapshotDate ?? now.split("T")[0];
+    const pageSize = Math.max(1, Math.min(args.pageSize ?? 300, 1000));
+
+    const page = await ctx.db
+      .query("players")
+      .paginate({ numItems: pageSize, cursor: args.cursor ?? null });
 
     let created = 0;
     let skipped = 0;
 
-    for (const player of players) {
-      // Check if snapshot already exists for this date
+    for (const player of page.page) {
       const existing = await ctx.db
         .query("playerSnapshots")
         .withIndex("by_playerId_and_snapshotDate", (q) =>
@@ -540,7 +557,13 @@ export const createWeeklySnapshots = internalMutation({
       }
     }
 
-    return { snapshotsCreated: created, skipped, date: snapshotDate };
+    return {
+      snapshotsCreated: created,
+      skipped,
+      date: snapshotDate,
+      cursor: page.continueCursor,
+      done: page.isDone,
+    };
   },
 });
 
