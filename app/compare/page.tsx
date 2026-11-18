@@ -11,7 +11,7 @@ import { ArrowLeftRight, ChevronLeft, ChevronRight, Search, X } from "lucide-rea
 import { api } from "@/convex/_generated/api";
 import { ATTRIBUTE_CATEGORIES } from "@/convex/attributeCategories";
 import { TopNav } from "@/components/chrome/top-nav";
-import { FooterStrip } from "@/components/chrome/footer-strip";
+import { SiteFooter } from "@/components/chrome/site-footer";
 import { Headshot } from "@/components/ui/headshot";
 import { getAttributeDisplayName } from "@/lib/attribute-normalizer";
 import { getRatingClasses } from "@/lib/rating-colors";
@@ -275,7 +275,7 @@ function Comparison() {
           </div>
         )}
       </main>
-      <FooterStrip width="wide" />
+      <SiteFooter width="wide" />
       <PlayerPicker open={pickerSide !== null} onOpenChange={(open) => !open && setPickerSide(null)} onPick={choose} />
     </div>
   );

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { SHELL_WIDTHS } from "@/components/chrome/shell-widths";
 
 const FOOTER_LINK =
   "text-[13.5px] text-[#57534a] no-underline transition-colors duration-150 hover:text-[#1a1918]";
@@ -7,12 +9,13 @@ const COLUMN_LABEL =
   "mb-3.5 font-plex text-[11px] tracking-[0.12em] text-[#8a8577]";
 
 /**
- * Shared footer for reskinned (paper/editorial) pages.
+ * Shared footer for reskinned (paper/editorial) pages. `width` matches the
+ * page's TopNav so the footer columns line up with the content above.
  */
-export function SiteFooter() {
+export function SiteFooter({ width = "default" }: { width?: keyof typeof SHELL_WIDTHS }) {
   return (
     <footer className="border-t border-[#e5e2da] bg-[#f5f3ec]">
-      <div className="mx-auto max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-14 pb-10">
+      <div className={cn("mx-auto px-[clamp(20px,4vw,48px)] pt-14 pb-10", SHELL_WIDTHS[width])}>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-10">
           <div>
             <div className="mb-3 font-display text-[19px] font-extrabold tracking-[-0.02em] text-[#1a1918]">

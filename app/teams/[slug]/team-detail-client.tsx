@@ -8,7 +8,7 @@ import { usePreloadedQuery, useQuery, type Preloaded } from "convex/react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { TopNav } from "@/components/chrome/top-nav";
-import { FooterStrip } from "@/components/chrome/footer-strip";
+import { SiteFooter } from "@/components/chrome/site-footer";
 import { Headshot } from "@/components/ui/headshot";
 import { PlayerTable, type TablePlayer } from "@/components/ui/player-table";
 import { buildDepthColumns, depthStarters, depthBench, DEPTH_POSITIONS } from "@/lib/depth-chart";
@@ -552,7 +552,7 @@ function TeamPage({
       </div>
 
       <div className="mt-12">
-        <FooterStrip />
+        <SiteFooter />
       </div>
     </div>
   );

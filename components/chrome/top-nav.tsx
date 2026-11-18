@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Search } from "lucide-react";
 import { CommandPalette } from "@/components/chrome/command-palette";
 import { cn } from "@/lib/utils";
+import { SHELL_WIDTHS } from "@/components/chrome/shell-widths";
 
 const NAV_LINKS = [
   { label: "Playground", href: "/playground" },
@@ -66,12 +67,6 @@ type TopNavProps = {
   /** Signed-in chip: masked key ("2k_••••xB7q") shown next to the CTA. */
   maskedKey?: string | null;
 };
-
-export const SHELL_WIDTHS = {
-  narrow: "max-w-[1280px]",
-  default: "max-w-[1360px]",
-  wide: "max-w-[1440px]",
-} as const;
 
 /**
  * Shared chrome for reskinned (paper/editorial) pages: wordmark, pill nav,
