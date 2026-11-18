@@ -4,6 +4,7 @@
  */
 
 import { internalMutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 
 /**
@@ -14,28 +15,48 @@ import { v } from "convex/values";
  * series, so anything below ~40 days would silently truncate that report. The
  * durable long-term source of per-day API volume is metricSnapshots
  * (metricsRollup), which is independent of this table.
+ *
+ * Deletes one bounded batch per transaction and reschedules itself while a
+ * full batch comes back, so a backlog of any size drains without one
+ * transaction reaching Convex's per-transaction limits (32,000 documents
+ * read, 16,000 written). The index range bounds the read to expired rows
+ * only; filtering after an unbounded index scan reads the whole table.
+ * Timestamps are UTC ISO strings, so string order is time order.
  */
 const RETENTION_DAYS = 90;
+const CLEANUP_BATCH_SIZE = 2000;
 
 export const cleanupOldLogs = internalMutation({
-  handler: async (ctx) => {
+  args: {
+    batchSize: v.optional(v.number()),
+    // Running total across the rescheduled batches of one cleanup pass.
+    deletedSoFar: v.optional(v.number()),
+  },
+  handler: async (ctx, args): Promise<{ deleted: number; done: boolean }> => {
     const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    const batchSize = Math.max(1, Math.min(args.batchSize ?? CLEANUP_BATCH_SIZE, 4000));
 
-    // Find old logs
-    const oldLogs = await ctx.db
+    const batch = await ctx.db
       .query("requestLogs")
-      .withIndex("by_timestamp")
-      .filter((q) => q.lt(q.field("timestamp"), cutoff))
-      .collect();
+      .withIndex("by_timestamp", (q) => q.lt("timestamp", cutoff))
+      .take(batchSize);
 
-    // Delete them
-    for (const log of oldLogs) {
+    for (const log of batch) {
       await ctx.db.delete(log._id);
     }
 
-    console.log(`Cleaned up ${oldLogs.length} old request logs`);
+    const deleted = (args.deletedSoFar ?? 0) + batch.length;
 
-    return { deleted: oldLogs.length };
+    if (batch.length === batchSize) {
+      await ctx.scheduler.runAfter(0, internal.maintenance.cleanupOldLogs, {
+        batchSize,
+        deletedSoFar: deleted,
+      });
+      return { deleted, done: false };
+    }
+
+    console.log(`Cleaned up ${deleted} old request logs`);
+    return { deleted, done: true };
   },
 });
 
