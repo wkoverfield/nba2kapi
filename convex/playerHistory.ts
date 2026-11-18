@@ -18,6 +18,29 @@ const TIER_RANK: Record<string, number> = {
   Legendary: 5,
 };
 
+// Scraped labels that differ from the stored attribute name.
+const ATTRIBUTE_KEY_ALIASES: Record<string, string> = {
+  layup: "drivingLayup",
+  overallDurability: "durability",
+};
+
+/**
+ * Canonical form of players.attributes: camelCase keys, known aliases folded.
+ * Applied to every write, and to the stored side of a comparison, so a key
+ * that arrives or was stored mis-cased ("CloseShot") is the same attribute as
+ * "closeShot" instead of a new one whose previous value reads as 0.
+ */
+function canonicalAttributes(
+  attributes: Record<string, number>
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [key, value] of Object.entries(attributes)) {
+    const camel = key.charAt(0).toLowerCase() + key.slice(1);
+    out[ATTRIBUTE_KEY_ALIASES[camel] ?? camel] = value;
+  }
+  return out;
+}
+
 /**
  * Detect changes between old and new player data
  */
@@ -42,7 +65,7 @@ function detectChanges(
   if (overallDelta !== undefined) hasChanges = true;
 
   // Check attributes
-  const oldAttrs = oldPlayer.attributes || {};
+  const oldAttrs = canonicalAttributes(oldPlayer.attributes || {});
   const newAttrs = newPlayer.attributes || {};
 
   for (const [key, newValue] of Object.entries(newAttrs)) {
@@ -144,6 +167,9 @@ async function upsertWithHistoryHelper(
   }
 ) {
   const { scrapeJobId, ...playerData } = args;
+  if (playerData.attributes) {
+    playerData.attributes = canonicalAttributes(playerData.attributes);
+  }
   const now = new Date().toISOString();
   const gameVersion = args.gameVersion || CURRENT_GAME_VERSION;
 
@@ -236,7 +262,7 @@ async function upsertWithHistoryHelper(
       changeType: "initial",
     };
     if (scrapeJobId) initialEntry.scrapeJobId = scrapeJobId;
-    if (args.attributes) initialEntry.fullAttributes = args.attributes;
+    if (playerData.attributes) initialEntry.fullAttributes = playerData.attributes;
     if (args.badges) initialEntry.fullBadges = args.badges;
     if (args.hotZones) initialEntry.hotZones = args.hotZones;
 
