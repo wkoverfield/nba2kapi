@@ -18,41 +18,44 @@ import { v } from "convex/values";
 
 const RETENTION_DAYS = 180;
 // Upper bound on batches per run, so a job that never reports done cannot
-// loop until the action times out.
+// loop until the action times out. A run that stops here is recorded as
+// failed.
 const MAX_BATCHES = 200;
 
-type JobOutcome = { batches: number; result: Record<string, unknown> };
+/**
+ * Mutable per-run state. Jobs update it as each batch commits, so a run that
+ * throws part way still reports the batches that landed.
+ */
+type Progress = { batches: number; complete: boolean; result: Record<string, unknown> };
 
 const JOBS = {
-  "daily metric snapshot": async (ctx: ActionCtx): Promise<JobOutcome> => {
+  "daily metric snapshot": async (ctx: ActionCtx, p: Progress) => {
     const r = await ctx.runMutation(internal.metricsRollup.snapshotDailyMetrics, {});
-    return { batches: 1, result: { date: r.date, updated: r.updated } };
+    p.batches = 1;
+    p.result = { date: r.date, updated: r.updated };
+    p.complete = true;
   },
 
-  "cleanup old logs": async (ctx: ActionCtx): Promise<JobOutcome> => {
-    let batches = 0;
+  "cleanup old logs": async (ctx: ActionCtx, p: Progress) => {
     let deleted = 0;
-    let done = false;
-    while (!done && batches < MAX_BATCHES) {
+    while (!p.complete && p.batches < MAX_BATCHES) {
       const r: { deleted: number; done: boolean } = await ctx.runMutation(
         internal.maintenance.cleanupOldLogs,
         { deletedSoFar: deleted, reschedule: false }
       );
-      batches++;
       deleted = r.deleted;
-      done = r.done;
+      p.batches++;
+      p.result = { deleted };
+      p.complete = r.done;
     }
-    return { batches, result: { deleted, done } };
   },
 
-  "create weekly snapshots": async (ctx: ActionCtx): Promise<JobOutcome> => {
+  "create weekly snapshots": async (ctx: ActionCtx, p: Progress) => {
     const snapshotDate = new Date().toISOString().split("T")[0];
-    let batches = 0;
     let created = 0;
     let skipped = 0;
     let cursor: string | null = null;
-    let done = false;
-    while (!done && batches < MAX_BATCHES) {
+    while (!p.complete && p.batches < MAX_BATCHES) {
       const r: {
         snapshotsCreated: number;
         skipped: number;
@@ -62,29 +65,27 @@ const JOBS = {
         snapshotDate,
         cursor,
       });
-      batches++;
       created += r.snapshotsCreated;
       skipped += r.skipped;
       cursor = r.cursor;
-      done = r.done;
+      p.batches++;
+      p.result = { date: snapshotDate, created, skipped };
+      p.complete = r.done;
     }
-    return { batches, result: { date: snapshotDate, created, skipped, done } };
   },
 
-  "prune pageview visits": async (ctx: ActionCtx): Promise<JobOutcome> => {
-    let batches = 0;
+  "prune pageview visits": async (ctx: ActionCtx, p: Progress) => {
     let deleted = 0;
-    let more = true;
-    while (more && batches < MAX_BATCHES) {
+    while (!p.complete && p.batches < MAX_BATCHES) {
       const r: { deleted: number; more: boolean } = await ctx.runMutation(
         internal.siteStats.pruneVisits,
         {}
       );
-      batches++;
       deleted += r.deleted;
-      more = r.more;
+      p.batches++;
+      p.result = { deleted };
+      p.complete = !r.more;
     }
-    return { batches, result: { deleted, done: !more } };
   },
 } as const;
 
@@ -98,35 +99,45 @@ const jobName = v.union(
 );
 
 /**
- * Run one scheduled job and record the outcome. A failure is recorded and
- * then rethrown, so it also appears as a failed function in the Convex logs.
+ * Run one scheduled job and record the outcome.
+ *
+ * A run is recorded as failed when the job throws or when it stops at
+ * MAX_BATCHES before finishing; the row keeps the batches that committed
+ * and the partial result. A thrown error is rethrown after recording, so it
+ * also appears as a failed function in the Convex logs.
  */
 export const run = internalAction({
   args: { job: jobName },
   handler: async (ctx, args) => {
     const startedAt = Date.now();
+    const progress: Progress = { batches: 0, complete: false, result: {} };
+
+    let thrown: unknown;
     try {
-      const outcome = await JOBS[args.job](ctx);
-      await ctx.runMutation(internal.cronRuns.record, {
-        job: args.job,
-        startedAt,
-        finishedAt: Date.now(),
-        ok: true,
-        batches: outcome.batches,
-        result: JSON.stringify(outcome.result),
-      });
-      return outcome;
+      await JOBS[args.job](ctx, progress);
     } catch (error) {
-      await ctx.runMutation(internal.cronRuns.record, {
-        job: args.job,
-        startedAt,
-        finishedAt: Date.now(),
-        ok: false,
-        batches: 0,
-        error: (error instanceof Error ? error.message : String(error)).slice(0, 2000),
-      });
-      throw error;
+      thrown = error;
     }
+
+    const error =
+      thrown !== undefined
+        ? (thrown instanceof Error ? thrown.message : String(thrown)).slice(0, 2000)
+        : !progress.complete
+          ? `Stopped after ${MAX_BATCHES} batches before the job finished`
+          : undefined;
+
+    await ctx.runMutation(internal.cronRuns.record, {
+      job: args.job,
+      startedAt,
+      finishedAt: Date.now(),
+      ok: error === undefined,
+      batches: progress.batches,
+      result: JSON.stringify(progress.result),
+      ...(error !== undefined ? { error } : {}),
+    });
+
+    if (thrown !== undefined) throw thrown;
+    return { ok: error === undefined, batches: progress.batches, result: progress.result };
   },
 });
 
