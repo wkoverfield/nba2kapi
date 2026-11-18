@@ -40,11 +40,15 @@ crons.daily(
  * We keep 90 for headroom; the durable long-term source of per-day API volume
  * is metricSnapshots (metricsRollup), not this table. Do not lower below ~40
  * without widening or retiring that reader first.
+ *
+ * The job deletes in bounded batches and reschedules itself until the
+ * backlog is gone, so one cron tick may show as several function runs.
  */
 crons.daily(
   "cleanup old logs",
   { hourUTC: 2, minuteUTC: 0 },
-  internal.maintenance.cleanupOldLogs
+  internal.maintenance.cleanupOldLogs,
+  {}
 );
 
 /**
