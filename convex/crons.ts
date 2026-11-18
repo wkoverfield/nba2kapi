@@ -6,6 +6,10 @@
  * up, so any job defined there silently never runs. All scheduled work must
  * live here.
  *
+ * Every job is scheduled through cronRuns.run, which executes the job's
+ * mutations (one per batch for batched jobs) and writes a cronRuns row with
+ * the outcome. A new job needs an entry in cronRuns.ts JOBS.
+ *
  * Jobs:
  *   - daily metric snapshot   bank cumulative usage counters once per UTC day
  *                             so any reporting window stays derivable forever
@@ -28,7 +32,8 @@ const crons = cronJobs();
 crons.daily(
   "daily metric snapshot",
   { hourUTC: 8, minuteUTC: 10 },
-  internal.metricsRollup.snapshotDailyMetrics
+  internal.cronRuns.run,
+  { job: "daily metric snapshot" }
 );
 
 /**
@@ -41,14 +46,14 @@ crons.daily(
  * is metricSnapshots (metricsRollup), not this table. Do not lower below ~40
  * without widening or retiring that reader first.
  *
- * The job deletes in bounded batches and reschedules itself until the
- * backlog is gone, so one cron tick may show as several function runs.
+ * The job deletes in bounded batches, so one cron tick may show as several
+ * function runs.
  */
 crons.daily(
   "cleanup old logs",
   { hourUTC: 2, minuteUTC: 0 },
-  internal.maintenance.cleanupOldLogs,
-  {}
+  internal.cronRuns.run,
+  { job: "cleanup old logs" }
 );
 
 /**
@@ -59,7 +64,8 @@ crons.daily(
 crons.weekly(
   "create weekly snapshots",
   { dayOfWeek: "sunday", hourUTC: 0, minuteUTC: 0 },
-  internal.playerHistory.createWeeklySnapshots
+  internal.cronRuns.run,
+  { job: "create weekly snapshots" }
 );
 
 /**
@@ -73,7 +79,8 @@ crons.weekly(
 crons.daily(
   "prune pageview visits",
   { hourUTC: 4, minuteUTC: 30 },
-  internal.siteStats.pruneVisits
+  internal.cronRuns.run,
+  { job: "prune pageview visits" }
 );
 
 export default crons;
