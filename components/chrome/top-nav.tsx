@@ -79,9 +79,11 @@ type TopNavProps = {
 
 /**
  * Shared chrome for reskinned (paper/editorial) pages: wordmark, pill nav,
- * search pill, GitHub star chip, and the primary API-key CTA. Below `sm` it
- * is two rows: wordmark, icon-only search, and CTA, then the nav pill at full
- * width. The star chip and key chip are hidden there.
+ * search pill, GitHub star chip, and the primary API-key CTA. It is one row
+ * from `md` up and two rows below that: wordmark and actions, then the nav
+ * pill at full width. Search is icon-only below `sm` and from `md` to `lg`,
+ * the star chip is hidden at those same widths, and the key chip shows from
+ * `lg`.
  *
  * The bar is the same width on every page (SHELL_WIDTH), so the wordmark and
  * nav hold their position across route changes.
@@ -145,7 +147,7 @@ export function TopNav({
       />
       <div
         className={cn(
-          "pointer-events-auto relative mx-auto flex w-full origin-top flex-wrap items-center justify-between gap-x-3 gap-y-2.5 px-[clamp(20px,4vw,48px)] py-3 sm:gap-3 sm:py-5 lg:grid lg:grid-cols-[1fr_auto_1fr] transition-transform duration-200 ease-[cubic-bezier(0.77,0,0.175,1)] motion-reduce:transform-none motion-reduce:transition-none",
+          "pointer-events-auto relative mx-auto flex w-full origin-top flex-wrap items-center justify-between gap-x-3 gap-y-2.5 px-[clamp(20px,4vw,48px)] py-3 sm:gap-3 md:py-5 md:grid md:grid-cols-[1fr_auto_1fr] transition-transform duration-200 ease-[cubic-bezier(0.77,0,0.175,1)] motion-reduce:transform-none motion-reduce:transition-none",
           isCompact && "md:-translate-y-[7px] md:scale-[0.96]",
           SHELL_WIDTH
         )}
@@ -159,14 +161,14 @@ export function TopNav({
 
         <nav
           aria-label="Main navigation"
-          className="order-last flex w-full max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-line bg-surface p-1 sm:order-none sm:w-auto sm:gap-1 sm:p-[5px]"
+          className="order-last flex w-full max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-line bg-surface p-1 sm:gap-1 sm:p-[5px] md:order-none md:w-auto"
         >
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               className={cn(
-                "flex-1 shrink-0 rounded-full px-1.5 py-[7px] text-center text-[13px] font-medium text-ink no-underline transition-[background,transform] duration-150 ease-out hover:bg-soft active:scale-[0.97] sm:flex-none sm:px-4 sm:text-[13.5px] motion-reduce:transition-none",
+                "flex-1 shrink-0 rounded-full px-1.5 py-[7px] text-center text-[13px] font-medium text-ink no-underline transition-[background,transform] duration-150 ease-out hover:bg-soft active:scale-[0.97] sm:text-[13.5px] md:flex-none md:px-3 lg:px-4 motion-reduce:transition-none",
                 pathname.startsWith(link.href) && "bg-soft"
               )}
             >
@@ -180,12 +182,12 @@ export function TopNav({
             type="button"
             onClick={() => setPaletteOpen(true)}
             aria-label="Search"
-            title="Search everything — players, teams, badges, and queries"
-            className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-line bg-surface px-[11px] py-[11px] sm:px-3.5 sm:py-[9px] transition-[border-color,transform] duration-150 ease-out hover:border-ink active:scale-[0.97] motion-reduce:transition-none"
+            title="Search players, teams, badges, and queries"
+            className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-line bg-surface px-[11px] py-[11px] sm:px-3.5 sm:py-[9px] md:px-[11px] md:py-[11px] lg:px-3.5 lg:py-[9px] transition-[border-color,transform] duration-150 ease-out hover:border-ink active:scale-[0.97] motion-reduce:transition-none"
           >
             <Search className="h-[13px] w-[13px] text-ink-2" strokeWidth={2} />
-            <span className="hidden text-[12.5px] text-ink-3 sm:inline">Search</span>
-            <span className="hidden rounded-[5px] border border-line bg-paper px-[5px] py-[2px] font-plex text-[9px] text-ink-4 sm:inline">
+            <span className="hidden text-[12.5px] text-ink-3 sm:inline md:hidden lg:inline">Search</span>
+            <span className="hidden rounded-[5px] border border-line bg-paper px-[5px] py-[2px] font-plex text-[9px] text-ink-4 sm:inline md:hidden lg:inline">
               ⌘K
             </span>
           </button>
@@ -195,14 +197,14 @@ export function TopNav({
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Star on GitHub"
-            className="hidden items-center gap-2 rounded-full border border-line bg-surface px-4 py-[9px] text-[13px] font-semibold text-ink no-underline transition-[border-color,transform] duration-150 ease-out hover:border-ink active:scale-[0.97] sm:inline-flex motion-reduce:transition-none"
+            className="hidden items-center gap-2 rounded-full border border-line bg-surface px-4 py-[9px] text-[13px] font-semibold text-ink no-underline transition-[border-color,transform] duration-150 ease-out hover:border-ink active:scale-[0.97] sm:inline-flex md:hidden lg:inline-flex motion-reduce:transition-none"
           >
             <OctocatIcon />
             <span className="tabular-nums">{stars ?? "★"}</span>
           </a>
 
           {maskedKey && (
-            <span className="hidden items-center gap-[7px] rounded-full border border-line bg-surface px-3.5 py-2 font-plex text-[10px] text-ink-2 sm:inline-flex">
+            <span className="hidden items-center gap-[7px] rounded-full border border-line bg-surface px-3.5 py-2 font-plex text-[10px] text-ink-2 lg:inline-flex">
               <span className="h-[7px] w-[7px] rounded-full bg-pos" />
               {maskedKey}
             </span>
