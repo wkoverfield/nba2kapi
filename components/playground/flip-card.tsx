@@ -214,7 +214,7 @@ export function FlipCard({ player, className }: FlipCardProps) {
                       <Badge
                         key={`${pos}-${idx}`}
                         variant="secondary"
-                        className="text-[8px] px-1 py-0 h-4 bg-white/20 text-white border-0"
+                        className="text-[8px] px-1 py-0 h-4 bg-surface/20 text-white border-0"
                       >
                         {pos}
                       </Badge>

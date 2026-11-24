@@ -26,7 +26,7 @@ function TeamLogo({ src, team }: { src: string | null; team: string }) {
   const [errored, setErrored] = useState(false);
   if (!src || errored) {
     return (
-      <div className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[#f1efe8] font-display text-[10px] font-extrabold text-[#57534a]">
+      <div className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-soft font-display text-[10px] font-extrabold text-ink-2">
         {getTeamAbbreviation(team)}
       </div>
     );
@@ -72,12 +72,12 @@ function Board() {
     "grid grid-cols-[56px_44px_minmax(160px,1.2fr)_60px_minmax(180px,1.6fr)_60px_minmax(170px,1fr)] items-center gap-3 px-[22px]";
 
   return (
-    <div className="min-h-screen bg-[#faf9f5] font-body text-[#1a1918]">
+    <div className="min-h-screen bg-paper font-body text-ink">
       <TopNav hasApiKey={hasApiKey} />
 
       <div className="mx-auto min-h-screen max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-3.5">
         <div className="flex justify-end animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
-          <div className="flex gap-[3px] rounded-full border border-[#e5e2da] bg-white p-1">
+          <div className="flex gap-[3px] rounded-full border border-line bg-surface p-1">
             {ERA_TABS.map((t) => (
               <button
                 key={t.param}
@@ -85,7 +85,7 @@ function Board() {
                 onClick={() => setEra(t.param)}
                 className={cn(
                   "cursor-pointer rounded-full px-4 py-[7px] text-[12.5px] font-semibold transition-[background,color,transform] duration-150 select-none active:scale-[0.97] motion-reduce:transition-none",
-                  era === t.param ? "bg-[#1a1918] text-[#faf9f5]" : "text-[#57534a] hover:bg-[#f1efe8]"
+                  era === t.param ? "bg-ink text-on-ink" : "text-ink-2 hover:bg-soft"
                 )}
               >
                 {t.label}
@@ -95,23 +95,23 @@ function Board() {
         </div>
 
         <div
-          className="mt-5 overflow-hidden rounded-2xl border border-[#e5e2da] bg-white animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
+          className="mt-5 overflow-hidden rounded-2xl border border-line bg-surface animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
           style={{ animationDelay: "80ms" }}
         >
           <div className="overflow-x-auto">
             <div className="min-w-[720px]">
-              <div className={cn(rowGrid, "border-b border-[#e5e2da] bg-[#faf9f5] py-[11px]")}>
-                <span className="font-plex text-[8.5px] tracking-[0.08em] text-[#b5b0a1]">RANK</span>
+              <div className={cn(rowGrid, "border-b border-line bg-paper py-[11px]")}>
+                <span className="font-plex text-[8.5px] tracking-[0.08em] text-ink-4">RANK</span>
                 <span />
-                <span className="font-plex text-[8.5px] tracking-[0.08em] text-[#b5b0a1]">TEAM</span>
-                <span className="font-plex text-[8.5px] tracking-[0.08em] text-[#b5b0a1]">CONF</span>
-                <span className="font-plex text-[8.5px] tracking-[0.08em] text-[#b5b0a1]">
+                <span className="font-plex text-[8.5px] tracking-[0.08em] text-ink-4">TEAM</span>
+                <span className="font-plex text-[8.5px] tracking-[0.08em] text-ink-4">CONF</span>
+                <span className="font-plex text-[8.5px] tracking-[0.08em] text-ink-4">
                   ROSTER STRENGTH — AVG RATING OF FULL ROSTER
                 </span>
-                <span className="font-plex text-[8.5px] font-bold tracking-[0.08em] text-[#1a1918]">
+                <span className="font-plex text-[8.5px] font-bold tracking-[0.08em] text-ink">
                   AVG ↓
                 </span>
-                <span className="font-plex text-[8.5px] tracking-[0.08em] text-[#b5b0a1]">
+                <span className="font-plex text-[8.5px] tracking-[0.08em] text-ink-4">
                   BEST PLAYER
                 </span>
               </div>
@@ -123,23 +123,23 @@ function Board() {
                       href={`/teams/${t.slug}?type=${era}`}
                       className={cn(
                         rowGrid,
-                        "border-b border-[#f6f4ee] py-2.5 text-[#1a1918] no-underline transition-colors duration-100 animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] hover:bg-[#faf8f2] active:scale-[0.995] motion-reduce:animate-none"
+                        "border-b border-line-faint py-2.5 text-ink no-underline transition-colors duration-100 animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] hover:bg-sunken active:scale-[0.995] motion-reduce:animate-none"
                       )}
                       style={{ animationDelay: `${Math.min(i, 20) * 30}ms` }}
                     >
-                      <span className="font-display text-[19px] font-extrabold text-[#b5b0a1]">
+                      <span className="font-display text-[19px] font-extrabold text-ink-4">
                         {i + 1}
                       </span>
                       <TeamLogo src={t.logo} team={t.team} />
                       <span className="overflow-hidden text-[14.5px] font-semibold text-ellipsis whitespace-nowrap">
                         {formatTeamShortName(t.team, era)}
                       </span>
-                      <span className="font-plex text-[9px] text-[#b5b0a1]">
+                      <span className="font-plex text-[9px] text-ink-4">
                         {getTeamConference(t.team) ?? "—"}
                       </span>
-                      <div className="h-2 rounded-full bg-[#f1efe8]">
+                      <div className="h-2 rounded-full bg-soft">
                         <div
-                          className="h-full rounded-full bg-[linear-gradient(to_right,#8a8577,#1a1918)] transition-[width] duration-400"
+                          className="h-full rounded-full bg-[linear-gradient(to_right,var(--ink-3),var(--ink))] transition-[width] duration-400"
                           style={{
                             width: `${Math.round(((t.avgRating - min) / (max - min)) * 100)}%`,
                           }}
@@ -169,23 +169,23 @@ function Board() {
                     </Link>
                   ))
                 : Array.from({ length: 12 }, (_, i) => (
-                    <div key={i} className={cn(rowGrid, "animate-pulse border-b border-[#f6f4ee] py-2.5")}>
-                      <span className="h-5 w-6 rounded bg-[#f1efe8]" />
-                      <div className="h-[34px] w-[34px] rounded-full bg-[#f1efe8]" />
-                      <span className="h-3.5 w-3/4 rounded bg-[#f1efe8]" />
-                      <span className="h-3 w-8 rounded bg-[#f1efe8]" />
-                      <span className="h-2 rounded-full bg-[#f1efe8]" />
-                      <span className="h-3.5 w-9 rounded bg-[#f1efe8]" />
-                      <span className="h-[26px] w-2/3 rounded-full bg-[#f1efe8]" />
+                    <div key={i} className={cn(rowGrid, "animate-pulse border-b border-line-faint py-2.5")}>
+                      <span className="h-5 w-6 rounded bg-soft" />
+                      <div className="h-[34px] w-[34px] rounded-full bg-soft" />
+                      <span className="h-3.5 w-3/4 rounded bg-soft" />
+                      <span className="h-3 w-8 rounded bg-soft" />
+                      <span className="h-2 rounded-full bg-soft" />
+                      <span className="h-3.5 w-9 rounded bg-soft" />
+                      <span className="h-[26px] w-2/3 rounded-full bg-soft" />
                     </div>
                   ))}
             </div>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 bg-[#faf9f5] px-[22px] py-2.5">
-            <span className="font-plex text-[8.5px] text-[#b5b0a1]">
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-paper px-[22px] py-2.5">
+            <span className="font-plex text-[8.5px] text-ink-4">
               CLICK A TEAM → DEPTH CHART · ← → CYCLES TEAMS FROM ANY TEAM PAGE
             </span>
-            <span className="font-plex text-[8.5px] text-[#b5b0a1]">GET /api/teams?era={era}</span>
+            <span className="font-plex text-[8.5px] text-ink-4">GET /api/teams?era={era}</span>
           </div>
         </div>
       </div>

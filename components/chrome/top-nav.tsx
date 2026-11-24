@@ -129,7 +129,7 @@ export function TopNav({
   }, []);
 
   const ctaClasses =
-    "whitespace-nowrap rounded-full bg-[#1a1918] px-3.5 py-[9px] text-[13px] font-semibold sm:px-5 sm:py-2.5 sm:text-[13.5px] text-[#faf9f5] no-underline transition-[background,transform] duration-150 ease-out hover:bg-[#333] active:scale-[0.97] motion-reduce:transition-none";
+    "whitespace-nowrap rounded-full bg-ink px-3.5 py-[9px] text-[13px] font-semibold sm:px-5 sm:py-2.5 sm:text-[13.5px] text-on-ink no-underline transition-[background,transform] duration-150 ease-out hover:bg-ink-hover active:scale-[0.97] motion-reduce:transition-none";
 
   return (
     <header
@@ -139,7 +139,7 @@ export function TopNav({
       <div
         aria-hidden="true"
         className={cn(
-          "absolute inset-0 origin-top border-b border-[#e5e2da]/80 bg-[#faf9f5]/92 shadow-[0_10px_30px_-24px_rgba(26,25,24,0.45)] backdrop-blur-xl transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.77,0,0.175,1)] motion-reduce:transform-none motion-reduce:transition-opacity",
+          "absolute inset-0 origin-top border-b border-line/80 bg-paper/92 shadow-[0_10px_30px_-24px_rgba(26,25,24,0.45)] backdrop-blur-xl transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.77,0,0.175,1)] motion-reduce:transform-none motion-reduce:transition-opacity",
           isCompact ? "opacity-100 md:scale-y-[0.76]" : "scale-y-100 opacity-0"
         )}
       />
@@ -152,22 +152,22 @@ export function TopNav({
       >
         <Link
           href="/"
-          className="justify-self-start font-display text-[20px] font-extrabold sm:text-[22px] tracking-[-0.02em] text-[#1a1918] no-underline"
+          className="justify-self-start font-display text-[20px] font-extrabold sm:text-[22px] tracking-[-0.02em] text-ink no-underline"
         >
           nba2kapi
         </Link>
 
         <nav
           aria-label="Main navigation"
-          className="order-last flex w-full max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-[#e5e2da] bg-white p-1 sm:order-none sm:w-auto sm:gap-1 sm:p-[5px]"
+          className="order-last flex w-full max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-line bg-surface p-1 sm:order-none sm:w-auto sm:gap-1 sm:p-[5px]"
         >
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               className={cn(
-                "flex-1 shrink-0 rounded-full px-1.5 py-[7px] text-center text-[13px] font-medium text-[#1a1918] no-underline transition-[background,transform] duration-150 ease-out hover:bg-[#f1efe8] active:scale-[0.97] sm:flex-none sm:px-4 sm:text-[13.5px] motion-reduce:transition-none",
-                pathname.startsWith(link.href) && "bg-[#f1efe8]"
+                "flex-1 shrink-0 rounded-full px-1.5 py-[7px] text-center text-[13px] font-medium text-ink no-underline transition-[background,transform] duration-150 ease-out hover:bg-soft active:scale-[0.97] sm:flex-none sm:px-4 sm:text-[13.5px] motion-reduce:transition-none",
+                pathname.startsWith(link.href) && "bg-soft"
               )}
             >
               {link.label}
@@ -181,11 +181,11 @@ export function TopNav({
             onClick={() => setPaletteOpen(true)}
             aria-label="Search"
             title="Search everything — players, teams, badges, and queries"
-            className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#e5e2da] bg-white px-[11px] py-[11px] sm:px-3.5 sm:py-[9px] transition-[border-color,transform] duration-150 ease-out hover:border-[#1a1918] active:scale-[0.97] motion-reduce:transition-none"
+            className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-line bg-surface px-[11px] py-[11px] sm:px-3.5 sm:py-[9px] transition-[border-color,transform] duration-150 ease-out hover:border-ink active:scale-[0.97] motion-reduce:transition-none"
           >
-            <Search className="h-[13px] w-[13px] text-[#57534a]" strokeWidth={2} />
-            <span className="hidden text-[12.5px] text-[#8a8577] sm:inline">Search</span>
-            <span className="hidden rounded-[5px] border border-[#e5e2da] bg-[#faf9f5] px-[5px] py-[2px] font-plex text-[9px] text-[#b5b0a1] sm:inline">
+            <Search className="h-[13px] w-[13px] text-ink-2" strokeWidth={2} />
+            <span className="hidden text-[12.5px] text-ink-3 sm:inline">Search</span>
+            <span className="hidden rounded-[5px] border border-line bg-paper px-[5px] py-[2px] font-plex text-[9px] text-ink-4 sm:inline">
               ⌘K
             </span>
           </button>
@@ -195,15 +195,15 @@ export function TopNav({
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Star on GitHub"
-            className="hidden items-center gap-2 rounded-full border border-[#e5e2da] bg-white px-4 py-[9px] text-[13px] font-semibold text-[#1a1918] no-underline transition-[border-color,transform] duration-150 ease-out hover:border-[#1a1918] active:scale-[0.97] sm:inline-flex motion-reduce:transition-none"
+            className="hidden items-center gap-2 rounded-full border border-line bg-surface px-4 py-[9px] text-[13px] font-semibold text-ink no-underline transition-[border-color,transform] duration-150 ease-out hover:border-ink active:scale-[0.97] sm:inline-flex motion-reduce:transition-none"
           >
             <OctocatIcon />
             <span className="tabular-nums">{stars ?? "★"}</span>
           </a>
 
           {maskedKey && (
-            <span className="hidden items-center gap-[7px] rounded-full border border-[#e5e2da] bg-white px-3.5 py-2 font-plex text-[10px] text-[#57534a] sm:inline-flex">
-              <span className="h-[7px] w-[7px] rounded-full bg-[#0a7f3f]" />
+            <span className="hidden items-center gap-[7px] rounded-full border border-line bg-surface px-3.5 py-2 font-plex text-[10px] text-ink-2 sm:inline-flex">
+              <span className="h-[7px] w-[7px] rounded-full bg-pos" />
               {maskedKey}
             </span>
           )}

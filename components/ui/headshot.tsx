@@ -34,7 +34,7 @@ export function Headshot({ src, name, size, className }: HeadshotProps) {
   return (
     <div
       className={cn(
-        "relative flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f1efe8] font-display font-extrabold text-[#57534a]",
+        "relative flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-soft font-display font-extrabold text-ink-2",
         className
       )}
       style={{ width: size, height: size, fontSize: Math.max(8, Math.round(size * 0.36)) }}

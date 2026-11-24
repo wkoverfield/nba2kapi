@@ -46,8 +46,8 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#faf9f5] font-body text-[#1a1918]">
-      <div className="border-b border-[#f1efe8]">
+    <div className="min-h-screen bg-paper font-body text-ink">
+      <div className="border-b border-soft">
         <TopNav hasApiKey={hasApiKey} />
       </div>
 
@@ -56,7 +56,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
         <div className="flex min-w-[160px] flex-[0_1_190px] flex-col gap-5 animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
           {DOCS_NAV.map((section) => (
             <div key={section.title}>
-              <div className="mb-2 font-plex text-[8.5px] tracking-[0.12em] text-[#b5b0a1]">
+              <div className="mb-2 font-plex text-[8.5px] tracking-[0.12em] text-ink-4">
                 {section.title}
               </div>
               <div className="flex flex-col gap-0.5">
@@ -67,8 +67,8 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
                     className={cn(
                       "rounded-lg px-2.5 py-[5px] text-[13px] no-underline transition-colors duration-150",
                       pathname === item.href
-                        ? "bg-[#f1efe8] font-semibold text-[#1a1918]"
-                        : "font-medium text-[#57534a] hover:bg-[#f1efe8]"
+                        ? "bg-soft font-semibold text-ink"
+                        : "font-medium text-ink-2 hover:bg-soft"
                     )}
                   >
                     {item.title}
@@ -79,8 +79,8 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
           ))}
 
           {/* Docs for LLMs */}
-          <div className="rounded-[10px] border border-[#e5e2da] bg-white px-3 py-2.5">
-            <div className="mb-1.5 font-plex text-[8.5px] tracking-[0.12em] text-[#b5b0a1]">
+          <div className="rounded-[10px] border border-line bg-surface px-3 py-2.5">
+            <div className="mb-1.5 font-plex text-[8.5px] tracking-[0.12em] text-ink-4">
               FOR LLMS
             </div>
             <button
@@ -90,19 +90,19 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
                   .writeText(LLMS_FULL)
                   .then(() => toast.success("Full API docs copied as markdown"))
               }
-              className="block cursor-pointer text-left text-[12px] font-semibold text-[#1a1918] hover:text-[#57534a]"
+              className="block cursor-pointer text-left text-[12px] font-semibold text-ink hover:text-ink-2"
             >
               Copy docs as Markdown
             </button>
             <a
               href="/llms-full.txt"
-              className="mt-1 block text-[12px] font-medium text-[#57534a] no-underline hover:text-[#1a1918]"
+              className="mt-1 block text-[12px] font-medium text-ink-2 no-underline hover:text-ink"
             >
               llms-full.txt
             </a>
             <a
               href="/llms.txt"
-              className="mt-0.5 block text-[12px] font-medium text-[#57534a] no-underline hover:text-[#1a1918]"
+              className="mt-0.5 block text-[12px] font-medium text-ink-2 no-underline hover:text-ink"
             >
               llms.txt
             </a>

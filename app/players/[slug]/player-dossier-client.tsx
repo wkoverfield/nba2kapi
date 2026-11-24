@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 
 type TeamType = "curr" | "class" | "allt";
 
-const CARD_LABEL = "font-plex text-[9.5px] tracking-[0.12em] text-[#8a8577]";
+const CARD_LABEL = "font-plex text-[9.5px] tracking-[0.12em] text-ink-3";
 
 const CATEGORY_LABELS: Record<string, string> = {
   outsideScoring: "OUTSIDE",
@@ -83,7 +83,7 @@ function shortPlayerLabel(name: string) {
 }
 
 function pctColor(pct: number) {
-  return pct >= 85 ? "#0a7f3f" : pct >= 50 ? "#9a6700" : "#c03a2b";
+  return pct >= 85 ? "var(--pos)" : pct >= 50 ? "var(--warn)" : "var(--neg)";
 }
 
 /** "NBA 2K27 Launch Rating" → "LAUNCH", "Nov. 5, 2026" → "NOV 5", playoff rounds compressed. */
@@ -262,10 +262,10 @@ function PlayerDossier({
 
   if (dossier === undefined) {
     return (
-      <div className="min-h-screen bg-[#faf9f5] font-body text-[#1a1918]">
+      <div className="min-h-screen bg-paper font-body text-ink">
         <TopNav hasApiKey={hasApiKey} />
         <div className="min-h-screen py-24 text-center">
-          <p className="m-0 font-plex text-[10.5px] tracking-[0.12em] text-[#8a8577]">
+          <p className="m-0 font-plex text-[10.5px] tracking-[0.12em] text-ink-3">
             LOADING VERSION
           </p>
         </div>
@@ -276,13 +276,13 @@ function PlayerDossier({
 
   if (dossier === null) {
     return (
-      <div className="min-h-screen bg-[#faf9f5] font-body text-[#1a1918]">
+      <div className="min-h-screen bg-paper font-body text-ink">
         <TopNav hasApiKey={hasApiKey} />
         <div className="min-h-screen py-24 text-center">
           <h1 className="m-0 font-display text-[28px] font-extrabold">Player not found</h1>
-          <p className="mt-2 text-[14px] text-[#8a8577]">
+          <p className="mt-2 text-[14px] text-ink-3">
             No player matches &quot;{slug}&quot;.{" "}
-            <Link href="/playground" className="text-[#1a1918] underline">
+            <Link href="/playground" className="text-ink underline">
               Search the playground
             </Link>
             .
@@ -298,10 +298,10 @@ function PlayerDossier({
   const teamSlug = player ? slugifyTeam(player.team) : "";
   const badgesTotal = player?.badgeCounts?.total ?? dossier?.badges.length ?? 0;
   const pillClass =
-    "inline-flex items-center gap-2 rounded-full border border-[#e5e2da] bg-white no-underline transition-[border-color,transform] duration-150 hover:border-[#1a1918] active:scale-[0.97] motion-reduce:transition-none";
+    "inline-flex items-center gap-2 rounded-full border border-line bg-surface no-underline transition-[border-color,transform] duration-150 hover:border-ink active:scale-[0.97] motion-reduce:transition-none";
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(to_bottom,#fffdf8,#faf9f5_400px)] font-body text-[#1a1918]">
+    <div className="min-h-screen bg-[linear-gradient(to_bottom,var(--paper-top),var(--paper)_400px)] font-body text-ink">
       <TopNav hasApiKey={hasApiKey} />
 
       <div className="mx-auto min-h-screen max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2">
@@ -310,7 +310,7 @@ function PlayerDossier({
           {player ? (
             <Link
               href={`/teams/${teamSlug}?type=${era}`}
-              className="inline-flex items-center gap-2 font-plex text-[10.5px] tracking-[0.1em] text-[#8a8577] no-underline transition-colors duration-150 hover:text-[#1a1918]"
+              className="inline-flex items-center gap-2 font-plex text-[10.5px] tracking-[0.1em] text-ink-3 no-underline transition-colors duration-150 hover:text-ink"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="m12 19-7-7 7-7" />
@@ -319,23 +319,23 @@ function PlayerDossier({
               {formatTeamNickname(player.team, era).toUpperCase()} DEPTH CHART
             </Link>
           ) : (
-            <span className="h-4 w-44 animate-pulse rounded bg-[#f1efe8]" />
+            <span className="h-4 w-44 animate-pulse rounded bg-soft" />
           )}
           <div className="flex flex-wrap items-center gap-2">
             {prevPlayer && (
               <Link href={`/players/${prevPlayer.slug}?type=${era}${teamQuery}`} className={cn(pillClass, "py-1.5 pr-3.5 pl-2")}>
-                <span className="flex h-[18px] w-[18px] items-center justify-center rounded-[4px] border border-[#d9d4c7] bg-[#faf9f5] font-plex text-[9px] leading-none text-[#57534a]">←</span>
-                <span className="font-plex text-[10px] tracking-[0.06em] text-[#57534a]">
+                <span className="flex h-[18px] w-[18px] items-center justify-center rounded-[4px] border border-line-strong bg-paper font-plex text-[9px] leading-none text-ink-2">←</span>
+                <span className="font-plex text-[10px] tracking-[0.06em] text-ink-2">
                   {shortPlayerLabel(prevPlayer.name)} · {prevPlayer.overall}
                 </span>
               </Link>
             )}
             {nextPlayer && (
               <Link href={`/players/${nextPlayer.slug}?type=${era}${teamQuery}`} className={cn(pillClass, "py-1.5 pr-2 pl-3.5")}>
-                <span className="font-plex text-[10px] tracking-[0.06em] text-[#57534a]">
+                <span className="font-plex text-[10px] tracking-[0.06em] text-ink-2">
                   {shortPlayerLabel(nextPlayer.name)} · {nextPlayer.overall}
                 </span>
-                <span className="flex h-[18px] w-[18px] items-center justify-center rounded-[4px] border border-[#d9d4c7] bg-[#faf9f5] font-plex text-[9px] leading-none text-[#57534a]">→</span>
+                <span className="flex h-[18px] w-[18px] items-center justify-center rounded-[4px] border border-line-strong bg-paper font-plex text-[9px] leading-none text-ink-2">→</span>
               </Link>
             )}
           </div>
@@ -346,7 +346,7 @@ function PlayerDossier({
           {/* MyTeam tier card */}
           <div className="flex max-w-[420px] flex-col gap-2.5">
           <div
-            className="relative min-h-[460px] flex-1 overflow-hidden rounded-[22px] bg-[#1a1918] shadow-[0_30px_50px_-24px_rgba(26,25,24,0.45)] animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
+            className="relative min-h-[460px] flex-1 overflow-hidden rounded-[22px] tone-fixed bg-panel shadow-[0_30px_50px_-24px_rgba(26,25,24,0.45)] animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
             style={{ animationDelay: "60ms" }}
           >
             {player && (
@@ -375,7 +375,7 @@ function PlayerDossier({
                   </div>
                 </div>
                 {player.teamImg && (
-                  <div className="absolute top-[18px] right-[18px] z-[3] flex h-12 w-12 items-center justify-center rounded-full border border-white/60 bg-white/90 p-1.5 shadow-[0_8px_22px_rgba(0,0,0,0.2)] backdrop-blur-sm">
+                  <div className="absolute top-[18px] right-[18px] z-[3] flex h-12 w-12 items-center justify-center rounded-full border border-white/60 bg-surface/90 p-1.5 shadow-[0_8px_22px_rgba(0,0,0,0.2)] backdrop-blur-sm">
                     <Image
                       src={player.teamImg}
                       alt={`${player.team} logo`}
@@ -409,12 +409,12 @@ function PlayerDossier({
                 });
             }}
             title="Copy the full request URL"
-            className="flex cursor-pointer items-center justify-between gap-2.5 rounded-full border border-[#e5e2da] bg-white px-4 py-2.5 font-plex text-[10px] text-[#57534a] transition-[border-color,transform] duration-150 hover:border-[#1a1918] active:scale-[0.98] motion-reduce:transition-none"
+            className="flex cursor-pointer items-center justify-between gap-2.5 rounded-full border border-line bg-surface px-4 py-2.5 font-plex text-[10px] text-ink-2 transition-[border-color,transform] duration-150 hover:border-ink active:scale-[0.98] motion-reduce:transition-none"
           >
             <span className="overflow-hidden text-ellipsis whitespace-nowrap">
               GET /api/players/slug/{slug}
             </span>
-            <span className="shrink-0 font-bold text-[#8a8577]">
+            <span className="shrink-0 font-bold text-ink-3">
               {endpointCopied ? "COPIED ✓" : "COPY"}
             </span>
           </button>
@@ -428,45 +428,45 @@ function PlayerDossier({
             {/* Signature stats */}
             <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-3">
               {(signature.length ? signature : Array.from({ length: 3 }, () => null)).map((s, i) => (
-                <div key={s?.key ?? i} className="rounded-[14px] border border-[#e5e2da] bg-white px-4 py-3.5">
+                <div key={s?.key ?? i} className="rounded-[14px] border border-line bg-surface px-4 py-3.5">
                   {s ? (
                     <>
                       <div className="font-display text-[34px] leading-none font-bold">{s.value}</div>
-                      <div className="mt-1.5 font-plex text-[9.5px] font-semibold tracking-[0.1em] text-[#1a1918]">
+                      <div className="mt-1.5 font-plex text-[9.5px] font-semibold tracking-[0.1em] text-ink">
                         {s.label}
                       </div>
-                      <div className="mt-0.5 font-plex text-[9px] text-[#8a8577]">{s.note}</div>
+                      <div className="mt-0.5 font-plex text-[9px] text-ink-3">{s.note}</div>
                     </>
                   ) : (
-                    <div className="h-[64px] animate-pulse rounded bg-[#f1efe8]" />
+                    <div className="h-[64px] animate-pulse rounded bg-soft" />
                   )}
                 </div>
               ))}
             </div>
 
             {/* Scouting read */}
-            <div className="flex flex-1 flex-col justify-center rounded-[14px] border border-[#e5e2da] bg-white px-[18px] py-3.5">
+            <div className="flex flex-1 flex-col justify-center rounded-[14px] border border-line bg-surface px-[18px] py-3.5">
               <div className={cn(CARD_LABEL, "mb-2.5")}>THE SCOUTING READ</div>
               <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3.5">
                 <div className="flex flex-col gap-2">
-                  <div className="font-plex text-[8.5px] font-bold tracking-[0.12em] text-[#0a7f3f]">
+                  <div className="font-plex text-[8.5px] font-bold tracking-[0.12em] text-pos">
                     STRENGTHS
                   </div>
                   {pros.map((line) => (
                     <div key={line} className="flex gap-2.5 text-[13px] leading-[1.5]">
-                      <span className="font-plex font-bold text-[#0a7f3f]">+</span>
-                      <span className="text-[#57534a]">{line}</span>
+                      <span className="font-plex font-bold text-pos">+</span>
+                      <span className="text-ink-2">{line}</span>
                     </div>
                   ))}
                 </div>
                 <div className="flex flex-col gap-2">
-                  <div className="font-plex text-[8.5px] font-bold tracking-[0.12em] text-[#c03a2b]">
+                  <div className="font-plex text-[8.5px] font-bold tracking-[0.12em] text-neg">
                     WEAKNESSES
                   </div>
                   {cons.map((line) => (
                     <div key={line} className="flex gap-2.5 text-[13px] leading-[1.5]">
-                      <span className="font-plex font-bold text-[#c03a2b]">−</span>
-                      <span className="text-[#57534a]">{line}</span>
+                      <span className="font-plex font-bold text-neg">−</span>
+                      <span className="text-ink-2">{line}</span>
                     </div>
                   ))}
                 </div>
@@ -474,20 +474,20 @@ function PlayerDossier({
             </div>
 
             {/* Actions */}
-            <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-[14px] border border-[#e5e2da] bg-white px-[18px] py-3">
-              <span className="font-plex text-[9.5px] tracking-[0.12em] text-[#8a8577]">
+            <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-[14px] border border-line bg-surface px-[18px] py-3">
+              <span className="font-plex text-[9.5px] tracking-[0.12em] text-ink-3">
                 TAKE HIM SOMEWHERE
               </span>
               <div className="flex gap-2">
                 <Link
                   href={`/compare?player1=${player!.slug}&type1=${era}&team1=${encodeURIComponent(player!.team)}`}
-                  className="rounded-full border border-[#e5e2da] bg-white px-3 py-1.5 text-[11.5px] font-semibold text-[#1a1918] no-underline transition-[border-color,transform] duration-150 hover:border-[#1a1918] active:scale-[0.97] motion-reduce:transition-none"
+                  className="rounded-full border border-line bg-surface px-3 py-1.5 text-[11.5px] font-semibold text-ink no-underline transition-[border-color,transform] duration-150 hover:border-ink active:scale-[0.97] motion-reduce:transition-none"
                 >
                   Compare
                 </Link>
                 <Link
                   href="/lineups"
-                  className="rounded-full bg-[#1a1918] px-3 py-1.5 text-[11.5px] font-semibold text-[#faf9f5] no-underline transition-[background,transform] duration-150 hover:bg-[#333] active:scale-[0.97] motion-reduce:transition-none"
+                  className="rounded-full bg-ink px-3 py-1.5 text-[11.5px] font-semibold text-on-ink no-underline transition-[background,transform] duration-150 hover:bg-ink-hover active:scale-[0.97] motion-reduce:transition-none"
                 >
                   → Lineup Builder
                 </Link>
@@ -496,26 +496,26 @@ function PlayerDossier({
 
             {/* Similar players */}
             {dossier && dossier.similar.length > 0 && (
-              <div className="rounded-[14px] border border-[#e5e2da] bg-white px-[18px] py-3">
+              <div className="rounded-[14px] border border-line bg-surface px-[18px] py-3">
                 <div className="mb-2.5 flex items-center justify-between">
                   <span className={CARD_LABEL}>
                     STATISTICALLY SIMILAR{dossier.primaryPosition ? ` ${dossier.primaryPosition}S` : ""}
                   </span>
-                  <span className="font-plex text-[9px] text-[#b5b0a1]">BY ATTRIBUTE PROFILE</span>
+                  <span className="font-plex text-[9px] text-ink-4">BY ATTRIBUTE PROFILE</span>
                 </div>
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-2.5">
                   {dossier.similar.map((sp) => (
                     <Link
                       key={`${sp.slug}-${sp.team}`}
                       href={`/players/${sp.slug}?type=${sp.teamType}&team=${encodeURIComponent(sp.team)}`}
-                      className="flex items-center gap-[9px] rounded-[10px] border border-[#efece4] bg-[#faf9f5] px-2.5 py-[7px] text-[#1a1918] no-underline transition-[border-color,transform] duration-150 hover:-translate-y-px hover:border-[#1a1918] active:scale-[0.98] motion-reduce:transition-none"
+                      className="flex items-center gap-[9px] rounded-[10px] border border-line-soft bg-paper px-2.5 py-[7px] text-ink no-underline transition-[border-color,transform] duration-150 hover:-translate-y-px hover:border-ink active:scale-[0.98] motion-reduce:transition-none"
                     >
                       <Headshot src={sp.playerImage} name={sp.name} size={30} />
                       <div className="min-w-0 flex-1">
                         <p className="m-0 overflow-hidden text-[11.5px] font-semibold text-ellipsis whitespace-nowrap">
                           {sp.name}
                         </p>
-                        <p className="mt-px mb-0 font-plex text-[8.5px] text-[#8a8577]">
+                        <p className="mt-px mb-0 font-plex text-[8.5px] text-ink-3">
                           {sp.positions.join("/")} · {getTeamAbbreviation(sp.team)}
                         </p>
                       </div>
@@ -541,7 +541,7 @@ function PlayerDossier({
           style={{ animationDelay: "200ms" }}
         >
           {/* Percentile bars */}
-          <div className="rounded-[14px] border border-[#e5e2da] bg-white px-[18px] py-3.5">
+          <div className="rounded-[14px] border border-line bg-surface px-[18px] py-3.5">
             <div className={cn(CARD_LABEL, "mb-2.5")}>
               PERCENTILE VS ALL {dossier?.primaryPosition ? `${dossier.primaryPosition}S` : "PLAYERS"}
               {dossier ? ` (${dossier.cohortSize})` : ""}
@@ -549,15 +549,15 @@ function PlayerDossier({
             <div className="flex flex-col gap-2">
               {percRows.map((row) => (
                 <div key={row.label} className="grid grid-cols-[86px_1fr_30px] items-center gap-2.5">
-                  <span className="font-plex text-[8.5px] tracking-[0.06em] text-[#8a8577]">
+                  <span className="font-plex text-[8.5px] tracking-[0.06em] text-ink-3">
                     {row.label}
                   </span>
-                  <div className="relative h-1.5 rounded-full bg-[#f1efe8]">
+                  <div className="relative h-1.5 rounded-full bg-soft">
                     <div
                       className="h-full rounded-full"
                       style={{ width: `${row.pct}%`, background: pctColor(row.pct) }}
                     />
-                    <div className="absolute -top-0.5 -bottom-0.5 left-1/2 w-px bg-[#d9d4c7]" />
+                    <div className="absolute -top-0.5 -bottom-0.5 left-1/2 w-px bg-line-strong" />
                   </div>
                   <span
                     className="text-right font-plex text-[10.5px] font-bold"
@@ -568,11 +568,11 @@ function PlayerDossier({
                 </div>
               ))}
             </div>
-            <div className="mt-2.5 font-plex text-[8px] text-[#b5b0a1]">| = LEAGUE MEDIAN</div>
+            <div className="mt-2.5 font-plex text-[8px] text-ink-4">| = LEAGUE MEDIAN</div>
           </div>
 
           {/* Rating history */}
-          <div className="rounded-[14px] border border-[#e5e2da] bg-white px-[18px] py-3.5">
+          <div className="rounded-[14px] border border-line bg-surface px-[18px] py-3.5">
             <div className={cn(CARD_LABEL, "mb-1.5")}>
               {historySeries?.mode === "season"
                 ? `OVERALL — THE ${CURRENT_GAME_VERSION} SEASON`
@@ -585,18 +585,18 @@ function PlayerDossier({
                 slug={slug}
               />
             ) : (
-              <div className="flex h-[150px] items-center justify-center font-plex text-[9px] text-[#b5b0a1]">
+              <div className="flex h-[150px] items-center justify-center font-plex text-[9px] text-ink-4">
                 {dossier ? "ONE GAME OF DATA — HISTORY BUILDS EACH 2K RELEASE" : "…"}
               </div>
             )}
           </div>
 
           {/* Category radar */}
-          <div className="rounded-[14px] border border-[#e5e2da] bg-white px-[18px] py-3.5">
+          <div className="rounded-[14px] border border-line bg-surface px-[18px] py-3.5">
             <div className="mb-1 flex items-center justify-between gap-3">
               <div className={CARD_LABEL}>CATEGORY RADAR</div>
-              <div className="flex items-center gap-3 font-plex text-[7.5px] text-[#8a8577]">
-                <span className="inline-flex items-center gap-1"><i className="h-0.5 w-3 bg-[#1a1918]" />PLAYER</span>
+              <div className="flex items-center gap-3 font-plex text-[7.5px] text-ink-3">
+                <span className="inline-flex items-center gap-1"><i className="h-0.5 w-3 bg-ink" />PLAYER</span>
                 <span className="inline-flex items-center gap-1"><i className="h-0.5 w-3 border-t border-dashed border-[#b98404]" />{dossier?.primaryPosition ?? "POS"} AVG</span>
               </div>
             </div>
@@ -604,7 +604,7 @@ function PlayerDossier({
               {radarAxes ? (
                 <CategoryRadar axes={radarAxes} position={dossier?.primaryPosition ?? "POS"} />
               ) : (
-                <div className="h-[184px] w-[210px] animate-pulse rounded bg-[#f1efe8]" />
+                <div className="h-[184px] w-[210px] animate-pulse rounded bg-soft" />
               )}
             </div>
           </div>
@@ -613,12 +613,12 @@ function PlayerDossier({
         {/* Badge shelf fallback: tier counts only, when named badges are absent */}
         {badgeShelf.length === 0 && player?.badgeCounts && badgesTotal > 0 && (
           <div
-            className="mt-3.5 rounded-[14px] border border-[#e5e2da] bg-white px-5 py-4 animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
+            className="mt-3.5 rounded-[14px] border border-line bg-surface px-5 py-4 animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
             style={{ animationDelay: "260ms" }}
           >
             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
               <span className={CARD_LABEL}>BADGES — {badgesTotal} TOTAL</span>
-              <span className="font-plex text-[9px] text-[#b5b0a1]">BY TIER</span>
+              <span className="font-plex text-[9px] text-ink-4">BY TIER</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {(
@@ -649,12 +649,12 @@ function PlayerDossier({
         {/* Badge shelf */}
         {badgeShelf.length > 0 && (
           <div
-            className="mt-3.5 rounded-[14px] border border-[#e5e2da] bg-white px-5 py-4 animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
+            className="mt-3.5 rounded-[14px] border border-line bg-surface px-5 py-4 animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
             style={{ animationDelay: "260ms" }}
           >
             <div className="mb-3.5 flex flex-wrap items-baseline justify-between gap-2">
               <span className={CARD_LABEL}>BADGES — {badgesTotal} TOTAL</span>
-              <span className="font-plex text-[9px] text-[#b5b0a1]">
+              <span className="font-plex text-[9px] text-ink-4">
                 FROM GET /api/players/slug/{slug}
               </span>
             </div>
@@ -664,7 +664,7 @@ function PlayerDossier({
                   <span
                     className={cn(
                       "inline-flex w-[120px] shrink-0 items-center justify-center gap-1.5 rounded-full py-[5px] font-plex text-[8.5px] font-bold tracking-[0.08em] text-white",
-                      TIER_STYLES[row.tier] ?? "bg-[#8a8577]"
+                      TIER_STYLES[row.tier] ?? "bg-ink-3"
                     )}
                   >
                     {row.tier.toUpperCase()} · {row.chips.length}
@@ -674,12 +674,12 @@ function PlayerDossier({
                       <Link
                         key={c.slug}
                         href={`/badges?badge=${c.slug}&tier=${encodeURIComponent(row.tier)}`}
-                        className="group relative inline-flex items-center gap-1.5 rounded-full border border-[#e5e2da] bg-[#faf9f5] py-1 pr-3 pl-2 text-[12px] font-semibold text-[#1a1918]"
+                        className="group relative inline-flex items-center gap-1.5 rounded-full border border-line bg-paper py-1 pr-3 pl-2 text-[12px] font-semibold text-ink"
                       >
                         <BadgeIcon src={c.imageUrl} size={16} />
                         {c.name}
                         {c.description && (
-                          <span className="pointer-events-none absolute -top-[30px] left-0 z-10 hidden max-w-[280px] rounded-[6px] bg-[#1a1918] px-2.5 py-1.5 font-plex text-[8px] leading-[1.5] font-normal whitespace-normal text-[#faf9f5] shadow-[0_8px_16px_-8px_rgba(26,25,24,0.5)] group-hover:block">
+                          <span className="pointer-events-none absolute -top-[30px] left-0 z-10 hidden max-w-[280px] rounded-[6px] tone-fixed bg-panel px-2.5 py-1.5 font-plex text-[8px] leading-[1.5] font-normal whitespace-normal text-on-ink shadow-[0_8px_16px_-8px_rgba(26,25,24,0.5)] group-hover:block">
                             {c.description}
                           </span>
                         )}
@@ -694,7 +694,7 @@ function PlayerDossier({
 
         {/* Attribute matrix */}
         <div
-          className="mt-3.5 mb-12 rounded-[14px] border border-[#e5e2da] bg-white px-5 py-4 animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
+          className="mt-3.5 mb-12 rounded-[14px] border border-line bg-surface px-5 py-4 animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
           style={{ animationDelay: "320ms" }}
         >
           <div className={cn(CARD_LABEL, "mb-3")}>
@@ -708,19 +708,19 @@ function PlayerDossier({
               if (!rows.length) return null;
               return (
                 <div key={cat}>
-                  <div className="mb-2 font-plex text-[8.5px] tracking-[0.1em] text-[#b5b0a1]">
+                  <div className="mb-2 font-plex text-[8.5px] tracking-[0.1em] text-ink-4">
                     {MATRIX_LABELS[cat]}
                   </div>
                   <div className="flex flex-col gap-1.5">
                     {rows.map(({ key, stat }) => (
                       <div
                         key={key}
-                        className="group relative -mx-1 flex cursor-default items-center justify-between gap-1.5 rounded-[6px] px-1 py-px transition-colors duration-100 hover:bg-[#faf8f2]"
+                        className="group relative -mx-1 flex cursor-default items-center justify-between gap-1.5 rounded-[6px] px-1 py-px transition-colors duration-100 hover:bg-sunken"
                       >
-                        <span className="pointer-events-none absolute -top-[26px] right-0 z-10 hidden rounded-[6px] bg-[#1a1918] px-2 py-1 font-plex text-[8px] whitespace-nowrap text-[#faf9f5] shadow-[0_8px_16px_-8px_rgba(26,25,24,0.5)] group-hover:block">
+                        <span className="pointer-events-none absolute -top-[26px] right-0 z-10 hidden rounded-[6px] tone-fixed bg-panel px-2 py-1 font-plex text-[8px] whitespace-nowrap text-on-ink shadow-[0_8px_16px_-8px_rgba(26,25,24,0.5)] group-hover:block">
                           {dossier!.primaryPosition ?? "LEAGUE"} AVG {stat!.avg} · {ordinal(stat!.pct).toUpperCase()} PCTL
                         </span>
-                        <span className="font-plex text-[9px] text-[#8a8577]">
+                        <span className="font-plex text-[9px] text-ink-3">
                           {getAttributeDisplayName(key).toUpperCase()}
                         </span>
                         <span

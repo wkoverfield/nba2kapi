@@ -114,7 +114,7 @@ export function RatingHistoryChart({ mode, points, slug, className }: RatingHist
 
   if (!geom) {
     return (
-      <div className={cn("flex h-[150px] items-center justify-center font-plex text-[9px] text-[#b5b0a1]", className)}>
+      <div className={cn("flex h-[150px] items-center justify-center font-plex text-[9px] text-ink-4", className)}>
         ONE GAME OF DATA — HISTORY BUILDS EACH 2K RELEASE
       </div>
     );
@@ -132,7 +132,7 @@ export function RatingHistoryChart({ mode, points, slug, className }: RatingHist
         <svg
           ref={svgRef}
           viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-          className="block h-auto w-full touch-pan-y overflow-visible focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1a1918]"
+          className="block h-auto w-full touch-pan-y overflow-visible focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"
           role="group"
           tabIndex={0}
           aria-label={`Overall rating across ${points.length} ${
@@ -181,7 +181,7 @@ export function RatingHistoryChart({ mode, points, slug, className }: RatingHist
               x2={activeDot.x}
               y1="8"
               y2={BASELINE_Y + 4}
-              stroke="#1a1918"
+              stroke="var(--ink)"
               strokeWidth="1"
               strokeDasharray="2 3"
               opacity="0.35"
@@ -191,7 +191,7 @@ export function RatingHistoryChart({ mode, points, slug, className }: RatingHist
           <polyline
             points={geom.line}
             fill="none"
-            stroke="#1a1918"
+            stroke="var(--ink)"
             strokeWidth="2"
             strokeLinejoin="round"
           />
@@ -202,8 +202,8 @@ export function RatingHistoryChart({ mode, points, slug, className }: RatingHist
               cx={d.x}
               cy={d.y}
               r={i === active ? 4 : 2.5}
-              fill={i === active ? "#faf9f5" : "#1a1918"}
-              stroke="#1a1918"
+              fill={i === active ? "var(--paper)" : "var(--ink)"}
+              stroke="var(--ink)"
               strokeWidth={i === active ? 2 : 0}
             />
           ))}
@@ -214,7 +214,7 @@ export function RatingHistoryChart({ mode, points, slug, className }: RatingHist
               x={t.x}
               y="146"
               textAnchor="middle"
-              className="fill-[#b5b0a1] font-plex text-[8px]"
+              className="fill-ink-4 font-plex text-[8px]"
             >
               {t.label}
             </text>
@@ -225,7 +225,7 @@ export function RatingHistoryChart({ mode, points, slug, className }: RatingHist
           <div
             aria-hidden
             className={cn(
-              "pointer-events-none absolute z-10 -translate-y-[calc(100%+10px)] rounded-[6px] bg-[#1a1918] px-2 py-1 font-plex text-[8px] leading-[1.5] whitespace-nowrap text-[#faf9f5] shadow-[0_8px_16px_-8px_rgba(26,25,24,0.5)]",
+              "pointer-events-none absolute z-10 -translate-y-[calc(100%+10px)] rounded-[6px] tone-fixed bg-panel px-2 py-1 font-plex text-[8px] leading-[1.5] whitespace-nowrap text-on-ink shadow-[0_8px_16px_-8px_rgba(26,25,24,0.5)]",
               anchor === "center" && "-translate-x-1/2",
               anchor === "end" && "-translate-x-full"
             )}
@@ -234,14 +234,14 @@ export function RatingHistoryChart({ mode, points, slug, className }: RatingHist
               top: `${(activeDot.y / VIEW_H) * 100}%`,
             }}
           >
-            <span className="text-[#b5b0a1]">{activePoint.label}</span>{" "}
+            <span className="text-ink-4">{activePoint.label}</span>{" "}
             <span className="font-bold">{activePoint.overall}</span>{" "}
-            <span className="text-[#b5b0a1]">{getRatingTier(activePoint.overall).toUpperCase()}</span>
+            <span className="text-ink-4">{getRatingTier(activePoint.overall).toUpperCase()}</span>
           </div>
         )}
       </div>
 
-      <div className="mt-1.5 font-plex text-[8px] text-[#b5b0a1]" aria-live="polite">
+      <div className="mt-1.5 font-plex text-[8px] text-ink-4" aria-live="polite">
         {activePoint ? (
           <>
             {activePoint.label} · {activePoint.overall} OVR ·{" "}

@@ -23,9 +23,9 @@ const CATEGORIES = [
 ];
 
 const INPUT_CLASS =
-  "flex w-full rounded-lg border border-[#e5e2da] bg-white px-3 py-2 text-[14px] text-[#1a1918] placeholder:text-[#b5b0a1] focus-visible:outline-none focus-visible:border-[#1a1918] disabled:cursor-not-allowed disabled:opacity-50";
+  "flex w-full rounded-lg border border-line bg-surface px-3 py-2 text-[14px] text-ink placeholder:text-ink-4 focus-visible:outline-none focus-visible:border-ink disabled:cursor-not-allowed disabled:opacity-50";
 
-const LABEL_CLASS = "text-[12px] font-medium text-[#57534a]";
+const LABEL_CLASS = "text-[12px] font-medium text-ink-2";
 
 export function SubmitProjectDialog() {
   const [open, setOpen] = useState(false);
@@ -83,27 +83,27 @@ export function SubmitProjectDialog() {
       <DialogTrigger asChild>
         <button
           type="button"
-          className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-[#1a1918] px-5 py-2.5 text-[13.5px] font-semibold text-[#faf9f5] no-underline transition-[background,transform] duration-150 ease-out hover:bg-[#333] active:scale-[0.97] motion-reduce:transition-none"
+          className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-[13.5px] font-semibold text-on-ink no-underline transition-[background,transform] duration-150 ease-out hover:bg-ink-hover active:scale-[0.97] motion-reduce:transition-none"
         >
           <Plus className="h-4 w-4" />
           Submit a project
         </button>
       </DialogTrigger>
-      <DialogContent className="border-[#e5e2da] bg-[#faf9f5] text-[#1a1918] sm:max-w-lg">
+      <DialogContent className="border-line bg-paper text-ink sm:max-w-lg">
         {submitted ? (
           <div className="flex flex-col items-center py-8 text-center">
-            <CheckCircle2 className="h-10 w-10 text-[#0a7f3f]" strokeWidth={1.75} />
-            <h2 className="mt-4 font-display text-[20px] font-extrabold tracking-[-0.01em] text-[#1a1918]">
+            <CheckCircle2 className="h-10 w-10 text-pos" strokeWidth={1.75} />
+            <h2 className="mt-4 font-display text-[20px] font-extrabold tracking-[-0.01em] text-ink">
               Thanks, it’s in the queue
             </h2>
-            <p className="mt-2 max-w-[340px] text-[13.5px] leading-[1.55] text-[#57534a]">
+            <p className="mt-2 max-w-[340px] text-[13.5px] leading-[1.55] text-ink-2">
               We review each submission before it goes live, so your project will show up on the
               showcase once it’s approved.
             </p>
             <button
               type="button"
               onClick={() => handleOpenChange(false)}
-              className="mt-6 inline-flex cursor-pointer items-center justify-center rounded-full bg-[#1a1918] px-5 py-2 text-[13.5px] font-semibold text-[#faf9f5] transition-[background,transform] duration-150 ease-out hover:bg-[#333] active:scale-[0.97] motion-reduce:transition-none"
+              className="mt-6 inline-flex cursor-pointer items-center justify-center rounded-full bg-ink px-5 py-2 text-[13.5px] font-semibold text-on-ink transition-[background,transform] duration-150 ease-out hover:bg-ink-hover active:scale-[0.97] motion-reduce:transition-none"
             >
               Done
             </button>
@@ -111,10 +111,10 @@ export function SubmitProjectDialog() {
         ) : (
           <form onSubmit={handleSubmit}>
             <DialogHeader>
-              <DialogTitle className="font-display text-[19px] font-extrabold tracking-[-0.01em] text-[#1a1918]">
+              <DialogTitle className="font-display text-[19px] font-extrabold tracking-[-0.01em] text-ink">
                 Submit a project
               </DialogTitle>
-              <DialogDescription className="text-[13.5px] text-[#8a8577]">
+              <DialogDescription className="text-[13.5px] text-ink-3">
                 Built something on nba2kapi? Share it and we’ll feature it after a quick review.
               </DialogDescription>
             </DialogHeader>
@@ -131,8 +131,8 @@ export function SubmitProjectDialog() {
                         onClick={() => setCategory(t.value)}
                         className={
                           selected
-                            ? "inline-flex cursor-pointer items-center rounded-full border border-[#1a1918] bg-[#1a1918] px-3 py-1.5 text-[12.5px] font-medium text-[#faf9f5] transition-colors duration-150"
-                            : "inline-flex cursor-pointer items-center rounded-full border border-[#e5e2da] bg-white px-3 py-1.5 text-[12.5px] font-medium text-[#57534a] transition-colors duration-150 hover:border-[#1a1918]"
+                            ? "inline-flex cursor-pointer items-center rounded-full border border-ink bg-ink px-3 py-1.5 text-[12.5px] font-medium text-on-ink transition-colors duration-150"
+                            : "inline-flex cursor-pointer items-center rounded-full border border-line bg-surface px-3 py-1.5 text-[12.5px] font-medium text-ink-2 transition-colors duration-150 hover:border-ink"
                         }
                       >
                         {t.label}
@@ -144,7 +144,7 @@ export function SubmitProjectDialog() {
 
               <div className="space-y-2">
                 <label htmlFor="sc-name" className={LABEL_CLASS}>
-                  Project name <span className="text-[#b5b0a1]">({name.length}/60)</span>
+                  Project name <span className="text-ink-4">({name.length}/60)</span>
                 </label>
                 <input
                   id="sc-name"
@@ -173,7 +173,7 @@ export function SubmitProjectDialog() {
 
               <div className="space-y-2">
                 <label htmlFor="sc-desc" className={LABEL_CLASS}>
-                  Description <span className="text-[#b5b0a1]">({description.length}/240)</span>
+                  Description <span className="text-ink-4">({description.length}/240)</span>
                 </label>
                 <textarea
                   id="sc-desc"
@@ -189,7 +189,7 @@ export function SubmitProjectDialog() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <label htmlFor="sc-author" className={LABEL_CLASS}>
-                    Your name <span className="text-[#b5b0a1]">(optional)</span>
+                    Your name <span className="text-ink-4">(optional)</span>
                   </label>
                   <input
                     id="sc-author"
@@ -201,7 +201,7 @@ export function SubmitProjectDialog() {
                 </div>
                 <div className="space-y-2">
                   <label htmlFor="sc-email" className={LABEL_CLASS}>
-                    Email <span className="text-[#b5b0a1]">(optional, private)</span>
+                    Email <span className="text-ink-4">(optional, private)</span>
                   </label>
                   <input
                     id="sc-email"
@@ -214,20 +214,20 @@ export function SubmitProjectDialog() {
                 </div>
               </div>
 
-              {error && <p className="text-[13px] text-[#c2410c]">{error}</p>}
+              {error && <p className="text-[13px] text-[#c2410c] dark:text-[#f08372]">{error}</p>}
             </div>
             <DialogFooter>
               <button
                 type="button"
                 onClick={() => handleOpenChange(false)}
-                className="inline-flex cursor-pointer items-center justify-center rounded-full border border-[#e5e2da] bg-white px-4 py-2 text-[13.5px] font-medium text-[#57534a] transition-colors duration-150 hover:border-[#1a1918]"
+                className="inline-flex cursor-pointer items-center justify-center rounded-full border border-line bg-surface px-4 py-2 text-[13.5px] font-medium text-ink-2 transition-colors duration-150 hover:border-ink"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting || !name.trim() || !url.trim() || !description.trim()}
-                className="inline-flex cursor-pointer items-center justify-center rounded-full bg-[#1a1918] px-5 py-2 text-[13.5px] font-semibold text-[#faf9f5] transition-[background,transform] duration-150 ease-out hover:bg-[#333] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
+                className="inline-flex cursor-pointer items-center justify-center rounded-full bg-ink px-5 py-2 text-[13.5px] font-semibold text-on-ink transition-[background,transform] duration-150 ease-out hover:bg-ink-hover active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
               >
                 {isSubmitting ? "Submitting..." : "Submit"}
               </button>

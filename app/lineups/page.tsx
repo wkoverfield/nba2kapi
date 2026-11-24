@@ -110,7 +110,7 @@ function avgOf(list: PoolPlayer[], f: (p: PoolPlayer) => number | null): number 
 }
 
 function eraColor(t: TeamType) {
-  return t === "curr" ? "#8a8577" : "#9a6700";
+  return t === "curr" ? "var(--ink-3)" : "var(--warn)";
 }
 
 function shortMeta(p: PoolPlayer) {
@@ -324,8 +324,8 @@ function CourtSlot({
         >
           <div
             className={cn(
-              "relative mx-auto h-[clamp(38px,4.5vw,52px)] w-[clamp(38px,4.5vw,52px)] rounded-full border-2 bg-white shadow-[0_4px_12px_-4px_rgba(26,25,24,0.35)]",
-              isOver ? "border-[#0a7f3f]" : "border-[#1a1918]"
+              "relative mx-auto h-[clamp(38px,4.5vw,52px)] w-[clamp(38px,4.5vw,52px)] rounded-full border-2 bg-surface shadow-[0_4px_12px_-4px_rgba(26,25,24,0.35)]",
+              isOver ? "border-pos" : "border-ink"
             )}
           >
             <Headshot src={player.playerImage} name={player.name} size={48} className="h-full w-full" />
@@ -338,19 +338,19 @@ function CourtSlot({
               {player.overall}
             </span>
           </div>
-          <span className="mt-1 inline-block rounded-[4px] bg-white/90 px-[5px] py-px font-plex text-[7.5px] tracking-[0.06em] whitespace-nowrap text-[#57534a]">
+          <span className="mt-1 inline-block rounded-[4px] bg-surface/90 px-[5px] py-px font-plex text-[7.5px] tracking-[0.06em] whitespace-nowrap text-ink-2">
             {lastName(player.name)}
           </span>
         </div>
       ) : (
         <div
           className={cn(
-            "flex h-[clamp(38px,4.5vw,52px)] w-[clamp(38px,4.5vw,52px)] items-center justify-center rounded-full border-2 border-dashed bg-white/55 font-plex text-[8px] text-[#8a8577]",
+            "flex h-[clamp(38px,4.5vw,52px)] w-[clamp(38px,4.5vw,52px)] items-center justify-center rounded-full border-2 border-dashed bg-surface/55 font-plex text-[8px] text-ink-3",
             isOver
-              ? "border-[#0a7f3f] bg-white/80"
+              ? "border-pos bg-surface/80"
               : pulsing
-                ? "animate-[pulse-slot_2s_ease-in-out_infinite] border-[#b5b0a1] motion-reduce:animate-none"
-                : "border-[#b5b0a1]"
+                ? "animate-[pulse-slot_2s_ease-in-out_infinite] border-ink-4 motion-reduce:animate-none"
+                : "border-ink-4"
           )}
         >
           {spot.pos}
@@ -373,8 +373,8 @@ function PoolRow({ p, placed, onTap }: { p: PoolPlayer; placed: boolean; onTap: 
       {...drag.attributes}
       onClick={placed ? undefined : onTap}
       className={cn(
-        "flex touch-none items-center gap-2.5 border-b border-[#faf8f2] px-4 py-[7px] transition-colors duration-100",
-        placed ? "opacity-35" : "cursor-grab hover:bg-[#faf8f2] active:scale-[0.99]",
+        "flex touch-none items-center gap-2.5 border-b border-sunken px-4 py-[7px] transition-colors duration-100",
+        placed ? "opacity-35" : "cursor-grab hover:bg-sunken active:scale-[0.99]",
         drag.isDragging && "opacity-30"
       )}
     >
@@ -631,10 +631,10 @@ function Whiteboard() {
         bText: hasOpp ? (t.b ?? "—") : "—",
         aW: `${t.a ?? 0}%`,
         bW: hasOpp ? `${t.b ?? 0}%` : "0%",
-        aC: aWins ? "#1a1918" : "#b5b0a1",
-        bC: bWins ? "#1a1918" : "#b5b0a1",
-        aBar: aWins ? "#1a1918" : "#c9c4b6",
-        bBar: bWins ? "#1a1918" : "#c9c4b6",
+        aC: aWins ? "var(--ink)" : "var(--ink-4)",
+        bC: bWins ? "var(--ink)" : "var(--ink-4)",
+        aBar: aWins ? "var(--ink)" : "var(--bar-off)",
+        bBar: bWins ? "var(--ink)" : "var(--bar-off)",
       };
     });
   }, [yoursFilled, oppsFilled, yourOvr, oppOvr, hasOpp]);
@@ -643,8 +643,8 @@ function Whiteboard() {
   const reads = useMemo(() => {
     if (yoursFilled.length === 0) {
       return [
-        { tag: "START", c: "#8a8577", t: "Drag or tap from the player pool to seat your five — mixing eras is the whole point." },
-        { tag: "TIP", c: "#8a8577", t: "Use position, era, and rating filters to find the right fit; the analysis builds as you go." },
+        { tag: "START", c: "var(--ink-3)", t: "Drag or tap from the player pool to seat your five — mixing eras is the whole point." },
+        { tag: "TIP", c: "var(--ink-3)", t: "Use position, era, and rating filters to find the right fit; the analysis builds as you go." },
       ];
     }
     if (hasOpp) {
@@ -653,7 +653,7 @@ function Whiteboard() {
       return [
         {
           tag: yo >= oo ? "EDGE" : "TRAIL",
-          c: yo >= oo ? "#0a7f3f" : "#c03a2b",
+          c: yo >= oo ? "var(--pos)" : "var(--neg)",
           t:
             yo >= oo
               ? `Your five carries the talent edge, ${yo} to ${oo} average overall.`
@@ -661,13 +661,13 @@ function Whiteboard() {
         },
         {
           tag: "WATCH",
-          c: "#9a6700",
+          c: "var(--warn)",
           t:
             oppsFilled.length < 5
               ? `Their five is incomplete (${oppsFilled.length}/5) — the tape firms up as spots fill.`
               : "All five duels are set. Playmaking and defense decide close tapes.",
         },
-        { tag: "NOTE", c: "#8a8577", t: "Guard assignments default to position." },
+        { tag: "NOTE", c: "var(--ink-3)", t: "Guard assignments default to position." },
       ];
     }
     const shooters = yoursFilled.filter((p) => (p.threePointShot ?? 0) >= 85);
@@ -677,21 +677,21 @@ function Whiteboard() {
     return [
       {
         tag: "SPACING",
-        c: shooters.length >= 3 ? "#0a7f3f" : shooters.length >= 1 ? "#9a6700" : "#c03a2b",
+        c: shooters.length >= 3 ? "var(--pos)" : shooters.length >= 1 ? "var(--warn)" : "var(--neg)",
         t: shooters.length
           ? `${shooters.map((p) => lastName(p.name)).join(", ")} shoot${shooters.length === 1 ? "s" : ""} 85+ from deep.`
           : "Nobody placed shoots 85+ from three — the paint will be packed.",
       },
       {
         tag: "PLAYMAKING",
-        c: playmakers.length >= 2 ? "#0a7f3f" : playmakers.length === 1 ? "#9a6700" : "#c03a2b",
+        c: playmakers.length >= 2 ? "var(--pos)" : playmakers.length === 1 ? "var(--warn)" : "var(--neg)",
         t: playmakers.length
           ? `${playmakers.length} player${playmakers.length === 1 ? "" : "s"} with 85+ playmaking — the ball moves.`
           : "No high-end creator yet — someone has to organize the offense.",
       },
       {
         tag: "GLASS",
-        c: (bestReb?.cats.reb ?? 0) >= 85 ? "#0a7f3f" : (bestReb?.cats.reb ?? 0) >= 70 ? "#9a6700" : "#c03a2b",
+        c: (bestReb?.cats.reb ?? 0) >= 85 ? "var(--pos)" : (bestReb?.cats.reb ?? 0) >= 70 ? "var(--warn)" : "var(--neg)",
         t: bestReb
           ? `${lastName(bestReb.name)} leads the glass at ${bestReb.cats.reb ?? "—"} rebounding; ${centers.length} true center${centers.length === 1 ? "" : "s"} placed.`
           : "No rebounding presence yet.",
@@ -729,7 +729,7 @@ function Whiteboard() {
           a,
           b,
           edge,
-          eC: edge === "EVEN" ? "#9a6700" : edge === "EDGE: YOU" ? "#0a7f3f" : "#c03a2b",
+          eC: edge === "EVEN" ? "var(--warn)" : edge === "EDGE: YOU" ? "var(--pos)" : "var(--neg)",
         };
       }).filter((d): d is NonNullable<typeof d> => d !== null),
     [yours, opps]
@@ -746,13 +746,13 @@ function Whiteboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#faf9f5] font-body text-[#1a1918]">
+    <div className="min-h-screen bg-paper font-body text-ink">
       <TopNav hasApiKey={hasApiKey} />
 
       <div className="mx-auto min-h-screen max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2 pb-12">
         <div className="flex flex-wrap items-center justify-between gap-3 animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
           <div>
-            <div className="font-plex text-[9px] tracking-[0.12em] text-[#8a8577]">LINEUP BUILDER</div>
+            <div className="font-plex text-[9px] tracking-[0.12em] text-ink-3">LINEUP BUILDER</div>
             <h1 className="mt-1 mb-0 font-display text-[clamp(24px,3vw,36px)] font-bold tracking-[-0.03em]">
               {matchupMode ? "Build the matchup" : "Build your five"}
             </h1>
@@ -762,7 +762,7 @@ function Whiteboard() {
               <button
                 type="button"
                 onClick={() => setMatchupMode(true)}
-                className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#e5e2da] bg-white px-3.5 py-[7px] text-[11.5px] font-semibold transition-[border-color,transform] hover:border-[#1a1918] active:scale-[0.97]"
+                className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-[7px] text-[11.5px] font-semibold transition-[border-color,transform] hover:border-ink active:scale-[0.97]"
               >
                 <UsersRound className="h-3.5 w-3.5" /> Add opponent
               </button>
@@ -771,7 +771,7 @@ function Whiteboard() {
               <button
                 type="button"
                 onClick={() => { setOpps([null, null, null, null, null]); setMatchupMode(false); }}
-                className="cursor-pointer rounded-full border border-[#e5e2da] bg-white px-3.5 py-[7px] text-[11.5px] font-semibold text-[#1a1918] transition-[border-color,transform] duration-150 hover:border-[#1a1918] active:scale-[0.97] motion-reduce:transition-none"
+                className="cursor-pointer rounded-full border border-line bg-surface px-3.5 py-[7px] text-[11.5px] font-semibold text-ink transition-[border-color,transform] duration-150 hover:border-ink active:scale-[0.97] motion-reduce:transition-none"
               >
                 Single lineup
               </button>
@@ -783,7 +783,7 @@ function Whiteboard() {
                   setYours([null, null, null, null, null]);
                   setOpps([null, null, null, null, null]);
                 }}
-                className="cursor-pointer rounded-full border border-[#e5e2da] bg-white px-3.5 py-[7px] text-[11.5px] font-semibold text-[#1a1918] transition-[border-color,transform] duration-150 hover:border-[#1a1918] active:scale-[0.97] motion-reduce:transition-none"
+                className="cursor-pointer rounded-full border border-line bg-surface px-3.5 py-[7px] text-[11.5px] font-semibold text-ink transition-[border-color,transform] duration-150 hover:border-ink active:scale-[0.97] motion-reduce:transition-none"
               >
                 Clear all
               </button>
@@ -791,7 +791,7 @@ function Whiteboard() {
             <button
               type="button"
               onClick={shareLineup}
-              className="cursor-pointer rounded-full bg-[#1a1918] px-3.5 py-[7px] text-[11.5px] font-semibold text-[#faf9f5] transition-[background,transform] duration-150 hover:bg-[#333] active:scale-[0.97] motion-reduce:transition-none"
+              className="cursor-pointer rounded-full bg-ink px-3.5 py-[7px] text-[11.5px] font-semibold text-on-ink transition-[background,transform] duration-150 hover:bg-ink-hover active:scale-[0.97] motion-reduce:transition-none"
             >
               Share lineup
             </button>
@@ -810,26 +810,26 @@ function Whiteboard() {
           <div className="mt-4 grid items-start gap-3.5 lg:grid-cols-[minmax(260px,0.72fr)_minmax(0,2fr)]">
             {/* Player pool */}
             <div
-              className="overflow-hidden rounded-[14px] border border-[#e5e2da] bg-white animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
+              className="overflow-hidden rounded-[14px] border border-line bg-surface animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
               style={{ animationDelay: "60ms" }}
             >
-              <div className="border-b border-[#f1efe8] px-4 pt-[11px] pb-3">
+              <div className="border-b border-soft px-4 pt-[11px] pb-3">
                 <div className="mb-2.5 flex items-center justify-between">
-                  <span className="font-plex text-[9px] tracking-[0.1em] text-[#8a8577]">
+                  <span className="font-plex text-[9px] tracking-[0.1em] text-ink-3">
                     PLAYER POOL — ANY ERA
                   </span>
                   <div className="flex items-center gap-2">
-                    <button type="button" onClick={() => setSortF((s) => (s === "ovr" ? "az" : "ovr"))} className="cursor-pointer font-plex text-[8.5px] text-[#57534a] hover:text-[#1a1918]">{sortF === "ovr" ? "OVR ↓" : "A–Z"}</button>
-                    <button type="button" onClick={() => setPickerOpen(true)} className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-[#d9d4c7] bg-[#faf9f5] px-2 py-1 font-plex text-[8px] font-bold text-[#57534a] hover:border-[#1a1918]"><SlidersHorizontal className="h-3 w-3" /> FILTER</button>
+                    <button type="button" onClick={() => setSortF((s) => (s === "ovr" ? "az" : "ovr"))} className="cursor-pointer font-plex text-[8.5px] text-ink-2 hover:text-ink">{sortF === "ovr" ? "OVR ↓" : "A–Z"}</button>
+                    <button type="button" onClick={() => setPickerOpen(true)} className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-line-strong bg-paper px-2 py-1 font-plex text-[8px] font-bold text-ink-2 hover:border-ink"><SlidersHorizontal className="h-3 w-3" /> FILTER</button>
                   </div>
                 </div>
-                <div className="mb-[9px] flex items-center gap-2 rounded-full border border-[#e5e2da] bg-[#faf9f5] px-3 py-2">
-                  <Search className="h-[13px] w-[13px] text-[#8a8577]" strokeWidth={2} />
+                <div className="mb-[9px] flex items-center gap-2 rounded-full border border-line bg-paper px-3 py-2">
+                  <Search className="h-[13px] w-[13px] text-ink-3" strokeWidth={2} />
                   <input
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
                     placeholder="Search the pool…"
-                    className="min-w-0 flex-1 border-none bg-transparent font-body text-[12.5px] text-[#1a1918] outline-none placeholder:text-[#b5b0a1]"
+                    className="min-w-0 flex-1 border-none bg-transparent font-body text-[12.5px] text-ink outline-none placeholder:text-ink-4"
                   />
                 </div>
                 <div className="flex flex-wrap gap-[5px]">
@@ -839,10 +839,10 @@ function Whiteboard() {
                       type="button"
                       onClick={() => setPosF(label)}
                       className={cn(
-                        "cursor-pointer rounded-full border border-[#e5e2da] px-[11px] py-1 font-plex text-[8.5px] font-bold tracking-[0.06em] transition-[background,color,transform] duration-150 select-none active:scale-95 motion-reduce:transition-none",
+                        "cursor-pointer rounded-full border border-line px-[11px] py-1 font-plex text-[8.5px] font-bold tracking-[0.06em] transition-[background,color,transform] duration-150 select-none active:scale-95 motion-reduce:transition-none",
                         posF === label
-                          ? "bg-[#1a1918] text-[#faf9f5]"
-                          : "bg-[#faf9f5] text-[#8a8577] hover:text-[#1a1918]"
+                          ? "bg-ink text-on-ink"
+                          : "bg-paper text-ink-3 hover:text-ink"
                       )}
                     >
                       {label}
@@ -850,11 +850,11 @@ function Whiteboard() {
                   ))}
                 </div>
                 {matchupMode && (
-                  <div className="mt-2.5 flex items-center justify-between border-t border-[#f1efe8] pt-2.5">
-                    <span className="font-plex text-[8px] text-[#8a8577]">TAP TARGET</span>
-                    <div className="flex rounded-full border border-[#e5e2da] bg-[#faf9f5] p-0.5">
-                      <button type="button" onClick={() => setPickerSide("yours")} className={cn("cursor-pointer rounded-full px-2 py-0.5 font-plex text-[7.5px] font-bold", pickerSide === "yours" ? "bg-[#1a1918] text-white" : "text-[#8a8577]")}>YOUR FIVE</button>
-                      <button type="button" onClick={() => setPickerSide("opps")} className={cn("cursor-pointer rounded-full px-2 py-0.5 font-plex text-[7.5px] font-bold", pickerSide === "opps" ? "bg-[#1a1918] text-white" : "text-[#8a8577]")}>THEIRS</button>
+                  <div className="mt-2.5 flex items-center justify-between border-t border-soft pt-2.5">
+                    <span className="font-plex text-[8px] text-ink-3">TAP TARGET</span>
+                    <div className="flex rounded-full border border-line bg-paper p-0.5">
+                      <button type="button" onClick={() => setPickerSide("yours")} className={cn("cursor-pointer rounded-full px-2 py-0.5 font-plex text-[7.5px] font-bold", pickerSide === "yours" ? "bg-ink text-on-ink" : "text-ink-3")}>YOUR FIVE</button>
+                      <button type="button" onClick={() => setPickerSide("opps")} className={cn("cursor-pointer rounded-full px-2 py-0.5 font-plex text-[7.5px] font-bold", pickerSide === "opps" ? "bg-ink text-on-ink" : "text-ink-3")}>THEIRS</button>
                     </div>
                   </div>
                 )}
@@ -871,19 +871,19 @@ function Whiteboard() {
                       />
                     ))
                   : Array.from({ length: 10 }, (_, i) => (
-                      <div key={i} className="flex animate-pulse items-center gap-2.5 border-b border-[#faf8f2] px-4 py-[7px]">
-                        <div className="h-7 w-7 rounded-full bg-[#f1efe8]" />
-                        <div className="h-3.5 flex-1 rounded bg-[#f1efe8]" />
-                        <div className="h-[20px] w-7 rounded-[5px] bg-[#f1efe8]" />
+                      <div key={i} className="flex animate-pulse items-center gap-2.5 border-b border-sunken px-4 py-[7px]">
+                        <div className="h-7 w-7 rounded-full bg-soft" />
+                        <div className="h-3.5 flex-1 rounded bg-soft" />
+                        <div className="h-[20px] w-7 rounded-[5px] bg-soft" />
                       </div>
                     ))}
                 {players && pool.length === 0 && (
-                  <div className="px-4 py-[22px] text-center font-plex text-[9px] tracking-[0.08em] text-[#b5b0a1]">
+                  <div className="px-4 py-[22px] text-center font-plex text-[9px] tracking-[0.08em] text-ink-4">
                     NO PLAYERS MATCH — CLEAR THE FILTERS
                   </div>
                 )}
               </div>
-              <div className="px-4 py-[9px] font-plex text-[8px] leading-[1.6] text-[#b5b0a1]">
+              <div className="px-4 py-[9px] font-plex text-[8px] leading-[1.6] text-ink-4">
                 DRAG OR TAP TO PLACE · TAP A CHIP TO REMOVE
               </div>
             </div>
@@ -892,7 +892,7 @@ function Whiteboard() {
             <div className="min-w-0">
               <div
                 className={cn(
-                  "relative mx-auto aspect-[94/50] w-full overflow-hidden rounded-2xl border border-[#d9c49a] bg-[#f4e4c3] shadow-[0_22px_55px_-38px_rgba(81,59,29,0.7)] animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
+                  "relative mx-auto aspect-[94/50] w-full overflow-hidden rounded-2xl tone-fixed border border-[#d9c49a] bg-[#f4e4c3] shadow-[0_22px_55px_-38px_rgba(81,59,29,0.7)] animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
                 )}
                 style={{ animationDelay: "100ms" }}
               >
@@ -903,15 +903,15 @@ function Whiteboard() {
                   {yourOvr !== null && (
                     <>
                       {" · "}
-                      <b className="text-[#1a1918]">{yourOvr} OVR</b>
+                      <b className="text-ink">{yourOvr} OVR</b>
                     </>
                   )}
                 </span>
-                {matchupMode && <span className="absolute top-2.5 right-3.5 font-plex text-[8.5px] tracking-[0.1em] text-[#b5b0a1]">
+                {matchupMode && <span className="absolute top-2.5 right-3.5 font-plex text-[8.5px] tracking-[0.1em] text-ink-4">
                   {hasOpp ? (
                     <>
                       THEIR FIVE · {oppsFilled.length}/5 ·{" "}
-                      <b className="text-[#1a1918]">{oppOvr} OVR</b>
+                      <b className="text-ink">{oppOvr} OVR</b>
                     </>
                   ) : (
                     "OPEN HALF — ADD AN OPPONENT"
@@ -947,55 +947,55 @@ function Whiteboard() {
 
               {/* Single-lineup report */}
               {!hasOpp && lineupReport && (
-                <div className="mt-3 overflow-hidden rounded-[14px] border border-[#e5e2da] bg-white">
-                  <div className="grid gap-3 border-b border-[#f1efe8] px-[18px] py-3 lg:grid-cols-[minmax(220px,1.5fr)_repeat(4,minmax(72px,0.55fr))] lg:items-center">
+                <div className="mt-3 overflow-hidden rounded-[14px] border border-line bg-surface">
+                  <div className="grid gap-3 border-b border-soft px-[18px] py-3 lg:grid-cols-[minmax(220px,1.5fr)_repeat(4,minmax(72px,0.55fr))] lg:items-center">
                     <div>
-                      <div className="font-plex text-[8px] tracking-[0.12em] text-[#8a8577]">LINEUP IDENTITY · {yoursFilled.length}/5</div>
+                      <div className="font-plex text-[8px] tracking-[0.12em] text-ink-3">LINEUP IDENTITY · {yoursFilled.length}/5</div>
                       <div className="mt-1 font-display text-[19px] font-bold tracking-[-0.02em]">{lineupReport.identity}</div>
                     </div>
                     {lineupReport.grades.map((item) => (
-                      <div key={item.label} className="flex items-center justify-between gap-2 rounded-[10px] border border-[#efece4] bg-[#faf9f5] px-3 py-2 lg:block">
-                        <span className="font-plex text-[7.5px] tracking-[0.08em] text-[#8a8577]">{item.label}</span>
+                      <div key={item.label} className="flex items-center justify-between gap-2 rounded-[10px] border border-line-soft bg-paper px-3 py-2 lg:block">
+                        <span className="font-plex text-[7.5px] tracking-[0.08em] text-ink-3">{item.label}</span>
                         <div className="font-display text-[22px] leading-none font-bold" title={`Heuristic score ${item.score}/99`}>{item.value}</div>
                       </div>
                     ))}
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 border-b border-[#f1efe8] px-[18px] py-2.5">
-                    <span className="mr-1 font-plex text-[8px] tracking-[0.1em] text-[#8a8577]">ROLE COVERAGE</span>
+                  <div className="flex flex-wrap items-center gap-2 border-b border-soft px-[18px] py-2.5">
+                    <span className="mr-1 font-plex text-[8px] tracking-[0.1em] text-ink-3">ROLE COVERAGE</span>
                     {lineupReport.coverage.map((item) => (
-                      <span key={item.label} className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-plex text-[8px] font-bold", item.ok ? "border-[#b8d8c3] bg-[#f1faf4] text-[#0a7f3f]" : "border-[#ead0ca] bg-[#fff5f2] text-[#c03a2b]")}>
-                        <i className={cn("h-1.5 w-1.5 rounded-full", item.ok ? "bg-[#0a7f3f]" : "bg-[#c03a2b]")} />
+                      <span key={item.label} className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-plex text-[8px] font-bold", item.ok ? "border-[#b8d8c3] dark:border-[#2c4a38] bg-[#f1faf4] dark:bg-[#16261c] text-pos" : "border-[#ead0ca] dark:border-[#4d2c26] bg-[#fff5f2] dark:bg-[#2b1815] text-neg")}>
+                        <i className={cn("h-1.5 w-1.5 rounded-full", item.ok ? "bg-pos" : "bg-neg")} />
                         {item.label} · {item.value}
                       </span>
                     ))}
                   </div>
 
                   <div className="grid gap-0 md:grid-cols-2">
-                    <div className="border-b border-[#f1efe8] px-[18px] py-3 md:border-r md:border-b-0">
-                      <div className="mb-2 font-plex text-[8px] font-bold tracking-[0.1em] text-[#0a7f3f]">WHAT TRAVELS</div>
+                    <div className="border-b border-soft px-[18px] py-3 md:border-r md:border-b-0">
+                      <div className="mb-2 font-plex text-[8px] font-bold tracking-[0.1em] text-pos">WHAT TRAVELS</div>
                       <div className="flex flex-col gap-1.5">
-                        {(lineupReport.strengths.length ? lineupReport.strengths : ["Add more players to reveal lineup strengths."]).map((text) => <div key={text} className="flex gap-2 text-[11.5px] leading-[1.45] text-[#57534a]"><b className="text-[#0a7f3f]">+</b>{text}</div>)}
+                        {(lineupReport.strengths.length ? lineupReport.strengths : ["Add more players to reveal lineup strengths."]).map((text) => <div key={text} className="flex gap-2 text-[11.5px] leading-[1.45] text-ink-2"><b className="text-pos">+</b>{text}</div>)}
                       </div>
                     </div>
                     <div className="px-[18px] py-3">
-                      <div className="mb-2 font-plex text-[8px] font-bold tracking-[0.1em] text-[#c03a2b]">HOW IT BREAKS</div>
+                      <div className="mb-2 font-plex text-[8px] font-bold tracking-[0.1em] text-neg">HOW IT BREAKS</div>
                       <div className="flex flex-col gap-1.5">
-                        {(lineupReport.risks.length ? lineupReport.risks : ["No critical coverage hole detected yet."]).map((text) => <div key={text} className="flex gap-2 text-[11.5px] leading-[1.45] text-[#57534a]"><b className="text-[#c03a2b]">−</b>{text}</div>)}
+                        {(lineupReport.risks.length ? lineupReport.risks : ["No critical coverage hole detected yet."]).map((text) => <div key={text} className="flex gap-2 text-[11.5px] leading-[1.45] text-ink-2"><b className="text-neg">−</b>{text}</div>)}
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-start gap-2 border-t border-[#f1efe8] bg-[#faf9f5] px-[18px] py-2.5 text-[11px] leading-[1.5] text-[#57534a]">
-                    <span className="shrink-0 font-plex text-[8px] font-bold tracking-[0.08em] text-[#9a6700]">NEXT MOVE</span>
+                  <div className="flex items-start gap-2 border-t border-soft bg-paper px-[18px] py-2.5 text-[11px] leading-[1.5] text-ink-2">
+                    <span className="shrink-0 font-plex text-[8px] font-bold tracking-[0.08em] text-warn">NEXT MOVE</span>
                     <span>{lineupReport.recommendation}</span>
                   </div>
                 </div>
               )}
 
               {!hasOpp && !lineupReport && (
-                <div className="mt-3 rounded-[14px] border border-[#e5e2da] bg-white px-[18px] py-4">
-                  <div className="font-plex text-[8px] tracking-[0.12em] text-[#8a8577]">LINEUP REPORT</div>
-                  <div className="mt-1 text-[12px] text-[#57534a]">
+                <div className="mt-3 rounded-[14px] border border-line bg-surface px-[18px] py-4">
+                  <div className="font-plex text-[8px] tracking-[0.12em] text-ink-3">LINEUP REPORT</div>
+                  <div className="mt-1 text-[12px] text-ink-2">
                     {yoursFilled.length ? "Loading full attributes and badges…" : "Drag in your first player to start the analysis."}
                   </div>
                 </div>
@@ -1003,12 +1003,12 @@ function Whiteboard() {
 
               {/* Matchup tape + read */}
               {hasOpp && <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3">
-                <div className="rounded-[14px] border border-[#e5e2da] bg-white px-[18px] py-3.5">
+                <div className="rounded-[14px] border border-line bg-surface px-[18px] py-3.5">
                   <div className="mb-3 flex items-center justify-between">
-                    <span className="font-plex text-[9px] tracking-[0.12em] text-[#8a8577]">
+                    <span className="font-plex text-[9px] tracking-[0.12em] text-ink-3">
                       {hasOpp ? "TALE OF THE TAPE" : "LINEUP COMPOSITION"}
                     </span>
-                    <span className="font-plex text-[8.5px] text-[#b5b0a1]">
+                    <span className="font-plex text-[8.5px] text-ink-4">
                       {hasOpp ? "YOU ← → THEM" : "YOUR FIVE ONLY"}
                     </span>
                   </div>
@@ -1018,16 +1018,16 @@ function Whiteboard() {
                         <span className="text-right font-plex text-[10.5px] font-bold" style={{ color: t.aC }}>
                           {t.aText}
                         </span>
-                        <div className="relative h-1.5 rounded-full bg-[#f1efe8]">
+                        <div className="relative h-1.5 rounded-full bg-soft">
                           <div
                             className="absolute top-0 right-0 h-full rounded-full transition-[width] duration-350"
                             style={{ width: t.aW, background: t.aBar }}
                           />
                         </div>
-                        <span className="text-center font-plex text-[7.5px] tracking-[0.06em] text-[#8a8577]">
+                        <span className="text-center font-plex text-[7.5px] tracking-[0.06em] text-ink-3">
                           {t.label}
                         </span>
-                        <div className="relative h-1.5 rounded-full bg-[#f1efe8]">
+                        <div className="relative h-1.5 rounded-full bg-soft">
                           <div
                             className="absolute top-0 left-0 h-full rounded-full transition-[width] duration-350"
                             style={{ width: t.bW, background: t.bBar }}
@@ -1041,8 +1041,8 @@ function Whiteboard() {
                   </div>
                 </div>
 
-                <div className="rounded-[14px] border border-[#e5e2da] bg-white px-[18px] py-3.5">
-                  <div className="mb-3 font-plex text-[9px] tracking-[0.12em] text-[#8a8577]">
+                <div className="rounded-[14px] border border-line bg-surface px-[18px] py-3.5">
+                  <div className="mb-3 font-plex text-[9px] tracking-[0.12em] text-ink-3">
                     {hasOpp ? "THE MATCHUP READ" : "THE COACH'S READ"}
                   </div>
                   <div className="flex flex-col gap-[9px]">
@@ -1054,7 +1054,7 @@ function Whiteboard() {
                         >
                           {r.tag}
                         </span>
-                        <span className="text-[#57534a]">{r.t}</span>
+                        <span className="text-ink-2">{r.t}</span>
                       </div>
                     ))}
                   </div>
@@ -1063,19 +1063,19 @@ function Whiteboard() {
 
               {/* Duels */}
               {hasOpp && duels.length > 0 && (
-                <div className="mt-3 overflow-hidden rounded-[14px] border border-[#e5e2da] bg-white animate-[rise-in_300ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
-                  <div className="flex items-center justify-between border-b border-[#f1efe8] px-[18px] py-[11px]">
-                    <span className="font-plex text-[9px] tracking-[0.12em] text-[#8a8577]">
+                <div className="mt-3 overflow-hidden rounded-[14px] border border-line bg-surface animate-[rise-in_300ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
+                  <div className="flex items-center justify-between border-b border-soft px-[18px] py-[11px]">
+                    <span className="font-plex text-[9px] tracking-[0.12em] text-ink-3">
                       THE DUELS — WHO GUARDS WHO
                     </span>
-                    <span className="font-plex text-[8.5px] text-[#b5b0a1]">DEFAULT: BY POSITION</span>
+                    <span className="font-plex text-[8.5px] text-ink-4">DEFAULT: BY POSITION</span>
                   </div>
                   {duels.map((d) => (
                     <div
                       key={d.pos}
-                      className="flex flex-wrap items-center gap-x-2.5 gap-y-2 border-b border-[#faf8f2] px-[18px] py-[9px]"
+                      className="flex flex-wrap items-center gap-x-2.5 gap-y-2 border-b border-sunken px-[18px] py-[9px]"
                     >
-                      <span className="w-5 font-plex text-[8.5px] tracking-[0.08em] text-[#b5b0a1]">
+                      <span className="w-5 font-plex text-[8.5px] tracking-[0.08em] text-ink-4">
                         {d.pos}
                       </span>
                       <span className="text-[12.5px] font-bold">{lastName(d.a.name)}</span>
@@ -1087,7 +1087,7 @@ function Whiteboard() {
                       >
                         {d.a.overall}
                       </span>
-                      <span className="font-plex text-[8.5px] text-[#b5b0a1]">VS</span>
+                      <span className="font-plex text-[8.5px] text-ink-4">VS</span>
                       <span
                         className={cn(
                           "inline-flex min-w-[26px] items-center justify-center rounded-[5px] px-1 py-0.5 text-[10px] font-bold text-white",
@@ -1115,79 +1115,79 @@ function Whiteboard() {
               aria-label="Advanced player filters"
               onMouseDown={(e) => { if (e.target === e.currentTarget) setPickerOpen(false); }}
             >
-              <div className="flex max-h-[90vh] w-full max-w-[640px] flex-col overflow-hidden rounded-t-[22px] border border-[#d9d4c7] bg-[#fffdf8] shadow-[0_30px_80px_-24px_rgba(26,25,24,0.55)] sm:rounded-[22px]">
-                <div className="flex items-start justify-between gap-4 border-b border-[#e5e2da] px-5 py-4">
+              <div className="flex max-h-[90vh] w-full max-w-[640px] flex-col overflow-hidden rounded-t-[22px] border border-line-strong bg-paper-top shadow-[0_30px_80px_-24px_rgba(26,25,24,0.55)] sm:rounded-[22px]">
+                <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
                   <div>
-                    <div className="font-plex text-[9px] tracking-[0.12em] text-[#8a8577]">
+                    <div className="font-plex text-[9px] tracking-[0.12em] text-ink-3">
                       PLAYER POOL · ADVANCED FILTERS
                     </div>
                     <h2 className="mt-1 mb-0 font-display text-[24px] font-bold tracking-[-0.025em]">Narrow the pool</h2>
                   </div>
-                  <button type="button" onClick={() => setPickerOpen(false)} className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-[#e5e2da] bg-white hover:border-[#1a1918]" aria-label="Close player picker">
+                  <button type="button" onClick={() => setPickerOpen(false)} className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-line bg-surface hover:border-ink" aria-label="Close player picker">
                     <X className="h-4 w-4" />
                   </button>
                 </div>
 
-                <div className="border-b border-[#e5e2da] bg-white px-5 py-4">
+                <div className="border-b border-line bg-surface px-5 py-4">
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div>
-                      <div className="mb-1.5 flex items-center gap-1.5 font-plex text-[8px] tracking-[0.08em] text-[#8a8577]"><SlidersHorizontal className="h-3 w-3" /> POSITION</div>
+                      <div className="mb-1.5 flex items-center gap-1.5 font-plex text-[8px] tracking-[0.08em] text-ink-3"><SlidersHorizontal className="h-3 w-3" /> POSITION</div>
                       <div className="flex flex-wrap gap-1.5">
-                        {["ALL", ...POSITIONS].map((label) => <button key={label} type="button" onClick={() => setPosF(label)} className={cn("cursor-pointer rounded-full border px-2.5 py-1 font-plex text-[8px] font-bold", posF === label ? "border-[#1a1918] bg-[#1a1918] text-white" : "border-[#e5e2da] bg-[#faf9f5] text-[#8a8577]")}>{label}</button>)}
+                        {["ALL", ...POSITIONS].map((label) => <button key={label} type="button" onClick={() => setPosF(label)} className={cn("cursor-pointer rounded-full border px-2.5 py-1 font-plex text-[8px] font-bold", posF === label ? "border-ink bg-ink text-on-ink" : "border-line bg-paper text-ink-3")}>{label}</button>)}
                       </div>
                     </div>
                     <div>
-                      <div className="mb-1.5 font-plex text-[8px] tracking-[0.08em] text-[#8a8577]">ERA</div>
+                      <div className="mb-1.5 font-plex text-[8px] tracking-[0.08em] text-ink-3">ERA</div>
                       <div className="flex flex-wrap gap-1.5">
-                        {([['all','ALL'],['curr','CURRENT'],['class','CLASSIC'],['allt','ALL-TIME']] as const).map(([value,label]) => <button key={value} type="button" onClick={() => setEraF(value)} className={cn("cursor-pointer rounded-full border px-2.5 py-1 font-plex text-[8px] font-bold", eraF === value ? "border-[#1a1918] bg-[#1a1918] text-white" : "border-[#e5e2da] bg-[#faf9f5] text-[#8a8577]")}>{label}</button>)}
+                        {([['all','ALL'],['curr','CURRENT'],['class','CLASSIC'],['allt','ALL-TIME']] as const).map(([value,label]) => <button key={value} type="button" onClick={() => setEraF(value)} className={cn("cursor-pointer rounded-full border px-2.5 py-1 font-plex text-[8px] font-bold", eraF === value ? "border-ink bg-ink text-on-ink" : "border-line bg-paper text-ink-3")}>{label}</button>)}
                       </div>
                     </div>
                     <label className="block">
-                      <span className="mb-1.5 block font-plex text-[8px] tracking-[0.08em] text-[#8a8577]">CARD TIER</span>
-                      <select value={ratingTierF} onChange={(e) => setRatingTierF(e.target.value)} className="h-9 w-full rounded-[9px] border border-[#e5e2da] bg-[#faf9f5] px-2.5 text-[11px] outline-none focus:border-[#1a1918]">
+                      <span className="mb-1.5 block font-plex text-[8px] tracking-[0.08em] text-ink-3">CARD TIER</span>
+                      <select value={ratingTierF} onChange={(e) => setRatingTierF(e.target.value)} className="h-9 w-full rounded-[9px] border border-line bg-paper px-2.5 text-[11px] outline-none focus:border-ink">
                         <option value="all">Any tier</option>
                         {RATING_TIERS.map((tier) => <option key={tier} value={tier}>{tier}</option>)}
                       </select>
                     </label>
                     <div>
-                      <span className="mb-1.5 block font-plex text-[8px] tracking-[0.08em] text-[#8a8577]">OVERALL RANGE</span>
+                      <span className="mb-1.5 block font-plex text-[8px] tracking-[0.08em] text-ink-3">OVERALL RANGE</span>
                       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                        <input aria-label="Minimum overall" type="number" min="0" max="99" value={minOvr} onChange={(e) => setMinOvr(Math.min(Number(e.target.value), maxOvr))} className="h-9 min-w-0 rounded-[9px] border border-[#e5e2da] bg-[#faf9f5] px-2.5 text-[11px] outline-none focus:border-[#1a1918]" />
-                        <span className="font-plex text-[8px] text-[#b5b0a1]">TO</span>
-                        <input aria-label="Maximum overall" type="number" min="0" max="99" value={maxOvr} onChange={(e) => setMaxOvr(Math.max(Number(e.target.value), minOvr))} className="h-9 min-w-0 rounded-[9px] border border-[#e5e2da] bg-[#faf9f5] px-2.5 text-[11px] outline-none focus:border-[#1a1918]" />
+                        <input aria-label="Minimum overall" type="number" min="0" max="99" value={minOvr} onChange={(e) => setMinOvr(Math.min(Number(e.target.value), maxOvr))} className="h-9 min-w-0 rounded-[9px] border border-line bg-paper px-2.5 text-[11px] outline-none focus:border-ink" />
+                        <span className="font-plex text-[8px] text-ink-4">TO</span>
+                        <input aria-label="Maximum overall" type="number" min="0" max="99" value={maxOvr} onChange={(e) => setMaxOvr(Math.max(Number(e.target.value), minOvr))} className="h-9 min-w-0 rounded-[9px] border border-line bg-paper px-2.5 text-[11px] outline-none focus:border-ink" />
                       </div>
                     </div>
                     <label className="block">
-                      <span className="mb-1.5 block font-plex text-[8px] tracking-[0.08em] text-[#8a8577]">SPECIFIC ATTRIBUTE</span>
-                      <select value={attributeF} onChange={(e) => setAttributeF(e.target.value)} className="h-9 w-full rounded-[9px] border border-[#e5e2da] bg-[#faf9f5] px-2.5 text-[11px] outline-none focus:border-[#1a1918]">
+                      <span className="mb-1.5 block font-plex text-[8px] tracking-[0.08em] text-ink-3">SPECIFIC ATTRIBUTE</span>
+                      <select value={attributeF} onChange={(e) => setAttributeF(e.target.value)} className="h-9 w-full rounded-[9px] border border-line bg-paper px-2.5 text-[11px] outline-none focus:border-ink">
                         <option value="all">Any attribute</option>
                         {ATTRIBUTE_KEYS.map((key) => <option key={key} value={key}>{getAttributeDisplayName(key)}</option>)}
                       </select>
                     </label>
                     <label className={cn("block", attributeF === "all" && "opacity-45")}>
-                      <span className="mb-1.5 block font-plex text-[8px] tracking-[0.08em] text-[#8a8577]">ATTRIBUTE MIN · {attributeMin}</span>
-                      <input disabled={attributeF === "all"} type="range" min="25" max="99" value={attributeMin} onChange={(e) => setAttributeMin(Number(e.target.value))} className="w-full accent-[#1a1918]" />
+                      <span className="mb-1.5 block font-plex text-[8px] tracking-[0.08em] text-ink-3">ATTRIBUTE MIN · {attributeMin}</span>
+                      <input disabled={attributeF === "all"} type="range" min="25" max="99" value={attributeMin} onChange={(e) => setAttributeMin(Number(e.target.value))} className="w-full accent-ink" />
                     </label>
                     <label className="block">
-                      <span className="mb-1.5 block font-plex text-[8px] tracking-[0.08em] text-[#8a8577]">SPECIFIC BADGE</span>
-                      <select value={badgeF} onChange={(e) => setBadgeF(e.target.value)} className="h-9 w-full rounded-[9px] border border-[#e5e2da] bg-[#faf9f5] px-2.5 text-[11px] outline-none focus:border-[#1a1918]">
+                      <span className="mb-1.5 block font-plex text-[8px] tracking-[0.08em] text-ink-3">SPECIFIC BADGE</span>
+                      <select value={badgeF} onChange={(e) => setBadgeF(e.target.value)} className="h-9 w-full rounded-[9px] border border-line bg-paper px-2.5 text-[11px] outline-none focus:border-ink">
                         <option value="all">Any badge</option>
                         {badgeOptions.map((badge) => <option key={badge} value={badge}>{badge}</option>)}
                       </select>
                     </label>
                     <label className="block">
-                      <span className="mb-1.5 block font-plex text-[8px] tracking-[0.08em] text-[#8a8577]">BADGE TIER</span>
-                      <select value={badgeTierF} onChange={(e) => setBadgeTierF(e.target.value)} className="h-9 w-full rounded-[9px] border border-[#e5e2da] bg-[#faf9f5] px-2.5 text-[11px] outline-none focus:border-[#1a1918]">
+                      <span className="mb-1.5 block font-plex text-[8px] tracking-[0.08em] text-ink-3">BADGE TIER</span>
+                      <select value={badgeTierF} onChange={(e) => setBadgeTierF(e.target.value)} className="h-9 w-full rounded-[9px] border border-line bg-paper px-2.5 text-[11px] outline-none focus:border-ink">
                         <option value="all">Any badge tier</option>
                         {BADGE_TIERS.map((tier) => <option key={tier} value={tier}>{tier}</option>)}
                       </select>
                     </label>
                   </div>
                   <div className="mt-3 flex items-center justify-between">
-                    <button type="button" onClick={() => { setQ(""); setPosF("ALL"); setEraF("all"); setMinOvr(0); setMaxOvr(99); setRatingTierF("all"); setAttributeF("all"); setAttributeMin(80); setBadgeF("all"); setBadgeTierF("all"); }} className="cursor-pointer border-0 bg-transparent font-plex text-[8px] text-[#8a8577] underline underline-offset-4">CLEAR FILTERS</button>
+                    <button type="button" onClick={() => { setQ(""); setPosF("ALL"); setEraF("all"); setMinOvr(0); setMaxOvr(99); setRatingTierF("all"); setAttributeF("all"); setAttributeMin(80); setBadgeF("all"); setBadgeTierF("all"); }} className="cursor-pointer border-0 bg-transparent font-plex text-[8px] text-ink-3 underline underline-offset-4">CLEAR FILTERS</button>
                     <div className="flex items-center gap-3">
-                      <span className="font-plex text-[8px] text-[#8a8577]">{pool.length} MATCH</span>
-                      <button type="button" onClick={() => setPickerOpen(false)} className="cursor-pointer rounded-full bg-[#1a1918] px-4 py-2 text-[10px] font-semibold text-white">SHOW PLAYERS</button>
+                      <span className="font-plex text-[8px] text-ink-3">{pool.length} MATCH</span>
+                      <button type="button" onClick={() => setPickerOpen(false)} className="cursor-pointer rounded-full bg-ink px-4 py-2 text-[10px] font-semibold text-on-ink">SHOW PLAYERS</button>
                     </div>
                   </div>
                 </div>
@@ -1197,7 +1197,7 @@ function Whiteboard() {
 
           <DragOverlay dropAnimation={null}>
             {dragging && (
-              <div className="pointer-events-none flex items-center gap-2 rounded-full border-2 border-[#1a1918] bg-white px-2 py-1 shadow-[0_8px_20px_-8px_rgba(26,25,24,0.5)]">
+              <div className="pointer-events-none flex items-center gap-2 rounded-full border-2 border-ink bg-surface px-2 py-1 shadow-[0_8px_20px_-8px_rgba(26,25,24,0.5)]">
                 <Headshot src={dragging.playerImage} name={dragging.name} size={26} />
                 <span className="text-[11.5px] font-bold">{lastName(dragging.name)}</span>
                 <MiniOvr ovr={dragging.overall} />
