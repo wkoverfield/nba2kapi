@@ -105,7 +105,7 @@ export default function FeedbackPage() {
     <div className="min-h-screen bg-[linear-gradient(to_bottom,#fffdf8,#faf9f5_420px)] font-body text-[#1a1918]">
       <TopNav />
 
-      <main className="mx-auto max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2 pb-16">
+      <main className="mx-auto min-h-screen max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2 pb-16">
         <div className="mx-auto max-w-[760px]">
           {/* Header */}
           <div className="pt-8 pb-9">

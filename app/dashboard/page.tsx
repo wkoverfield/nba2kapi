@@ -140,7 +140,7 @@ export default function DashboardPage() {
         maskedKey={mounted && apiKey ? maskKey(apiKey) : null}
       />
 
-      <div className="mx-auto max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2">
+      <div className="mx-auto min-h-screen max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2">
         {/* Header */}
         <div className="flex flex-wrap items-baseline justify-between gap-3 animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
           <div>

@@ -51,7 +51,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
         <TopNav hasApiKey={hasApiKey} />
       </div>
 
-      <div className="mx-auto flex max-w-[1360px] flex-wrap items-start gap-[clamp(20px,3vw,32px)] px-[clamp(20px,4vw,48px)] pt-[26px] pb-14">
+      <div className="mx-auto flex min-h-screen max-w-[1360px] flex-wrap content-start items-start gap-[clamp(20px,3vw,32px)] px-[clamp(20px,4vw,48px)] pt-[26px] pb-14">
         {/* Sidebar tree */}
         <div className="flex min-w-[160px] flex-[0_1_190px] flex-col gap-5 animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
           {DOCS_NAV.map((section) => (

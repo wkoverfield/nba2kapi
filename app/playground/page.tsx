@@ -393,7 +393,7 @@ function Playground() {
       <TopNav hasApiKey={hasApiKey} />
 
       {/* Query card */}
-      <div className="mx-auto max-w-[1360px] animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] px-[clamp(20px,4vw,48px)] pt-2 motion-reduce:animate-none">
+      <div className="mx-auto min-h-screen max-w-[1360px] animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] px-[clamp(20px,4vw,48px)] pt-2 motion-reduce:animate-none">
         <div className="rounded-2xl border border-[#e5e2da] bg-white p-[clamp(16px,2.5vw,24px)]">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <span className="font-plex text-[9.5px] tracking-[0.12em] text-[#8a8577]">

@@ -273,7 +273,7 @@ function TeamPage({
     <div className="min-h-screen bg-[#faf9f5] font-body text-[#1a1918]">
       <TopNav hasApiKey={hasApiKey} />
 
-      <div className="mx-auto max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2">
+      <div className="mx-auto min-h-screen max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2">
         {/* Back + cycling */}
         <div className="flex flex-wrap items-center justify-between gap-3 animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
           <Link

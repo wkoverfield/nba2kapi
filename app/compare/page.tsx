@@ -196,7 +196,7 @@ function Comparison() {
   return (
     <div className="min-h-screen bg-[linear-gradient(to_bottom,#fffdf8,#faf9f5_420px)] font-body text-[#1a1918]">
       <TopNav />
-      <main className="mx-auto max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2 pb-12">
+      <main className="mx-auto min-h-screen max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2 pb-12">
         <div className="flex flex-wrap items-center justify-between gap-3"><Link href={p1 ? `/players/${p1.slug}` : "/playground"} className="font-plex text-[9px] tracking-[.1em] text-[#8a8577] no-underline">← BACK TO DOSSIER</Link><button type="button" onClick={swap} disabled={!ready} className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#e5e2da] bg-white px-3.5 py-2 font-plex text-[9px] tracking-[.06em] disabled:opacity-40"><ArrowLeftRight className="h-3 w-3" />SWAP SIDES</button></div>
         <header className="mt-4"><h1 className="font-display text-[clamp(34px,4vw,46px)] font-bold tracking-[-.04em]">Head to head</h1><p className="mt-1 font-plex text-[9px] tracking-[.1em] text-[#8a8577]">{verdict}</p></header>
         <section className="mt-5 grid items-stretch gap-4 lg:grid-cols-[minmax(250px,1fr)_260px_minmax(250px,1fr)]"><PlayerRail dossier={dossier1} side="left" onChoose={() => setPickerSide(1)} onPrev={() => cycle(1, -1)} onNext={() => cycle(1, 1)} />{ready && p1 && p2 ? <DualRadar a={radar1} b={radar2} aName={p1.name} bName={p2.name} /> : <div className="hidden items-center justify-center font-display text-[22px] text-[#b5b0a1] lg:flex">VS</div>}<PlayerRail dossier={dossier2} side="right" onChoose={() => setPickerSide(2)} onPrev={() => cycle(2, -1)} onNext={() => cycle(2, 1)} /></section>
