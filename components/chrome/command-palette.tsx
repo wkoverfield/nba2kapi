@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -10,6 +10,7 @@ import { usePlayerPool } from "@/lib/player-pool";
 import { api } from "@/convex/_generated/api";
 import { Headshot } from "@/components/ui/headshot";
 import { getTeamAbbreviation, getTeamConference, formatTeamShortName } from "@/lib/team-abbr";
+import { useReturnFocus } from "@/hooks/use-return-focus";
 import { cn } from "@/lib/utils";
 
 type TeamType = "curr" | "class" | "allt";
@@ -96,6 +97,8 @@ export function CommandPalette({
   const [sel, setSel] = useState(0);
   const [everOpened, setEverOpened] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  const listId = useId();
+  const returnFocus = useReturnFocus(open);
 
   useEffect(() => {
     if (open) {
@@ -262,6 +265,7 @@ export function CommandPalette({
         <Dialog.Overlay className="fixed inset-0 z-50 bg-[rgba(26,25,24,0.35)] backdrop-blur-[2px]" />
         <Dialog.Content
           onKeyDown={onKeyDown}
+          onCloseAutoFocus={returnFocus}
           className="fixed top-[12%] left-1/2 z-50 w-[min(640px,calc(100vw-32px))] -translate-x-1/2 overflow-hidden rounded-[18px] border border-line bg-surface font-body shadow-[0_40px_80px_-24px_rgba(26,25,24,0.5)] animate-[pop-in_220ms_cubic-bezier(0.23,1,0.32,1)_both] focus:outline-none motion-reduce:animate-none"
         >
           <Dialog.Title className="sr-only">Search players, teams, badges, and queries</Dialog.Title>
@@ -269,6 +273,12 @@ export function CommandPalette({
             <Search className="h-4 w-4 text-ink-3" strokeWidth={2} />
             <input
               autoFocus
+              role="combobox"
+              aria-expanded
+              aria-autocomplete="list"
+              aria-controls={listId}
+              aria-activedescendant={flat[sel] ? `${listId}-${sel}` : undefined}
+              aria-label="Search players, teams, badges, and queries"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search players, teams, badges…"
@@ -277,10 +287,16 @@ export function CommandPalette({
             <span className="font-plex text-[9px] text-ink-4">ESC TO CLOSE</span>
           </div>
 
-          <div ref={listRef} className="max-h-[56vh] overflow-y-auto px-2 pt-2 pb-1.5">
+          <div
+            ref={listRef}
+            id={listId}
+            role="listbox"
+            aria-label="Results"
+            className="max-h-[56vh] overflow-y-auto px-2 pt-2 pb-1.5"
+          >
             {groups.map((g) => (
-              <div key={g.label}>
-                <div className="px-3.5 pt-2 pb-1 font-plex text-[8.5px] tracking-[0.12em] text-ink-4">
+              <div key={g.label} role="group" aria-label={g.label}>
+                <div aria-hidden="true" className="px-3.5 pt-2 pb-1 font-plex text-[8.5px] tracking-[0.12em] text-ink-4">
                   {g.label}
                 </div>
                 {g.items.map((item) => {
@@ -290,6 +306,9 @@ export function CommandPalette({
                   return (
                     <div
                       key={item.key}
+                      id={`${listId}-${index}`}
+                      role="option"
+                      aria-selected={active}
                       data-idx={index}
                       onMouseMove={() => setSel(index)}
                       onClick={() => activate(index)}

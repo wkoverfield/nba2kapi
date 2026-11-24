@@ -15,6 +15,7 @@ import { SiteFooter } from "@/components/chrome/site-footer";
 import { Headshot } from "@/components/ui/headshot";
 import { getAttributeDisplayName } from "@/lib/attribute-normalizer";
 import { getRatingClasses } from "@/lib/rating-colors";
+import { useReturnFocus } from "@/hooks/use-return-focus";
 import { cn } from "@/lib/utils";
 
 type TeamType = "curr" | "class" | "allt";
@@ -69,11 +70,13 @@ function PlayerPicker({
       .slice(0, 40);
   }, [players, search, era]);
 
+  const returnFocus = useReturnFocus(open);
+
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-[#1a1918]/35 backdrop-blur-[2px]" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 z-50 flex max-h-[78vh] w-[min(620px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[18px] border border-line-strong bg-paper font-body text-ink shadow-[0_30px_80px_-28px_rgba(26,25,24,.65)] outline-none">
+        <Dialog.Content onCloseAutoFocus={returnFocus} className="fixed top-1/2 left-1/2 z-50 flex max-h-[78vh] w-[min(620px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[18px] border border-line-strong bg-paper font-body text-ink shadow-[0_30px_80px_-28px_rgba(26,25,24,.65)] outline-none">
           <div className="flex items-center justify-between border-b border-line px-5 py-4">
             <div>
               <Dialog.Title className="font-display text-[22px] font-bold tracking-[-.02em]">Choose the matchup</Dialog.Title>
