@@ -231,21 +231,21 @@ function MiniOvr({ ovr }: { ovr: number }) {
 }
 
 function CourtDiagram({ matchupMode, guardLines }: { matchupMode: boolean; guardLines: { x1: number; y1: number; x2: number; y2: number }[] }) {
-  const line = "#c8a978";
-  const soft = "#decba7";
+  const line = "var(--court-line)";
+  const soft = "var(--court-line-soft)";
   return (
     <svg viewBox={`0 0 ${matchupMode ? 94 : 47} 50`} className="absolute inset-0 h-full w-full" aria-hidden="true">
       <defs>
         <pattern id="wood-planks" width="9.4" height="5" patternUnits="userSpaceOnUse">
-          <rect width="9.4" height="5" fill="#f4e4c3" />
-          <path d="M0 5H9.4 M9.4 0V5" stroke="#ead5ad" strokeWidth="0.12" />
-          <path d="M4.7 0V5" stroke="#f8edd5" strokeWidth="0.08" />
+          <rect width="9.4" height="5" fill="var(--court)" />
+          <path d="M0 5H9.4 M9.4 0V5" stroke="var(--court-plank)" strokeWidth="0.12" />
+          <path d="M4.7 0V5" stroke="var(--court-plank-light)" strokeWidth="0.08" />
         </pattern>
       </defs>
       <rect x="0.25" y="0.25" width={matchupMode ? 93.5 : 46.5} height="49.5" rx="0.7" fill="url(#wood-planks)" stroke={line} strokeWidth="0.5" />
 
       {/* Left basket and half-court: dimensions use feet on a 94 × 50 NBA floor. */}
-      <rect x="0.25" y="17" width="18.75" height="16" fill="#ecd5a9" fillOpacity="0.42" stroke={line} strokeWidth="0.38" />
+      <rect x="0.25" y="17" width="18.75" height="16" fill="var(--court-paint)" fillOpacity="0.42" stroke={line} strokeWidth="0.38" />
       <circle cx="19" cy="25" r="6" fill="none" stroke={line} strokeWidth="0.38" />
       <path d="M19 19 A6 6 0 0 1 19 31" fill="none" stroke={line} strokeWidth="0.38" strokeDasharray="0.8 0.8" />
       <line x1="4" y1="22" x2="4" y2="28" stroke={line} strokeWidth="0.55" />
@@ -259,7 +259,7 @@ function CourtDiagram({ matchupMode, guardLines }: { matchupMode: boolean; guard
         <>
           <line x1="47" y1="0.25" x2="47" y2="49.75" stroke={line} strokeWidth="0.45" />
           <circle cx="47" cy="25" r="6" fill="none" stroke={line} strokeWidth="0.38" />
-          <rect x="75" y="17" width="18.75" height="16" fill="#ecd5a9" fillOpacity="0.42" stroke={line} strokeWidth="0.38" />
+          <rect x="75" y="17" width="18.75" height="16" fill="var(--court-paint)" fillOpacity="0.42" stroke={line} strokeWidth="0.38" />
           <circle cx="75" cy="25" r="6" fill="none" stroke={line} strokeWidth="0.38" />
           <path d="M75 19 A6 6 0 0 0 75 31" fill="none" stroke={line} strokeWidth="0.38" strokeDasharray="0.8 0.8" />
           <line x1="90" y1="22" x2="90" y2="28" stroke={line} strokeWidth="0.55" />
@@ -270,7 +270,7 @@ function CourtDiagram({ matchupMode, guardLines }: { matchupMode: boolean; guard
       )}
 
       {matchupMode && guardLines.map((l, i) => (
-        <line key={i} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke="#967d58" strokeWidth="0.22" strokeDasharray="0.8 1.1" />
+        <line key={i} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke="var(--court-label)" strokeWidth="0.22" strokeDasharray="0.8 1.1" />
       ))}
     </svg>
   );
@@ -892,13 +892,13 @@ function Whiteboard() {
             <div className="min-w-0">
               <div
                 className={cn(
-                  "relative mx-auto aspect-[94/50] w-full overflow-hidden rounded-2xl tone-fixed border border-[#d9c49a] bg-[#f4e4c3] shadow-[0_22px_55px_-38px_rgba(81,59,29,0.7)] animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
+                  "relative mx-auto aspect-[94/50] w-full overflow-hidden rounded-2xl border border-(--court-edge) bg-(--court) shadow-[0_22px_55px_-38px_rgba(81,59,29,0.7)] animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
                 )}
                 style={{ animationDelay: "100ms" }}
               >
                 <CourtDiagram matchupMode={true} guardLines={matchupMode ? guardLines : []} />
 
-                <span className="absolute top-2.5 left-3.5 font-plex text-[8.5px] tracking-[0.1em] text-[#967d58]">
+                <span className="absolute top-2.5 left-3.5 font-plex text-[8.5px] tracking-[0.1em] text-(--court-label)">
                   YOUR FIVE · {yoursFilled.length}/5
                   {yourOvr !== null && (
                     <>

@@ -73,7 +73,7 @@
 /*
  * Paper palette tokens. .tone-fixed pins a subtree to the light values: use
  * it on regions that keep their own colors in both themes (dark code and
- * hero panels, the lineup court), so the text inside them does not flip.
+ * hero panels), so the text inside them does not flip.
  */
 :root,
 .tone-fixed {
@@ -102,6 +102,15 @@
 
 :root {
   --panel: #1a1918;
+  /* Lineup court (app/lineups/page.tsx) */
+  --court: #f4e4c3;
+  --court-plank: #ead5ad;
+  --court-plank-light: #f8edd5;
+  --court-paint: #ecd5a9;
+  --court-line: #c8a978;
+  --court-line-soft: #decba7;
+  --court-edge: #d9c49a;
+  --court-label: #967d58;
   /* Attribute rating colors (lib/rating-colors.ts) */
   --attr-highest: #00aa00;
   --attr-high: #007700;
@@ -143,6 +152,14 @@
 }
 
 .dark {
+  --court: #2a2118;
+  --court-plank: #33291d;
+  --court-plank-light: #2f251b;
+  --court-paint: #3b2e1f;
+  --court-line: #7d6645;
+  --court-line-soft: #57462f;
+  --court-edge: #46392a;
+  --court-label: #a38a64;
   --attr-highest: #3ddc5a;
   --attr-high: #2fae49;
   --attr-medium: #e6b422;
