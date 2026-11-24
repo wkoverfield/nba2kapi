@@ -652,19 +652,21 @@ function Whiteboard() {
       const oo = oppOvr ?? 0;
       return [
         {
-          tag: yo >= oo ? "EDGE" : "TRAIL",
-          c: yo >= oo ? "var(--pos)" : "var(--neg)",
+          tag: yo > oo ? "EDGE" : yo < oo ? "TRAIL" : "EVEN",
+          c: yo > oo ? "var(--pos)" : yo < oo ? "var(--neg)" : "var(--warn)",
           t:
-            yo >= oo
+            yo > oo
               ? `Your five carries the talent edge, ${yo} to ${oo} average overall.`
-              : `They out-talent you ${oo} to ${yo} — you need the matchups to break right.`,
+              : yo < oo
+                ? `They out-talent you ${oo} to ${yo}. You need the matchups to break right.`
+                : `Talent is level at ${yo} average overall. The individual duels decide it.`,
         },
         {
           tag: "WATCH",
           c: "var(--warn)",
           t:
             oppsFilled.length < 5
-              ? `Their five is incomplete (${oppsFilled.length}/5) — the tape firms up as spots fill.`
+              ? `Their five is incomplete (${oppsFilled.length}/5). The tape firms up as spots fill.`
               : "All five duels are set. Playmaking and defense decide close tapes.",
         },
         { tag: "NOTE", c: "var(--ink-3)", t: "Guard assignments default to position." },

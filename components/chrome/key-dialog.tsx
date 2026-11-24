@@ -5,6 +5,7 @@ import Link from "next/link";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Check, Loader2, Play } from "lucide-react";
 import { API_KEY_STORAGE_KEY, CONVEX_SITE_URL, PUBLIC_API_ORIGIN } from "@/lib/constants";
+import { useReturnFocus } from "@/hooks/use-return-focus";
 import { cn } from "@/lib/utils";
 
 type KeyDialogProps = {
@@ -153,11 +154,13 @@ export function KeyDialog({ open, onOpenChange, onSuccess }: KeyDialogProps) {
     onOpenChange(next);
   };
 
+  const returnFocus = useReturnFocus(open);
+
   return (
     <Dialog.Root open={open} onOpenChange={handleClose}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-[rgba(26,25,24,0.35)] backdrop-blur-[2px]" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-32px)] w-[min(420px,calc(100vw-40px))] -translate-x-1/2 overflow-y-auto -translate-y-1/2 rounded-[18px] border border-line bg-surface px-7 py-[26px] font-body text-ink shadow-[0_40px_80px_-24px_rgba(26,25,24,0.5)] animate-[pop-in_220ms_cubic-bezier(0.23,1,0.32,1)_both] focus:outline-none motion-reduce:animate-none">
+        <Dialog.Content onCloseAutoFocus={returnFocus} className="fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-32px)] w-[min(420px,calc(100vw-40px))] -translate-x-1/2 overflow-y-auto -translate-y-1/2 rounded-[18px] border border-line bg-surface px-7 py-[26px] font-body text-ink shadow-[0_40px_80px_-24px_rgba(26,25,24,0.5)] animate-[pop-in_220ms_cubic-bezier(0.23,1,0.32,1)_both] focus:outline-none motion-reduce:animate-none">
           {!newKey ? (
             <>
               <Dialog.Title className="m-0 font-display text-[26px] font-extrabold tracking-[-0.03em]">
