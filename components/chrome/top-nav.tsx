@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { Search } from "lucide-react";
 import { CommandPalette } from "@/components/chrome/command-palette";
 import { cn } from "@/lib/utils";
-import { SHELL_WIDTHS } from "@/components/chrome/shell-widths";
+import { SHELL_WIDTH } from "@/components/chrome/shell-widths";
 import { useStoredApiKey } from "@/lib/stored-api-key";
 
 const NAV_LINKS = [
@@ -81,8 +81,8 @@ type TopNavProps = {
  * Shared chrome for reskinned (paper/editorial) pages: wordmark, pill nav,
  * search pill, GitHub star chip, and the primary API-key CTA.
  *
- * The bar is the same width on every page, whatever width the page body
- * uses, so the wordmark and nav hold their position across route changes.
+ * The bar is the same width on every page (SHELL_WIDTH), so the wordmark and
+ * nav hold their position across route changes.
  */
 export function TopNav({
   onCtaClick,
@@ -145,7 +145,7 @@ export function TopNav({
         className={cn(
           "pointer-events-auto relative mx-auto flex w-full origin-top flex-wrap items-center justify-between gap-3 px-[clamp(20px,4vw,48px)] py-5 lg:grid lg:grid-cols-[1fr_auto_1fr] transition-transform duration-200 ease-[cubic-bezier(0.77,0,0.175,1)] motion-reduce:transform-none motion-reduce:transition-none",
           isCompact && "md:-translate-y-[7px] md:scale-[0.96]",
-          SHELL_WIDTHS.default
+          SHELL_WIDTH
         )}
       >
         <Link

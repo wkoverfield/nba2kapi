@@ -75,7 +75,7 @@ function Board() {
     <div className="min-h-screen bg-[#faf9f5] font-body text-[#1a1918]">
       <TopNav hasApiKey={hasApiKey} />
 
-      <div className="mx-auto max-w-[1280px] px-[clamp(20px,4vw,48px)] pt-3.5">
+      <div className="mx-auto max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-3.5">
         <div className="flex justify-end animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
           <div className="flex gap-[3px] rounded-full border border-[#e5e2da] bg-white p-1">
             {ERA_TABS.map((t) => (
@@ -191,7 +191,7 @@ function Board() {
       </div>
 
       <div className="mt-12">
-        <SiteFooter width="narrow" />
+        <SiteFooter />
       </div>
     </div>
   );

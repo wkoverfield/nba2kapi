@@ -393,7 +393,7 @@ function Playground() {
       <TopNav hasApiKey={hasApiKey} />
 
       {/* Query card */}
-      <div className="mx-auto max-w-[1440px] animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] px-[clamp(20px,4vw,48px)] pt-2 motion-reduce:animate-none">
+      <div className="mx-auto max-w-[1360px] animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] px-[clamp(20px,4vw,48px)] pt-2 motion-reduce:animate-none">
         <div className="rounded-2xl border border-[#e5e2da] bg-white p-[clamp(16px,2.5vw,24px)]">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <span className="font-plex text-[9.5px] tracking-[0.12em] text-[#8a8577]">
@@ -571,7 +571,7 @@ function Playground() {
       </div>
 
       {/* Meta strip: count + chips + saved queries + exports */}
-      <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-4 gap-y-2.5 px-[clamp(20px,4vw,48px)] pt-3.5">
+      <div className="mx-auto flex max-w-[1360px] flex-wrap items-center gap-x-4 gap-y-2.5 px-[clamp(20px,4vw,48px)] pt-3.5">
         <span className="font-plex text-[10px] tracking-[0.08em] text-[#8a8577]">
           <b className="text-[#1a1918]">{data ? `${data.totalCount} MATCH` : "LOADING"}</b>
           {updating && " · UPDATING…"}
@@ -622,7 +622,7 @@ function Playground() {
       </div>
 
       {/* Response drawer — visible, above the table */}
-      <div className="mx-auto max-w-[1440px] px-[clamp(20px,4vw,48px)] pt-2.5">
+      <div className="mx-auto max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2.5">
         <div className="overflow-hidden rounded-[12px] bg-[#1a1918]">
           <button
             type="button"
@@ -696,7 +696,7 @@ function Playground() {
       </div>
 
       {/* Full-attribute table */}
-      <div className="mx-auto max-w-[1440px] px-[clamp(20px,4vw,48px)] pt-2.5 pb-12">
+      <div className="mx-auto max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2.5 pb-12">
         <div
           className={cn(
             "overflow-hidden rounded-[14px] border border-[#e5e2da] bg-white transition-opacity duration-150",
@@ -752,7 +752,7 @@ function Playground() {
         </p>
       </div>
 
-      <SiteFooter width="wide" />
+      <SiteFooter />
     </div>
   );
 }
