@@ -12,7 +12,7 @@ import { KeyDialog } from "@/components/chrome/key-dialog";
 import { API_KEY_STORAGE_KEY } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
-const CARD_LABEL = "font-plex text-[9px] tracking-[0.1em] text-[#8a8577]";
+const CARD_LABEL = "font-plex text-[9px] tracking-[0.1em] text-ink-3";
 
 function maskKey(key: string) {
   return `2k_••••${key.slice(-4)}`;
@@ -34,10 +34,10 @@ function formatDate(iso: string) {
 }
 
 function statusColor(code: number) {
-  if (code >= 200 && code < 300) return "#0a7f3f";
-  if (code === 429) return "#9a6700";
-  if (code >= 400) return "#c03a2b";
-  return "#8a8577";
+  if (code >= 200 && code < 300) return "var(--pos)";
+  if (code === 429) return "var(--warn)";
+  if (code >= 400) return "var(--neg)";
+  return "var(--ink-3)";
 }
 
 /** Map an API endpoint back into the product surface that shows the same data. */
@@ -134,7 +134,7 @@ export default function DashboardPage() {
   const usagePct = stats ? Math.min(100, Math.round((stats.requestCount / stats.rateLimit) * 100)) : 0;
 
   return (
-    <div className="min-h-screen bg-[#faf9f5] font-body text-[#1a1918]">
+    <div className="min-h-screen bg-paper font-body text-ink">
       <TopNav
         hasApiKey={!!apiKey}
         maskedKey={mounted && apiKey ? maskKey(apiKey) : null}
@@ -147,7 +147,7 @@ export default function DashboardPage() {
             <h1 className="m-0 font-display text-[clamp(28px,3.2vw,36px)] font-extrabold tracking-[-0.03em]">
               Dashboard
             </h1>
-            <p className="mt-1.5 mb-0 font-plex text-[9.5px] tracking-[0.1em] text-[#8a8577]">
+            <p className="mt-1.5 mb-0 font-plex text-[9.5px] tracking-[0.1em] text-ink-3">
               {stats
                 ? `KEY CREATED ${formatDate(stats.apiKey.createdAt)} · FREE TIER · ${stats.rateLimit} REQ/HR`
                 : apiKey
@@ -159,7 +159,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={handleRegenerate}
-              className="cursor-pointer font-plex text-[9.5px] tracking-[0.06em] text-[#c03a2b] hover:underline"
+              className="cursor-pointer font-plex text-[9.5px] tracking-[0.06em] text-neg hover:underline"
             >
               ↻ REGENERATE KEY
             </button>
@@ -171,13 +171,13 @@ export default function DashboardPage() {
             <h2 className="m-0 font-display text-[24px] font-extrabold tracking-[-0.02em]">
               The key is the login
             </h2>
-            <p className="mx-auto mt-2 mb-6 max-w-[380px] text-[13.5px] leading-[1.6] text-[#57534a]">
+            <p className="mx-auto mt-2 mb-6 max-w-[380px] text-[13.5px] leading-[1.6] text-ink-2">
               No account, no password. Create a free key and this browser becomes your dashboard.
             </p>
             <button
               type="button"
               onClick={() => setShowDialog(true)}
-              className="cursor-pointer rounded-full bg-[#1a1918] px-7 py-3.5 text-[15px] font-semibold text-[#faf9f5] transition-[background,transform] duration-150 hover:bg-[#333] active:scale-[0.97] motion-reduce:transition-none"
+              className="cursor-pointer rounded-full bg-ink px-7 py-3.5 text-[15px] font-semibold text-on-ink transition-[background,transform] duration-150 hover:bg-ink-hover active:scale-[0.97] motion-reduce:transition-none"
             >
               Get an API key
             </button>
@@ -189,7 +189,7 @@ export default function DashboardPage() {
               className="mt-[18px] grid grid-cols-[repeat(auto-fit,minmax(min(100%,260px),1fr))] gap-3 animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
               style={{ animationDelay: "60ms" }}
             >
-              <div className="flex min-w-0 flex-col justify-between rounded-[14px] bg-[#1a1918] px-[18px] py-4">
+              <div className="flex min-w-0 flex-col justify-between rounded-[14px] tone-fixed bg-panel px-[18px] py-4">
                 <div className="flex items-center justify-between">
                   <span className="font-plex text-[9px] tracking-[0.1em] text-white/60">
                     YOUR API KEY
@@ -213,7 +213,7 @@ export default function DashboardPage() {
                     </button>
                   </div>
                 </div>
-                <div className="mt-3 overflow-hidden font-plex text-[14px] text-ellipsis whitespace-nowrap text-[#faf9f5]">
+                <div className="mt-3 overflow-hidden font-plex text-[14px] text-ellipsis whitespace-nowrap text-on-ink">
                   {copied ? "COPIED TO CLIPBOARD ✓" : reveal ? apiKey : `2k_${"•".repeat(25)}${apiKey.slice(-4)}`}
                 </div>
                 <div className="mt-2 font-plex text-[8px] text-white/45">
@@ -221,33 +221,33 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="rounded-[14px] border border-[#e5e2da] bg-white px-[18px] py-4">
+              <div className="rounded-[14px] border border-line bg-surface px-[18px] py-4">
                 <div className={CARD_LABEL}>THIS HOUR</div>
                 <div className="mt-2 flex items-baseline gap-1.5">
                   <span className="font-display text-[32px] leading-none font-extrabold">
                     {stats?.requestCount ?? "—"}
                   </span>
-                  <span className="font-plex text-[11px] text-[#8a8577]">
+                  <span className="font-plex text-[11px] text-ink-3">
                     / {stats?.rateLimit ?? "—"}
                   </span>
                 </div>
-                <div className="mt-2.5 h-1.5 rounded-full bg-[#f1efe8]">
+                <div className="mt-2.5 h-1.5 rounded-full bg-soft">
                   <div
-                    className="h-full rounded-full bg-[#1a1918] transition-[width] duration-400"
+                    className="h-full rounded-full bg-ink transition-[width] duration-400"
                     style={{ width: `${usagePct}%` }}
                   />
                 </div>
-                <div className="mt-2 font-plex text-[8px] text-[#b5b0a1]">
+                <div className="mt-2 font-plex text-[8px] text-ink-4">
                   {resetsInMin !== null ? `RESETS IN ${resetsInMin} MIN` : "…"}
                 </div>
               </div>
 
-              <div className="rounded-[14px] border border-[#e5e2da] bg-white px-[18px] py-4">
+              <div className="rounded-[14px] border border-line bg-surface px-[18px] py-4">
                 <div className={CARD_LABEL}>ALL TIME</div>
                 <div className="mt-2 font-display text-[32px] leading-none font-extrabold">
                   {stats ? stats.totalRequests.toLocaleString() : "—"}
                 </div>
-                <div className="mt-2.5 font-plex text-[8px] text-[#b5b0a1]">
+                <div className="mt-2.5 font-plex text-[8px] text-ink-4">
                   {stats ? `REQUESTS SINCE ${formatDate(stats.apiKey.createdAt)}` : "…"}
                 </div>
               </div>
@@ -255,14 +255,14 @@ export default function DashboardPage() {
 
             {/* Recent requests */}
             <div
-              className="mt-3.5 overflow-hidden rounded-[14px] border border-[#e5e2da] bg-white animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
+              className="mt-3.5 overflow-hidden rounded-[14px] border border-line bg-surface animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
               style={{ animationDelay: "120ms" }}
             >
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#f1efe8] px-[18px] py-3">
-                <span className="font-plex text-[9.5px] tracking-[0.12em] text-[#8a8577]">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-soft px-[18px] py-3">
+                <span className="font-plex text-[9.5px] tracking-[0.12em] text-ink-3">
                   RECENT REQUESTS — LAST 10
                 </span>
-                <span className="font-plex text-[8.5px] text-[#b5b0a1]">
+                <span className="font-plex text-[8.5px] text-ink-4">
                   ROWS LINK BACK INTO THE PRODUCT
                 </span>
               </div>
@@ -273,10 +273,10 @@ export default function DashboardPage() {
                       const link = deepLink(r.endpoint);
                       const row = (
                         <>
-                          <span className="font-plex text-[8.5px] text-[#b5b0a1]">
+                          <span className="font-plex text-[8.5px] text-ink-4">
                             {timeAgo(r.timestamp)}
                           </span>
-                          <span className="font-plex text-[9px] font-bold text-[#57534a]">
+                          <span className="font-plex text-[9px] font-bold text-ink-2">
                             {r.method}
                           </span>
                           <span className="overflow-hidden font-plex text-[10.5px] text-ellipsis whitespace-nowrap">
@@ -288,21 +288,21 @@ export default function DashboardPage() {
                           >
                             {r.statusCode}
                           </span>
-                          <span className="text-right font-plex text-[9.5px] text-[#8a8577]">
+                          <span className="text-right font-plex text-[9.5px] text-ink-3">
                             {r.responseTime}MS
                           </span>
-                          <span className="text-right font-plex text-[8.5px] font-bold text-[#57534a]">
+                          <span className="text-right font-plex text-[8.5px] font-bold text-ink-2">
                             {link?.label ?? ""}
                           </span>
                         </>
                       );
                       const rowClass =
-                        "grid grid-cols-[70px_44px_minmax(220px,1fr)_46px_60px_140px] items-center gap-3 border-b border-[#faf8f2] px-[18px] py-2 text-[#1a1918] no-underline";
+                        "grid grid-cols-[70px_44px_minmax(220px,1fr)_46px_60px_140px] items-center gap-3 border-b border-sunken px-[18px] py-2 text-ink no-underline";
                       return link ? (
                         <Link
                           key={i}
                           href={link.href}
-                          className={cn(rowClass, "transition-colors duration-100 hover:bg-[#faf8f2]")}
+                          className={cn(rowClass, "transition-colors duration-100 hover:bg-sunken")}
                         >
                           {row}
                         </Link>
@@ -313,7 +313,7 @@ export default function DashboardPage() {
                       );
                     })
                   ) : (
-                    <div className="px-[18px] py-8 text-center font-plex text-[9px] tracking-[0.08em] text-[#b5b0a1]">
+                    <div className="px-[18px] py-8 text-center font-plex text-[9px] tracking-[0.08em] text-ink-4">
                       {stats ? "NO REQUESTS YET — MAKE YOUR FIRST CALL BELOW" : "LOADING…"}
                     </div>
                   )}
@@ -323,26 +323,26 @@ export default function DashboardPage() {
 
             {/* First call strip */}
             <div
-              className="my-3.5 mb-12 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[14px] border border-[#e5e2da] bg-white px-[18px] py-3.5 animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
+              className="my-3.5 mb-12 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[14px] border border-line bg-surface px-[18px] py-3.5 animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
               style={{ animationDelay: "180ms" }}
             >
-              <span className="shrink-0 font-plex text-[9.5px] tracking-[0.1em] text-[#8a8577]">
+              <span className="shrink-0 font-plex text-[9.5px] tracking-[0.1em] text-ink-3">
                 FIRST CALL?
               </span>
-              <span className="min-w-[200px] flex-1 overflow-hidden font-plex text-[10.5px] text-ellipsis whitespace-nowrap text-[#57534a]">
+              <span className="min-w-[200px] flex-1 overflow-hidden font-plex text-[10.5px] text-ellipsis whitespace-nowrap text-ink-2">
                 curl -H &quot;X-API-Key: {maskKey(apiKey)}&quot;
                 api.nba2kapi.com/api/players?minRating=95
               </span>
               <button
                 type="button"
                 onClick={copyCurl}
-                className="shrink-0 cursor-pointer rounded-full border border-[#e5e2da] bg-white px-[13px] py-1.5 text-[11.5px] font-semibold text-[#1a1918] transition-[border-color,transform] duration-150 hover:border-[#1a1918] active:scale-[0.97] motion-reduce:transition-none"
+                className="shrink-0 cursor-pointer rounded-full border border-line bg-surface px-[13px] py-1.5 text-[11.5px] font-semibold text-ink transition-[border-color,transform] duration-150 hover:border-ink active:scale-[0.97] motion-reduce:transition-none"
               >
                 Copy
               </button>
               <Link
                 href="/playground"
-                className="shrink-0 rounded-full bg-[#1a1918] px-[13px] py-1.5 text-[11.5px] font-semibold text-[#faf9f5] no-underline transition-[background,transform] duration-150 hover:bg-[#333] active:scale-[0.97] motion-reduce:transition-none"
+                className="shrink-0 rounded-full bg-ink px-[13px] py-1.5 text-[11.5px] font-semibold text-on-ink no-underline transition-[background,transform] duration-150 hover:bg-ink-hover active:scale-[0.97] motion-reduce:transition-none"
               >
                 Run it in the playground →
               </Link>

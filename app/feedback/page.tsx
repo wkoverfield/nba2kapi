@@ -32,13 +32,13 @@ const FEEDBACK_TYPES = [
   { value: "feature", label: "Feature", icon: Lightbulb, dot: "#3b6fd4" },
   { value: "bug", label: "Bug", icon: Bug, dot: "#c2410c" },
   { value: "improvement", label: "Improvement", icon: MessageSquare, dot: "#b7791f" },
-  { value: "other", label: "Other", icon: HelpCircle, dot: "#8a8577" },
+  { value: "other", label: "Other", icon: HelpCircle, dot: "var(--ink-3)" },
 ];
 
 const INPUT_CLASS =
-  "flex w-full rounded-lg border border-[#e5e2da] bg-white px-3 py-2 text-[14px] text-[#1a1918] placeholder:text-[#b5b0a1] focus-visible:outline-none focus-visible:border-[#1a1918] disabled:cursor-not-allowed disabled:opacity-50";
+  "flex w-full rounded-lg border border-line bg-surface px-3 py-2 text-[14px] text-ink placeholder:text-ink-4 focus-visible:outline-none focus-visible:border-ink disabled:cursor-not-allowed disabled:opacity-50";
 
-const LABEL_CLASS = "text-[12px] font-medium text-[#57534a]";
+const LABEL_CLASS = "text-[12px] font-medium text-ink-2";
 
 export default function FeedbackPage() {
   const [visitorId, setVisitorId] = useState("");
@@ -102,20 +102,20 @@ export default function FeedbackPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(to_bottom,#fffdf8,#faf9f5_420px)] font-body text-[#1a1918]">
+    <div className="min-h-screen bg-[linear-gradient(to_bottom,var(--paper-top),var(--paper)_420px)] font-body text-ink">
       <TopNav />
 
       <main className="mx-auto min-h-screen max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2 pb-16">
         <div className="mx-auto max-w-[760px]">
           {/* Header */}
           <div className="pt-8 pb-9">
-            <div className="mb-3 font-plex text-[11px] tracking-[0.12em] text-[#8a8577]">
+            <div className="mb-3 font-plex text-[11px] tracking-[0.12em] text-ink-3">
               FEEDBACK
             </div>
-            <h1 className="font-display text-[clamp(32px,5vw,44px)] font-extrabold leading-[1.05] tracking-[-0.02em] text-[#1a1918]">
+            <h1 className="font-display text-[clamp(32px,5vw,44px)] font-extrabold leading-[1.05] tracking-[-0.02em] text-ink">
               Feature requests & bugs
             </h1>
-            <p className="mt-3.5 max-w-[540px] text-[15px] leading-[1.6] text-[#57534a]">
+            <p className="mt-3.5 max-w-[540px] text-[15px] leading-[1.6] text-ink-2">
               Suggest features, report bugs, and upvote what you want built next.
             </p>
 
@@ -124,19 +124,19 @@ export default function FeedbackPage() {
                 <DialogTrigger asChild>
                   <button
                     type="button"
-                    className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-[#1a1918] px-5 py-2.5 text-[13.5px] font-semibold text-[#faf9f5] no-underline transition-[background,transform] duration-150 ease-out hover:bg-[#333] active:scale-[0.97] motion-reduce:transition-none"
+                    className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-[13.5px] font-semibold text-on-ink no-underline transition-[background,transform] duration-150 ease-out hover:bg-ink-hover active:scale-[0.97] motion-reduce:transition-none"
                   >
                     <Plus className="h-4 w-4" />
                     Submit feedback
                   </button>
                 </DialogTrigger>
-                <DialogContent className="border-[#e5e2da] bg-[#faf9f5] text-[#1a1918] sm:max-w-lg">
+                <DialogContent className="border-line bg-paper text-ink sm:max-w-lg">
                   <form onSubmit={handleSubmit}>
                     <DialogHeader>
-                      <DialogTitle className="font-display text-[19px] font-extrabold tracking-[-0.01em] text-[#1a1918]">
+                      <DialogTitle className="font-display text-[19px] font-extrabold tracking-[-0.01em] text-ink">
                         Submit feedback
                       </DialogTitle>
-                      <DialogDescription className="text-[13.5px] text-[#8a8577]">
+                      <DialogDescription className="text-[13.5px] text-ink-3">
                         Share an idea or issue to help shape the API.
                       </DialogDescription>
                     </DialogHeader>
@@ -155,8 +155,8 @@ export default function FeedbackPage() {
                                 onClick={() => setType(t.value)}
                                 className={
                                   selected
-                                    ? "inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[#1a1918] bg-[#1a1918] px-3 py-1.5 text-[12.5px] font-medium text-[#faf9f5] transition-colors duration-150"
-                                    : "inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[#e5e2da] bg-white px-3 py-1.5 text-[12.5px] font-medium text-[#57534a] transition-colors duration-150 hover:border-[#1a1918]"
+                                    ? "inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-ink bg-ink px-3 py-1.5 text-[12.5px] font-medium text-on-ink transition-colors duration-150"
+                                    : "inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-[12.5px] font-medium text-ink-2 transition-colors duration-150 hover:border-ink"
                                 }
                               >
                                 <Icon className="h-3.5 w-3.5" />
@@ -170,7 +170,7 @@ export default function FeedbackPage() {
                       {/* Title */}
                       <div className="space-y-2">
                         <label htmlFor="title" className={LABEL_CLASS}>
-                          Title <span className="text-[#b5b0a1]">({title.length}/100)</span>
+                          Title <span className="text-ink-4">({title.length}/100)</span>
                         </label>
                         <input
                           id="title"
@@ -186,7 +186,7 @@ export default function FeedbackPage() {
                       <div className="space-y-2">
                         <label htmlFor="description" className={LABEL_CLASS}>
                           Description{" "}
-                          <span className="text-[#b5b0a1]">({description.length}/500)</span>
+                          <span className="text-ink-4">({description.length}/500)</span>
                         </label>
                         <textarea
                           id="description"
@@ -202,7 +202,7 @@ export default function FeedbackPage() {
                       {/* Name (optional) */}
                       <div className="space-y-2">
                         <label htmlFor="authorName" className={LABEL_CLASS}>
-                          Your name <span className="text-[#b5b0a1]">(optional)</span>
+                          Your name <span className="text-ink-4">(optional)</span>
                         </label>
                         <input
                           id="authorName"
@@ -217,14 +217,14 @@ export default function FeedbackPage() {
                       <button
                         type="button"
                         onClick={() => setDialogOpen(false)}
-                        className="inline-flex cursor-pointer items-center justify-center rounded-full border border-[#e5e2da] bg-white px-4 py-2 text-[13.5px] font-medium text-[#57534a] transition-colors duration-150 hover:border-[#1a1918]"
+                        className="inline-flex cursor-pointer items-center justify-center rounded-full border border-line bg-surface px-4 py-2 text-[13.5px] font-medium text-ink-2 transition-colors duration-150 hover:border-ink"
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
                         disabled={isSubmitting || !title.trim() || !description.trim()}
-                        className="inline-flex cursor-pointer items-center justify-center rounded-full bg-[#1a1918] px-5 py-2 text-[13.5px] font-semibold text-[#faf9f5] transition-[background,transform] duration-150 ease-out hover:bg-[#333] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
+                        className="inline-flex cursor-pointer items-center justify-center rounded-full bg-ink px-5 py-2 text-[13.5px] font-semibold text-on-ink transition-[background,transform] duration-150 ease-out hover:bg-ink-hover active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
                       >
                         {isSubmitting ? "Submitting..." : "Submit"}
                       </button>
@@ -238,9 +238,9 @@ export default function FeedbackPage() {
           {/* Feedback List */}
           <div className="space-y-3">
             {feedback === undefined ? (
-              <div className="py-16 text-center text-[14px] text-[#8a8577]">Loading...</div>
+              <div className="py-16 text-center text-[14px] text-ink-3">Loading...</div>
             ) : feedback.length === 0 ? (
-              <div className="rounded-2xl border border-[#e5e2da] bg-white py-16 text-center text-[14px] text-[#8a8577]">
+              <div className="rounded-2xl border border-line bg-surface py-16 text-center text-[14px] text-ink-3">
                 No feedback yet. Be the first to submit a suggestion.
               </div>
             ) : (
@@ -251,7 +251,7 @@ export default function FeedbackPage() {
                 return (
                   <div
                     key={item._id}
-                    className="overflow-hidden rounded-2xl border border-[#e5e2da] bg-white transition-colors duration-150 hover:border-[#d8d4c8]"
+                    className="overflow-hidden rounded-2xl border border-line bg-surface transition-colors duration-150 hover:border-line-strong"
                   >
                     <div className="flex">
                       {/* Upvote column */}
@@ -260,8 +260,8 @@ export default function FeedbackPage() {
                         aria-pressed={hasVoted}
                         className={
                           hasVoted
-                            ? "flex w-[64px] shrink-0 cursor-pointer flex-col items-center justify-center gap-0.5 border-r border-[#e5e2da] bg-[#1a1918] py-5 text-[#faf9f5] transition-colors duration-150"
-                            : "flex w-[64px] shrink-0 cursor-pointer flex-col items-center justify-center gap-0.5 border-r border-[#e5e2da] bg-[#faf9f5] py-5 text-[#8a8577] transition-colors duration-150 hover:bg-[#f1efe8] hover:text-[#1a1918]"
+                            ? "flex w-[64px] shrink-0 cursor-pointer flex-col items-center justify-center gap-0.5 border-r border-line bg-ink py-5 text-on-ink transition-colors duration-150"
+                            : "flex w-[64px] shrink-0 cursor-pointer flex-col items-center justify-center gap-0.5 border-r border-line bg-paper py-5 text-ink-3 transition-colors duration-150 hover:bg-soft hover:text-ink"
                         }
                       >
                         <ChevronUp className="h-[18px] w-[18px]" strokeWidth={2.25} />
@@ -271,7 +271,7 @@ export default function FeedbackPage() {
                       {/* Content */}
                       <div className="flex-1 px-5 py-4">
                         <div className="mb-2 flex items-center gap-2">
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e5e2da] bg-[#faf9f5] px-2.5 py-1 text-[11px] font-medium text-[#57534a]">
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper px-2.5 py-1 text-[11px] font-medium text-ink-2">
                             <span
                               className="h-[7px] w-[7px] rounded-full"
                               style={{ backgroundColor: typeConfig.dot }}
@@ -279,18 +279,18 @@ export default function FeedbackPage() {
                             {typeConfig.label}
                           </span>
                           {item.status !== "pending" && (
-                            <span className="inline-flex items-center rounded-full border border-[#e5e2da] px-2.5 py-1 text-[11px] font-medium capitalize text-[#8a8577]">
+                            <span className="inline-flex items-center rounded-full border border-line px-2.5 py-1 text-[11px] font-medium capitalize text-ink-3">
                               {item.status}
                             </span>
                           )}
                         </div>
-                        <h3 className="text-[15px] font-semibold leading-snug text-[#1a1918]">
+                        <h3 className="text-[15px] font-semibold leading-snug text-ink">
                           {item.title}
                         </h3>
-                        <p className="mt-1 text-[13.5px] leading-[1.55] text-[#57534a]">
+                        <p className="mt-1 text-[13.5px] leading-[1.55] text-ink-2">
                           {item.description}
                         </p>
-                        <div className="mt-2.5 font-plex text-[11px] text-[#b5b0a1]">
+                        <div className="mt-2.5 font-plex text-[11px] text-ink-4">
                           {item.authorName || "Anonymous"} &bull;{" "}
                           {new Date(item.createdAt).toLocaleDateString()}
                         </div>

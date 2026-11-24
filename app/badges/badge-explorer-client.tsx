@@ -23,11 +23,11 @@ type DirectoryBadge = {
 
 const TIERS = ["Legendary", "Hall of Fame", "Gold", "Silver", "Bronze"];
 const TIER_STYLE: Record<string, { dot: string; active: string }> = {
-  Legendary: { dot: "overall-dark-matter", active: "border-[#1a1918] bg-[#f3eaf2]" },
-  "Hall of Fame": { dot: "overall-amethyst", active: "border-[#7620a8] bg-[#f6ebfb]" },
-  Gold: { dot: "overall-gold", active: "border-[#a38829] bg-[#fbf5df]" },
-  Silver: { dot: "overall-silver", active: "border-[#777] bg-[#f1f1f1]" },
-  Bronze: { dot: "bg-[#9a6234]", active: "border-[#8a542a] bg-[#f8eee5]" },
+  Legendary: { dot: "overall-dark-matter", active: "border-ink bg-[#f3eaf2] dark:bg-[#2a1b30]" },
+  "Hall of Fame": { dot: "overall-amethyst", active: "border-[#7620a8] bg-[#f6ebfb] dark:bg-[#2a1b30]" },
+  Gold: { dot: "overall-gold", active: "border-[#a38829] bg-[#fbf5df] dark:bg-[#2e2710]" },
+  Silver: { dot: "overall-silver", active: "border-[#777] bg-[#f1f1f1] dark:bg-[#2a2a2a]" },
+  Bronze: { dot: "bg-[#9a6234]", active: "border-[#8a542a] bg-[#f8eee5] dark:bg-[#2e2016]" },
 };
 
 function initialTier(badge?: DirectoryBadge) {
@@ -76,29 +76,29 @@ export function BadgeExplorerClient({ badges }: { badges: DirectoryBadge[] }) {
     <>
       <header>
         <h1 className="font-display text-[clamp(34px,4vw,48px)] font-bold tracking-[-.04em]">Badges</h1>
-        <p className="mt-1 font-plex text-[9px] tracking-[.12em] text-[#8a8577]">
+        <p className="mt-1 font-plex text-[9px] tracking-[.12em] text-ink-3">
           {badges.length} BADGES · PICK A BADGE, THEN A TIER TO SEE WHO HOLDS IT THERE
         </p>
       </header>
 
       <div className="mt-5 grid items-start gap-4 lg:grid-cols-[minmax(320px,1fr)_minmax(460px,1fr)]">
         <section className="space-y-4">
-          <label className="flex items-center gap-2 rounded-full border border-[#e5e2da] bg-white px-4 py-2.5">
-            <Search className="h-3.5 w-3.5 text-[#8a8577]" />
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Filter badges…" className="min-w-0 flex-1 bg-transparent text-[12.5px] outline-none placeholder:text-[#b5b0a1]" />
+          <label className="flex items-center gap-2 rounded-full border border-line bg-surface px-4 py-2.5">
+            <Search className="h-3.5 w-3.5 text-ink-3" />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Filter badges…" className="min-w-0 flex-1 bg-transparent text-[12.5px] outline-none placeholder:text-ink-4" />
           </label>
           {groups.map(([category, items]) => (
             <div key={category}>
-              <div className="mb-2 font-plex text-[8.5px] tracking-[.12em] text-[#b5b0a1]">{category.toUpperCase()} · {items.length}</div>
+              <div className="mb-2 font-plex text-[8.5px] tracking-[.12em] text-ink-4">{category.toUpperCase()} · {items.length}</div>
               <div className="flex flex-wrap gap-1.5">
                 {items.map((badge) => {
                   const topTier = initialTier(badge);
                   return (
-                    <button key={badge.slug} type="button" onClick={() => selectBadge(badge)} className={cn("inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] font-semibold transition-[border-color,transform] active:scale-[.97]", selectedSlug === badge.slug ? TIER_STYLE[topTier]?.active : "border-[#e5e2da] bg-white hover:border-[#1a1918]") }>
+                    <button key={badge.slug} type="button" onClick={() => selectBadge(badge)} className={cn("inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] font-semibold transition-[border-color,transform] active:scale-[.97]", selectedSlug === badge.slug ? TIER_STYLE[topTier]?.active : "border-line bg-surface hover:border-ink") }>
                       <BadgeIcon
                         src={badge.imageUrl}
                         size={18}
-                        fallback={<span className={cn("h-2.5 w-2.5 rounded-[3px]", TIER_STYLE[topTier]?.dot ?? "bg-[#57534a]")} />}
+                        fallback={<span className={cn("h-2.5 w-2.5 rounded-[3px]", TIER_STYLE[topTier]?.dot ?? "bg-ink-2")} />}
                       />
                       {badge.name}
                     </button>
@@ -109,11 +109,11 @@ export function BadgeExplorerClient({ badges }: { badges: DirectoryBadge[] }) {
           ))}
         </section>
 
-        <section className="sticky top-4 overflow-hidden rounded-[18px] border border-[#e5e2da] bg-white">
-          <div className="bg-[#faf8f1] p-5 sm:p-6">
+        <section className="sticky top-4 overflow-hidden rounded-[18px] border border-line bg-surface">
+          <div className="bg-sunken p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className={cn("relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[13px] font-display text-[18px] font-bold text-white shadow-[0_8px_18px_-9px_rgba(26,25,24,.6)]", selectedBadge?.imageUrl ? "bg-[#1a1918]" : (TIER_STYLE[tier]?.dot ?? "bg-[#1a1918]"))}>
+                <div className={cn("relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[13px] font-display text-[18px] font-bold text-white shadow-[0_8px_18px_-9px_rgba(26,25,24,.6)]", selectedBadge?.imageUrl ? "tone-fixed bg-panel" : (TIER_STYLE[tier]?.dot ?? "tone-fixed bg-panel"))}>
                   <BadgeIcon
                     src={selectedBadge?.imageUrl}
                     alt={selectedBadge ? `${selectedBadge.name} badge` : ""}
@@ -122,32 +122,32 @@ export function BadgeExplorerClient({ badges }: { badges: DirectoryBadge[] }) {
                     fallback={selectedBadge?.name.split(" ").map((part) => part[0]).join("").slice(0, 2)}
                   />
                 </div>
-                <div><p className="font-plex text-[8px] tracking-[.12em] text-[#8a8577]">{selectedBadge?.category.toUpperCase()}</p><h2 className="font-display text-[28px] font-bold tracking-[-.03em]">{selectedBadge?.name}</h2></div>
+                <div><p className="font-plex text-[8px] tracking-[.12em] text-ink-3">{selectedBadge?.category.toUpperCase()}</p><h2 className="font-display text-[28px] font-bold tracking-[-.03em]">{selectedBadge?.name}</h2></div>
               </div>
-              <div className="text-right"><b className="font-display text-[28px]">{selectedBadge?.playerCount ?? 0}</b><p className="font-plex text-[7.5px] text-[#8a8577]">HOLD IT AT ANY TIER</p></div>
+              <div className="text-right"><b className="font-display text-[28px]">{selectedBadge?.playerCount ?? 0}</b><p className="font-plex text-[7.5px] text-ink-3">HOLD IT AT ANY TIER</p></div>
             </div>
-            <p className="mt-4 max-w-[620px] text-[13.5px] leading-[1.55] text-[#57534a]">{selectedBadge?.description ?? "Badge description unavailable."}</p>
-            <div className="mt-4 font-plex text-[8px] tracking-[.12em] text-[#b5b0a1]">HOLDERS BY TIER — PICK ONE</div>
+            <p className="mt-4 max-w-[620px] text-[13.5px] leading-[1.55] text-ink-2">{selectedBadge?.description ?? "Badge description unavailable."}</p>
+            <div className="mt-4 font-plex text-[8px] tracking-[.12em] text-ink-4">HOLDERS BY TIER — PICK ONE</div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {TIERS.filter((value) => (selectedBadge?.tierCounts[value] ?? 0) > 0).map((value) => (
-                <button key={value} type="button" onClick={() => setTier(value)} className={cn("inline-flex cursor-pointer items-center gap-2 rounded-[10px] border px-3 py-2", tier === value ? TIER_STYLE[value]?.active : "border-[#e5e2da] bg-white")}><span className={cn("h-2.5 w-2.5 rounded-[3px]", TIER_STYLE[value]?.dot)} /><span className="font-plex text-[8px] font-bold">{value.toUpperCase()}</span><b className="font-display text-[14px]">{selectedBadge?.tierCounts[value]}</b></button>
+                <button key={value} type="button" onClick={() => setTier(value)} className={cn("inline-flex cursor-pointer items-center gap-2 rounded-[10px] border px-3 py-2", tier === value ? TIER_STYLE[value]?.active : "border-line bg-surface")}><span className={cn("h-2.5 w-2.5 rounded-[3px]", TIER_STYLE[value]?.dot)} /><span className="font-plex text-[8px] font-bold">{value.toUpperCase()}</span><b className="font-display text-[14px]">{selectedBadge?.tierCounts[value]}</b></button>
               ))}
             </div>
           </div>
           <div className="p-5 sm:p-6">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><span className="font-plex text-[9px] font-bold tracking-[.1em]">{tier.toUpperCase()} · {holders.length} PLAYERS</span><Link href={`/playground?era=all&badge=${selectedSlug}&badgeTier=${encodeURIComponent(tier)}&sort=overall:desc`} className="border-b border-[#1a1918] font-plex text-[8.5px] text-[#1a1918] no-underline">OPEN THIS TIER IN PLAYGROUND →</Link></div>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><span className="font-plex text-[9px] font-bold tracking-[.1em]">{tier.toUpperCase()} · {holders.length} PLAYERS</span><Link href={`/playground?era=all&badge=${selectedSlug}&badgeTier=${encodeURIComponent(tier)}&sort=overall:desc`} className="border-b border-ink font-plex text-[8.5px] text-ink no-underline">OPEN THIS TIER IN PLAYGROUND →</Link></div>
             <div className="grid gap-2 sm:grid-cols-2">
               {holders.slice(0, 12).map((player) => (
-                <Link key={`${player.slug}:${player.team}:${player.tier}`} href={`/players/${player.slug}?type=${player.teamType}&team=${encodeURIComponent(player.team)}`} className="flex items-center gap-2.5 rounded-[10px] border border-[#efece4] bg-[#faf9f5] px-3 py-2 text-[#1a1918] no-underline hover:border-[#1a1918]"><Headshot src={player.playerImage} name={player.name} size={34} /><span className="min-w-0 flex-1"><b className="block truncate text-[12px]">{player.name}</b><span className="block truncate font-plex text-[7.5px] text-[#8a8577]">{player.positions.join("/")} · {player.team}</span></span><span className={cn("rounded-[5px] px-1.5 py-0.5 text-[10px] font-bold text-white", getRatingClasses(player.overall).bg)}>{player.overall}</span></Link>
+                <Link key={`${player.slug}:${player.team}:${player.tier}`} href={`/players/${player.slug}?type=${player.teamType}&team=${encodeURIComponent(player.team)}`} className="flex items-center gap-2.5 rounded-[10px] border border-line-soft bg-paper px-3 py-2 text-ink no-underline hover:border-ink"><Headshot src={player.playerImage} name={player.name} size={34} /><span className="min-w-0 flex-1"><b className="block truncate text-[12px]">{player.name}</b><span className="block truncate font-plex text-[7.5px] text-ink-3">{player.positions.join("/")} · {player.team}</span></span><span className={cn("rounded-[5px] px-1.5 py-0.5 text-[10px] font-bold text-white", getRatingClasses(player.overall).bg)}>{player.overall}</span></Link>
               ))}
             </div>
-            {holders.length > 12 && <p className="mt-3 font-plex text-[8.5px] text-[#8a8577]">+ {holders.length - 12} MORE IN PLAYGROUND</p>}
-            <p className="mt-2 font-plex text-[8px] text-[#b5b0a1]">GET /api/players?badge={selectedSlug}&amp;badgeTier={encodeURIComponent(tier)}</p>
+            {holders.length > 12 && <p className="mt-3 font-plex text-[8.5px] text-ink-3">+ {holders.length - 12} MORE IN PLAYGROUND</p>}
+            <p className="mt-2 font-plex text-[8px] text-ink-4">GET /api/players?badge={selectedSlug}&amp;badgeTier={encodeURIComponent(tier)}</p>
           </div>
         </section>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3 rounded-[14px] border border-[#e5e2da] bg-white px-5 py-3"><span className="rounded-[5px] bg-[#f6e9c8] px-2 py-1 font-plex text-[8px] font-bold text-[#8a6200]">ONE VIEW, THREE PLACES</span><p className="min-w-[220px] flex-1 text-[12.5px] text-[#57534a]">Badge detail, player holders, and the exact Playground filter stay connected in one view.</p><Link href="/playground" className="rounded-full bg-[#1a1918] px-4 py-2 text-[11px] font-semibold text-white no-underline">Filter by badge →</Link></div>
+      <div className="mt-4 flex flex-wrap items-center gap-3 rounded-[14px] border border-line bg-surface px-5 py-3"><span className="rounded-[5px] bg-[#f6e9c8] dark:bg-[#33290f] px-2 py-1 font-plex text-[8px] font-bold text-warn">ONE VIEW, THREE PLACES</span><p className="min-w-[220px] flex-1 text-[12.5px] text-ink-2">Badge detail, player holders, and the exact Playground filter stay connected in one view.</p><Link href="/playground" className="rounded-full bg-ink px-4 py-2 text-[11px] font-semibold text-on-ink no-underline">Filter by badge →</Link></div>
     </>
   );
 }

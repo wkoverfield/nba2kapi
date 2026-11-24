@@ -42,13 +42,72 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  /* Paper palette. Values live in :root and .dark below. */
+  --color-paper: var(--paper);
+  --color-paper-top: var(--paper-top);
+  --color-surface: var(--surface);
+  --color-soft: var(--soft);
+  --color-sunken: var(--sunken);
+  --color-wash: var(--wash);
+  --color-panel: var(--panel);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-line-faint: var(--line-faint);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-hover: var(--ink-hover);
+  --color-on-ink: var(--on-ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-ghost: var(--ghost);
+  --color-pos: var(--pos);
+  --color-neg: var(--neg);
+  --color-warn: var(--warn);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/*
+ * Paper palette tokens. .tone-fixed pins a subtree to the light values: use
+ * it on regions that keep their own colors in both themes (dark code and
+ * hero panels, the lineup court), so the text inside them does not flip.
+ */
+:root,
+.tone-fixed {
+  --paper: #faf9f5;
+  --paper-top: #fffdf8;
+  --surface: #ffffff;
+  --soft: #f1efe8;
+  --sunken: #faf8f2;
+  --wash: #f5f3ec;
+  --line: #e5e2da;
+  --line-soft: #efece4;
+  --line-faint: #f6f4ee;
+  --line-strong: #d9d4c7;
+  --ink: #1a1918;
+  --ink-hover: #333333;
+  --on-ink: #faf9f5;
+  --ink-2: #57534a;
+  --ink-3: #8a8577;
+  --ink-4: #b5b0a1;
+  --ghost: #c6c0b2;
+  --bar-off: #c9c4b6;
+  --pos: #0a7f3f;
+  --neg: #c03a2b;
+  --warn: #9a6700;
+}
+
 :root {
+  --panel: #1a1918;
+  /* Attribute rating colors (lib/rating-colors.ts) */
+  --attr-highest: #00aa00;
+  --attr-high: #007700;
+  --attr-medium: #cc9900;
+  --attr-low: #dd4400;
+  --attr-lowest: #990000;
   --radius: 0.625rem;
   --background: oklch(0.98 0.01 250); /* Clean, slight cool tint */
   --foreground: oklch(0.15 0.04 260); /* Sharp dark text */
@@ -84,37 +143,76 @@
 }
 
 .dark {
-  --background: oklch(0.11 0.03 260); /* Deep Gaming Blue/Slate */
-  --foreground: oklch(0.98 0.01 260);
-  --card: oklch(0.16 0.04 260 / 0.7); /* Glassy Card */
-  --card-foreground: oklch(0.98 0.01 260);
-  --popover: oklch(0.14 0.04 260);
-  --popover-foreground: oklch(0.98 0.01 260);
-  --primary: oklch(0.65 0.2 255); /* Electric Blue */
-  --primary-foreground: oklch(0.98 0.01 260);
-  --secondary: oklch(0.22 0.05 260);
-  --secondary-foreground: oklch(0.98 0.01 260);
-  --muted: oklch(0.2 0.03 260);
-  --muted-foreground: oklch(0.7 0.05 260);
-  --accent: oklch(0.22 0.05 260);
-  --accent-foreground: oklch(0.98 0.01 260);
-  --destructive: oklch(0.6 0.2 25);
-  --border: oklch(0.3 0.05 260);
-  --input: oklch(0.2 0.04 260);
-  --ring: oklch(0.65 0.2 255);
+  --attr-highest: #3ddc5a;
+  --attr-high: #2fae49;
+  --attr-medium: #e6b422;
+  --attr-low: #ff7a33;
+  --attr-lowest: #f0564a;
+  --paper: #141312;
+  --paper-top: #191816;
+  --surface: #1e1d1b;
+  --soft: #282623;
+  --sunken: #181716;
+  --wash: #100f0e;
+  --panel: #0f0e0d;
+  --line: #34322d;
+  --line-soft: #2a2825;
+  --line-faint: #232220;
+  --line-strong: #47443d;
+  --ink: #f1efe8;
+  --ink-hover: #ffffff;
+  --on-ink: #141312;
+  --ink-2: #b5b0a1;
+  --ink-3: #8f8a7c;
+  --ink-4: #6b675d;
+  --ghost: #47443d;
+  --bar-off: #47443d;
+  --pos: #5fcf8e;
+  --neg: #f08372;
+  --warn: #e2b44d;
+  --background: #141312;
+  --foreground: #f1efe8;
+  --card: #1e1d1b;
+  --card-foreground: #f1efe8;
+  --popover: #1e1d1b;
+  --popover-foreground: #f1efe8;
+  --primary: #f1efe8;
+  --primary-foreground: #141312;
+  --secondary: #282623;
+  --secondary-foreground: #f1efe8;
+  --muted: #282623;
+  --muted-foreground: #8f8a7c;
+  --accent: #282623;
+  --accent-foreground: #f1efe8;
+  --destructive: #f08372;
+  --border: #34322d;
+  --input: #34322d;
+  --ring: #8f8a7c;
   --chart-1: oklch(0.65 0.2 255);
   --chart-2: oklch(0.6 0.18 180);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.1 0.03 260);
-  --sidebar-foreground: oklch(0.98 0.01 260);
-  --sidebar-primary: oklch(0.65 0.2 255);
-  --sidebar-primary-foreground: oklch(0.98 0.01 260);
-  --sidebar-accent: oklch(0.18 0.04 260);
-  --sidebar-accent-foreground: oklch(0.98 0.01 260);
-  --sidebar-border: oklch(0.25 0.05 260);
-  --sidebar-ring: oklch(0.65 0.2 255);
+  --sidebar: #141312;
+  --sidebar-foreground: #f1efe8;
+  --sidebar-primary: #f1efe8;
+  --sidebar-primary-foreground: #141312;
+  --sidebar-accent: #282623;
+  --sidebar-accent-foreground: #f1efe8;
+  --sidebar-border: #34322d;
+  --sidebar-ring: #8f8a7c;
+}
+
+.dark .tone-fixed.bg-panel {
+  box-shadow: inset 0 0 0 1px #2a2825;
+}
+
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
 }
 
 @layer base {

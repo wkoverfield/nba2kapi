@@ -13,9 +13,9 @@ type KeyDialogProps = {
   onSuccess?: (apiKey: string) => void;
 };
 
-const FIELD_LABEL = "mb-[5px] font-plex text-[8.5px] tracking-[0.1em] text-[#8a8577]";
+const FIELD_LABEL = "mb-[5px] font-plex text-[8.5px] tracking-[0.1em] text-ink-3";
 const FIELD_INPUT =
-  "w-full rounded-[10px] border border-[#e5e2da] bg-[#faf9f5] px-3.5 py-2.5 font-body text-[13.5px] text-[#1a1918] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-[#b5b0a1] focus:border-[#1a1918] focus:bg-white focus:shadow-[0_0_0_3px_rgba(26,25,24,0.07)]";
+  "w-full rounded-[10px] border border-line bg-paper px-3.5 py-2.5 font-body text-[13.5px] text-ink outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-ink-4 focus:border-ink focus:bg-surface focus:shadow-[0_0_0_3px_rgba(26,25,24,0.07)]";
 
 const FIRST_CALL_PATH = "/api/players?minRating=95";
 
@@ -157,13 +157,13 @@ export function KeyDialog({ open, onOpenChange, onSuccess }: KeyDialogProps) {
     <Dialog.Root open={open} onOpenChange={handleClose}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-[rgba(26,25,24,0.35)] backdrop-blur-[2px]" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-32px)] w-[min(420px,calc(100vw-40px))] -translate-x-1/2 overflow-y-auto -translate-y-1/2 rounded-[18px] border border-[#e5e2da] bg-white px-7 py-[26px] font-body text-[#1a1918] shadow-[0_40px_80px_-24px_rgba(26,25,24,0.5)] animate-[pop-in_220ms_cubic-bezier(0.23,1,0.32,1)_both] focus:outline-none motion-reduce:animate-none">
+        <Dialog.Content className="fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-32px)] w-[min(420px,calc(100vw-40px))] -translate-x-1/2 overflow-y-auto -translate-y-1/2 rounded-[18px] border border-line bg-surface px-7 py-[26px] font-body text-ink shadow-[0_40px_80px_-24px_rgba(26,25,24,0.5)] animate-[pop-in_220ms_cubic-bezier(0.23,1,0.32,1)_both] focus:outline-none motion-reduce:animate-none">
           {!newKey ? (
             <>
               <Dialog.Title className="m-0 font-display text-[26px] font-extrabold tracking-[-0.03em]">
                 Get your key
               </Dialog.Title>
-              <Dialog.Description className="mt-1.5 mb-0 text-[13px] leading-[1.5] text-[#57534a]">
+              <Dialog.Description className="mt-1.5 mb-0 text-[13px] leading-[1.5] text-ink-2">
                 Free. 500 requests an hour. No credit card, no password. The key is your login.
               </Dialog.Description>
               <form onSubmit={handleSubmit} className="mt-[18px] flex flex-col gap-3">
@@ -192,7 +192,7 @@ export function KeyDialog({ open, onOpenChange, onSuccess }: KeyDialogProps) {
                 </div>
                 <div>
                   <div className={FIELD_LABEL}>
-                    WHAT ARE YOU BUILDING? <span className="text-[#b5b0a1]">(OPTIONAL)</span>
+                    WHAT ARE YOU BUILDING? <span className="text-ink-4">(OPTIONAL)</span>
                   </div>
                   <input
                     value={purpose}
@@ -203,18 +203,18 @@ export function KeyDialog({ open, onOpenChange, onSuccess }: KeyDialogProps) {
                   />
                 </div>
                 {error && (
-                  <div className="rounded-[10px] border border-[#c03a2b]/30 bg-[#c03a2b]/5 px-3.5 py-2.5 text-[12.5px] text-[#c03a2b]">
+                  <div className="rounded-[10px] border border-neg/30 bg-neg/5 px-3.5 py-2.5 text-[12.5px] text-neg">
                     {error}
                   </div>
                 )}
                 <button
                   type="submit"
                   disabled={loading}
-                  className="mt-1 cursor-pointer rounded-full bg-[#1a1918] py-3 text-center text-[14px] font-semibold text-[#faf9f5] transition-[background,transform] duration-150 select-none hover:bg-[#333] active:scale-[0.98] disabled:cursor-default disabled:opacity-60 motion-reduce:transition-none"
+                  className="mt-1 cursor-pointer rounded-full bg-ink py-3 text-center text-[14px] font-semibold text-on-ink transition-[background,transform] duration-150 select-none hover:bg-ink-hover active:scale-[0.98] disabled:cursor-default disabled:opacity-60 motion-reduce:transition-none"
                 >
                   {loading ? "Creating…" : "Create my key"}
                 </button>
-                <p className="m-0 text-center font-plex text-[8px] text-[#b5b0a1]">
+                <p className="m-0 text-center font-plex text-[8px] text-ink-4">
                   3 KEYS MAX PER EMAIL · RATE LIMITED BY IP
                 </p>
               </form>
@@ -222,14 +222,14 @@ export function KeyDialog({ open, onOpenChange, onSuccess }: KeyDialogProps) {
           ) : (
             <>
               <div className="flex items-center gap-2.5">
-                <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[#eaf5ee] text-[#0a7f3f]">
+                <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[#eaf5ee] dark:bg-[#16261c] text-pos">
                   <Check className="h-4 w-4" strokeWidth={2.5} />
                 </span>
                 <Dialog.Title className="m-0 font-display text-[24px] font-extrabold tracking-[-0.03em]">
                   You&apos;re in
                 </Dialog.Title>
               </div>
-              <div className="mt-4 flex items-center overflow-hidden rounded-[10px] bg-[#1a1918]">
+              <div className="mt-4 flex items-center overflow-hidden rounded-[10px] tone-fixed bg-panel">
                 <span className="flex-1 overflow-hidden px-3.5 py-3 font-plex text-[12px] text-ellipsis whitespace-nowrap text-[#6ee7a0]">
                   {newKey}
                 </span>
@@ -241,26 +241,26 @@ export function KeyDialog({ open, onOpenChange, onSuccess }: KeyDialogProps) {
                   {copied ? "COPIED ✓" : "COPY"}
                 </button>
               </div>
-              <Dialog.Description className="mt-2.5 mb-0 text-[12px] leading-[1.5] text-[#57534a]">
+              <Dialog.Description className="mt-2.5 mb-0 text-[12px] leading-[1.5] text-ink-2">
                 Saved to this browser, so the dashboard will remember you. Copy it somewhere safe
                 too; it&apos;s shown in full only this once.
               </Dialog.Description>
-              <div className="mt-[18px] mb-1.5 font-plex text-[8.5px] tracking-[0.1em] text-[#8a8577]">
+              <div className="mt-[18px] mb-1.5 font-plex text-[8.5px] tracking-[0.1em] text-ink-3">
                 YOUR FIRST CALL
               </div>
-              <div className="overflow-hidden rounded-[10px] border border-[#e5e2da] bg-[#faf9f5]">
-                <pre className="m-0 overflow-x-auto px-3.5 py-[11px] font-plex text-[10px] leading-[1.6] break-all whitespace-pre-wrap text-[#57534a]">
+              <div className="overflow-hidden rounded-[10px] border border-line bg-paper">
+                <pre className="m-0 overflow-x-auto px-3.5 py-[11px] font-plex text-[10px] leading-[1.6] break-all whitespace-pre-wrap text-ink-2">
                   curl -H &quot;X-API-Key:{" "}
-                  <span className="font-bold text-[#1a1918]">{newKey}</span>&quot; \
+                  <span className="font-bold text-ink">{newKey}</span>&quot; \
                   {"\n"}
                   {"  "}&quot;{PUBLIC_API_ORIGIN}
                   {FIRST_CALL_PATH}&quot;
                 </pre>
-                <div className="flex border-t border-[#e5e2da]">
+                <div className="flex border-t border-line">
                   <button
                     type="button"
                     onClick={copyCurl}
-                    className="flex-1 cursor-pointer py-2 font-plex text-[9.5px] tracking-[0.06em] text-[#57534a] transition-colors duration-150 hover:bg-white hover:text-[#1a1918]"
+                    className="flex-1 cursor-pointer py-2 font-plex text-[9.5px] tracking-[0.06em] text-ink-2 transition-colors duration-150 hover:bg-surface hover:text-ink"
                   >
                     {curlCopied ? "COPIED ✓" : "COPY COMMAND"}
                   </button>
@@ -268,7 +268,7 @@ export function KeyDialog({ open, onOpenChange, onSuccess }: KeyDialogProps) {
                     type="button"
                     onClick={runIt}
                     disabled={running}
-                    className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 border-l border-[#e5e2da] py-2 font-plex text-[9.5px] tracking-[0.06em] text-[#0a7f3f] transition-colors duration-150 hover:bg-white disabled:cursor-default disabled:opacity-60"
+                    className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 border-l border-line py-2 font-plex text-[9.5px] tracking-[0.06em] text-pos transition-colors duration-150 hover:bg-surface disabled:cursor-default disabled:opacity-60"
                   >
                     {running ? (
                       <Loader2 className="h-3 w-3 animate-spin motion-reduce:animate-none" />
@@ -282,7 +282,7 @@ export function KeyDialog({ open, onOpenChange, onSuccess }: KeyDialogProps) {
               {runResult && (
                 <div
                   aria-live="polite"
-                  className="mt-2 overflow-hidden rounded-[10px] bg-[#1a1918] animate-[rise-in_220ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
+                  className="mt-2 overflow-hidden rounded-[10px] tone-fixed bg-panel animate-[rise-in_220ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
                 >
                   <div className="flex items-center justify-between border-b border-white/12 px-3.5 py-2 font-plex text-[9px] tracking-[0.06em]">
                     {runResult.ok ? (
@@ -309,7 +309,7 @@ export function KeyDialog({ open, onOpenChange, onSuccess }: KeyDialogProps) {
                 <Link
                   href="/dashboard"
                   onClick={() => handleClose(false)}
-                  className="flex-1 cursor-pointer rounded-full bg-[#1a1918] py-2.5 text-center text-[12.5px] font-semibold text-[#faf9f5] no-underline transition-[background,transform] duration-150 select-none hover:bg-[#333] active:scale-[0.98] motion-reduce:transition-none"
+                  className="flex-1 cursor-pointer rounded-full bg-ink py-2.5 text-center text-[12.5px] font-semibold text-on-ink no-underline transition-[background,transform] duration-150 select-none hover:bg-ink-hover active:scale-[0.98] motion-reduce:transition-none"
                 >
                   Open dashboard{"\u00a0"}→
                 </Link>
@@ -317,7 +317,7 @@ export function KeyDialog({ open, onOpenChange, onSuccess }: KeyDialogProps) {
                   href="/playground"
                   onClick={() => handleClose(false)}
                   className={cn(
-                    "flex-1 rounded-full border border-[#e5e2da] bg-white py-2.5 text-center text-[12.5px] font-semibold text-[#1a1918] no-underline transition-[border-color,transform] duration-150 hover:border-[#1a1918] active:scale-[0.98] motion-reduce:transition-none"
+                    "flex-1 rounded-full border border-line bg-surface py-2.5 text-center text-[12.5px] font-semibold text-ink no-underline transition-[border-color,transform] duration-150 hover:border-ink active:scale-[0.98] motion-reduce:transition-none"
                   )}
                 >
                   Open playground

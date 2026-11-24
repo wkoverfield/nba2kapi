@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 export default async function BadgesPage() {
   const badges = await fetchQuery(api.badges.getBadgeDirectory, {});
   return (
-    <div className="min-h-screen bg-[linear-gradient(to_bottom,#fffdf8,#faf9f5_420px)] font-body text-[#1a1918]">
+    <div className="min-h-screen bg-[linear-gradient(to_bottom,var(--paper-top),var(--paper)_420px)] font-body text-ink">
       <TopNav />
       <main className="mx-auto min-h-screen max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2 pb-12">
         <Suspense fallback={null}><BadgeExplorerClient badges={badges} /></Suspense>

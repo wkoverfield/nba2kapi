@@ -156,20 +156,20 @@ function paramsFromState(s: QueryState): string {
 // ---- slot menus ---------------------------------------------------------------
 
 const MENU_CONTENT =
-  "z-50 max-h-[340px] min-w-[210px] overflow-y-auto rounded-xl border border-[#e5e2da] bg-white p-1 font-body shadow-[0_24px_48px_-20px_rgba(26,25,24,0.35)]";
+  "z-50 max-h-[340px] min-w-[210px] overflow-y-auto rounded-xl border border-line bg-surface p-1 font-body shadow-[0_24px_48px_-20px_rgba(26,25,24,0.35)]";
 const MENU_ITEM =
-  "flex cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-1.5 text-[12.5px] font-semibold text-[#1a1918] outline-none select-none data-[highlighted]:bg-[#f1efe8]";
-const MENU_LABEL = "px-3 pt-2 pb-1 font-plex text-[7.5px] tracking-[0.12em] text-[#b5b0a1]";
+  "flex cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-1.5 text-[12.5px] font-semibold text-ink outline-none select-none data-[highlighted]:bg-soft";
+const MENU_LABEL = "px-3 pt-2 pb-1 font-plex text-[7.5px] tracking-[0.12em] text-ink-4";
 
 function SlotTrigger({ children }: { children: React.ReactNode }) {
   return (
     <DropdownMenu.Trigger asChild>
       <button
         type="button"
-        className="inline-flex cursor-pointer items-center gap-1.5 border-b-2 border-dashed border-[#d9d4c7] px-[3px] pb-px font-extrabold text-[#1a1918] transition-[border-color] duration-150 outline-none select-none hover:border-[#1a1918] data-[state=open]:border-[#1a1918]"
+        className="inline-flex cursor-pointer items-center gap-1.5 border-b-2 border-dashed border-line-strong px-[3px] pb-px font-extrabold text-ink transition-[border-color] duration-150 outline-none select-none hover:border-ink data-[state=open]:border-ink"
       >
         {children}
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#b5b0a1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ink-4)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="m6 9 6 6 6-6" />
         </svg>
       </button>
@@ -178,7 +178,7 @@ function SlotTrigger({ children }: { children: React.ReactNode }) {
 }
 
 function Check({ on }: { on: boolean }) {
-  return on ? <span className="text-[10px] text-[#0a7f3f]">●</span> : null;
+  return on ? <span className="text-[10px] text-pos">●</span> : null;
 }
 
 function AttributeMenuItems({
@@ -198,7 +198,7 @@ function AttributeMenuItems({
               <DropdownMenu.Item key={key} className={MENU_ITEM} onSelect={() => onPick(key)}>
                 <span>
                   {getAttributeDisplayName(key)}{" "}
-                  <span className="font-plex text-[8px] text-[#b5b0a1]">
+                  <span className="font-plex text-[8px] text-ink-4">
                     {ATTRIBUTE_SHORT_LABELS[key]}
                   </span>
                 </span>
@@ -389,19 +389,19 @@ function Playground() {
   const selectedBadge = badges?.find((badge) => badge.slug === q.badge);
 
   return (
-    <div className="min-h-screen bg-[#faf9f5] font-body text-[#1a1918]">
+    <div className="min-h-screen bg-paper font-body text-ink">
       <TopNav hasApiKey={hasApiKey} />
 
       {/* Query card */}
       <div className="mx-auto min-h-screen max-w-[1360px] animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] px-[clamp(20px,4vw,48px)] pt-2 motion-reduce:animate-none">
-        <div className="rounded-2xl border border-[#e5e2da] bg-white p-[clamp(16px,2.5vw,24px)]">
+        <div className="rounded-2xl border border-line bg-surface p-[clamp(16px,2.5vw,24px)]">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <span className="font-plex text-[9.5px] tracking-[0.12em] text-[#8a8577]">
+            <span className="font-plex text-[9.5px] tracking-[0.12em] text-ink-3">
               QUERY
             </span>
           </div>
 
-          <div className="font-display text-[clamp(19px,2.2vw,25px)] leading-[1.75] font-semibold tracking-[-0.02em] text-[#57534a]">
+          <div className="font-display text-[clamp(19px,2.2vw,25px)] leading-[1.75] font-semibold tracking-[-0.02em] text-ink-2">
             Show me{" "}
             <DropdownMenu.Root>
               <SlotTrigger>{POS_OPTIONS.find((o) => o.value === q.pos)?.label}</SlotTrigger>
@@ -468,8 +468,8 @@ function Playground() {
                         className={cn(
                           "cursor-pointer rounded-full border px-2.5 py-0.5 font-plex text-[9px] font-bold",
                           q.filter?.gte === t
-                            ? "border-[#1a1918] bg-[#1a1918] text-[#faf9f5]"
-                            : "border-[#e5e2da] bg-[#faf9f5] text-[#57534a] hover:border-[#1a1918]"
+                            ? "border-ink bg-ink text-on-ink"
+                            : "border-line bg-paper text-ink-2 hover:border-ink"
                         )}
                       >
                         ≥{t}
@@ -481,8 +481,8 @@ function Playground() {
                       className={cn(
                         "cursor-pointer rounded-full border px-2.5 py-0.5 font-plex text-[9px] font-bold",
                         !q.filter
-                          ? "border-[#1a1918] bg-[#1a1918] text-[#faf9f5]"
-                          : "border-[#e5e2da] bg-[#faf9f5] text-[#57534a] hover:border-[#1a1918]"
+                          ? "border-ink bg-ink text-on-ink"
+                          : "border-line bg-paper text-ink-2 hover:border-ink"
                       )}
                     >
                       NONE
@@ -505,7 +505,7 @@ function Playground() {
                   </DropdownMenu.Item>
                   {badges?.map((badge) => (
                     <DropdownMenu.Item key={badge.slug} className={MENU_ITEM} onSelect={() => set({ badge: badge.slug, badgeTier: null })}>
-                      <span>{badge.name} <span className="font-plex text-[8px] text-[#b5b0a1]">{badge.playerCount}</span></span>
+                      <span>{badge.name} <span className="font-plex text-[8px] text-ink-4">{badge.playerCount}</span></span>
                       <Check on={q.badge === badge.slug} />
                     </DropdownMenu.Item>
                   ))}
@@ -552,11 +552,11 @@ function Playground() {
             </DropdownMenu.Root>
           </div>
 
-          <div className="mt-3.5 flex items-center overflow-hidden rounded-[10px] bg-[#1a1918]">
-            <span className="shrink-0 bg-white/12 px-[13px] py-[9px] font-plex text-[9.5px] text-[#faf9f5]">
+          <div className="mt-3.5 flex items-center overflow-hidden rounded-[10px] tone-fixed bg-panel">
+            <span className="shrink-0 bg-surface/12 px-[13px] py-[9px] font-plex text-[9.5px] text-on-ink">
               GET
             </span>
-            <span className="flex-1 overflow-hidden px-3.5 font-plex text-[11px] text-ellipsis whitespace-nowrap text-[#faf9f5]">
+            <span className="flex-1 overflow-hidden px-3.5 font-plex text-[11px] text-ellipsis whitespace-nowrap text-on-ink">
               {requestUrl}
             </span>
             <button
@@ -572,15 +572,15 @@ function Playground() {
 
       {/* Meta strip: count + chips + saved queries + exports */}
       <div className="mx-auto flex max-w-[1360px] flex-wrap items-center gap-x-4 gap-y-2.5 px-[clamp(20px,4vw,48px)] pt-3.5">
-        <span className="font-plex text-[10px] tracking-[0.08em] text-[#8a8577]">
-          <b className="text-[#1a1918]">{data ? `${data.totalCount} MATCH` : "LOADING"}</b>
+        <span className="font-plex text-[10px] tracking-[0.08em] text-ink-3">
+          <b className="text-ink">{data ? `${data.totalCount} MATCH` : "LOADING"}</b>
           {updating && " · UPDATING…"}
         </span>
         {q.team && (
           <button
             type="button"
             onClick={() => set({ team: null })}
-            className="cursor-pointer rounded-full border border-[#e5e2da] bg-white px-2.5 py-0.5 font-plex text-[9px] tracking-[0.08em] text-[#57534a] hover:border-[#1a1918]"
+            className="cursor-pointer rounded-full border border-line bg-surface px-2.5 py-0.5 font-plex text-[9px] tracking-[0.08em] text-ink-2 hover:border-ink"
           >
             TEAM: {q.team.toUpperCase()} ✕
           </button>
@@ -589,7 +589,7 @@ function Playground() {
           <button
             type="button"
             onClick={() => set({ search: null })}
-            className="cursor-pointer rounded-full border border-[#e5e2da] bg-white px-2.5 py-0.5 font-plex text-[9px] tracking-[0.08em] text-[#57534a] hover:border-[#1a1918]"
+            className="cursor-pointer rounded-full border border-line bg-surface px-2.5 py-0.5 font-plex text-[9px] tracking-[0.08em] text-ink-2 hover:border-ink"
           >
             NAME: &quot;{q.search.toUpperCase()}&quot; ✕
           </button>
@@ -598,7 +598,7 @@ function Playground() {
           <button
             type="button"
             onClick={() => set({ badge: null, badgeTier: null })}
-            className="cursor-pointer rounded-full border border-[#e5e2da] bg-white px-2.5 py-0.5 font-plex text-[9px] tracking-[0.08em] text-[#57534a] hover:border-[#1a1918]"
+            className="cursor-pointer rounded-full border border-line bg-surface px-2.5 py-0.5 font-plex text-[9px] tracking-[0.08em] text-ink-2 hover:border-ink"
           >
             BADGE: {(selectedBadge?.name ?? q.badge).toUpperCase()}{q.badgeTier ? ` · ${q.badgeTier.toUpperCase()}` : ""} ✕
           </button>
@@ -607,14 +607,14 @@ function Playground() {
           <button
             type="button"
             onClick={exportCsv}
-            className="cursor-pointer rounded-full border border-[#e5e2da] bg-white px-[13px] py-1.5 text-[11.5px] font-semibold text-[#1a1918] transition-[border-color,transform] duration-150 hover:border-[#1a1918] active:scale-[0.97] motion-reduce:transition-none"
+            className="cursor-pointer rounded-full border border-line bg-surface px-[13px] py-1.5 text-[11.5px] font-semibold text-ink transition-[border-color,transform] duration-150 hover:border-ink active:scale-[0.97] motion-reduce:transition-none"
           >
             Export CSV
           </button>
           <button
             type="button"
             onClick={copyJson}
-            className="cursor-pointer rounded-full border border-[#e5e2da] bg-white px-[13px] py-1.5 text-[11.5px] font-semibold text-[#1a1918] transition-[border-color,transform] duration-150 hover:border-[#1a1918] active:scale-[0.97] motion-reduce:transition-none"
+            className="cursor-pointer rounded-full border border-line bg-surface px-[13px] py-1.5 text-[11.5px] font-semibold text-ink transition-[border-color,transform] duration-150 hover:border-ink active:scale-[0.97] motion-reduce:transition-none"
           >
             Copy JSON
           </button>
@@ -623,7 +623,7 @@ function Playground() {
 
       {/* Response drawer — visible, above the table */}
       <div className="mx-auto max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2.5">
-        <div className="overflow-hidden rounded-[12px] bg-[#1a1918]">
+        <div className="overflow-hidden rounded-[12px] tone-fixed bg-panel">
           <button
             type="button"
             onClick={() => setResponseOpen((o) => !o)}
@@ -699,7 +699,7 @@ function Playground() {
       <div className="mx-auto max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2.5 pb-12">
         <div
           className={cn(
-            "overflow-hidden rounded-[14px] border border-[#e5e2da] bg-white transition-opacity duration-150",
+            "overflow-hidden rounded-[14px] border border-line bg-surface transition-opacity duration-150",
             updating && "opacity-60"
           )}
         >
@@ -716,8 +716,8 @@ function Playground() {
             emptyText="NO PLAYERS MATCH — LOOSEN A SLOT"
             loading={!data}
           />
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#f1efe8] bg-[#faf9f5] px-4 py-2">
-            <span className="font-plex text-[8.5px] text-[#b5b0a1]">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-soft bg-paper px-4 py-2">
+            <span className="font-plex text-[8.5px] text-ink-4">
               {q.filter ? "TINTED = QUERIED COLUMN · " : ""}CLICK ANY COLUMN TO SORT · CLICK A
               PLAYER → DOSSIER
             </span>
@@ -726,11 +726,11 @@ function Playground() {
                 type="button"
                 disabled={q.page === 0}
                 onClick={() => setQ((s) => ({ ...s, page: Math.max(0, s.page - 1) }))}
-                className="cursor-pointer rounded-full border border-[#e5e2da] bg-white px-2.5 py-0.5 font-plex text-[9px] font-bold text-[#57534a] disabled:cursor-default disabled:opacity-40 [&:not(:disabled)]:hover:border-[#1a1918]"
+                className="cursor-pointer rounded-full border border-line bg-surface px-2.5 py-0.5 font-plex text-[9px] font-bold text-ink-2 disabled:cursor-default disabled:opacity-40 [&:not(:disabled)]:hover:border-ink"
               >
                 ‹ PREV
               </button>
-              <span className="font-plex text-[8.5px] text-[#8a8577]">
+              <span className="font-plex text-[8.5px] text-ink-3">
                 {data
                   ? `SHOWING ${data.totalCount === 0 ? 0 : shownPage * PAGE_SIZE + 1}–${Math.min((shownPage + 1) * PAGE_SIZE, data.totalCount)} OF ${data.totalCount} · PAGE ${Math.min(shownPage + 1, totalPages)}/${totalPages}`
                   : "…"}
@@ -739,15 +739,15 @@ function Playground() {
                 type="button"
                 disabled={!data?.hasMore}
                 onClick={() => setQ((s) => ({ ...s, page: s.page + 1 }))}
-                className="cursor-pointer rounded-full border border-[#e5e2da] bg-white px-2.5 py-0.5 font-plex text-[9px] font-bold text-[#57534a] disabled:cursor-default disabled:opacity-40 [&:not(:disabled)]:hover:border-[#1a1918]"
+                className="cursor-pointer rounded-full border border-line bg-surface px-2.5 py-0.5 font-plex text-[9px] font-bold text-ink-2 disabled:cursor-default disabled:opacity-40 [&:not(:disabled)]:hover:border-ink"
               >
                 NEXT ›
               </button>
             </div>
           </div>
         </div>
-        <p className="mt-2.5 mb-0 font-plex text-[8.5px] text-[#b5b0a1]">
-          TIP: ADD <code className="text-[#8a8577]">?fields=name,overall</code> TO ANY CALL TO TRIM
+        <p className="mt-2.5 mb-0 font-plex text-[8.5px] text-ink-4">
+          TIP: ADD <code className="text-ink-3">?fields=name,overall</code> TO ANY CALL TO TRIM
           THE PAYLOAD.
         </p>
       </div>

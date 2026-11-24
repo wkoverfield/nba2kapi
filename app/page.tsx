@@ -22,10 +22,10 @@ import { cn } from "@/lib/utils";
 const RISE_IN =
   "animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none";
 
-const MONO_LABEL = "font-plex text-[12px] tracking-[0.14em] text-[#8a8577]";
+const MONO_LABEL = "font-plex text-[12px] tracking-[0.14em] text-ink-3";
 
 const PILL_CTA =
-  "rounded-full bg-[#1a1918] text-[#faf9f5] no-underline font-semibold transition-[background,transform] duration-150 ease-out hover:bg-[#333] active:scale-[0.97] motion-reduce:transition-none cursor-pointer";
+  "rounded-full bg-ink text-on-ink no-underline font-semibold transition-[background,transform] duration-150 ease-out hover:bg-ink-hover active:scale-[0.97] motion-reduce:transition-none cursor-pointer";
 
 type DemoPlayer = {
   name: string;
@@ -105,7 +105,7 @@ function SlotChevron() {
       height="12"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#b5b0a1"
+      stroke="var(--ink-4)"
       strokeWidth="2.5"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -121,7 +121,7 @@ function QuerySlot({ children, onClick }: { children: React.ReactNode; onClick: 
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex cursor-pointer items-center gap-1.5 border-0 border-b-2 border-dashed border-[#d9d4c7] bg-transparent px-[3px] pb-px font-[inherit] font-extrabold text-[#1a1918] transition-colors hover:border-[#1a1918] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1a1918]"
+      className="inline-flex cursor-pointer items-center gap-1.5 border-0 border-b-2 border-dashed border-line-strong bg-transparent px-[3px] pb-px font-[inherit] font-extrabold text-ink transition-colors hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"
     >
       {children}
       <SlotChevron />
@@ -133,7 +133,7 @@ function SectionHeading({ eyebrow, title }: { eyebrow: string; title: string }) 
   return (
     <div>
       <div className={cn(MONO_LABEL, "mb-3.5")}>{eyebrow}</div>
-      <h2 className="m-0 font-display text-[clamp(30px,3.2vw,40px)] font-bold tracking-[-0.03em] text-[#1a1918]">
+      <h2 className="m-0 font-display text-[clamp(30px,3.2vw,40px)] font-bold tracking-[-0.03em] text-ink">
         {title}
       </h2>
     </div>
@@ -205,7 +205,7 @@ export default function Home() {
 
   return (
     <>
-      <div className="min-h-screen bg-[linear-gradient(to_bottom,#fffdf8,#faf9f5_600px)] font-body text-[#1a1918]">
+      <div className="min-h-screen bg-[linear-gradient(to_bottom,var(--paper-top),var(--paper)_600px)] font-body text-ink">
         <TopNav onCtaClick={handleGetApiKey} hasApiKey={hasApiKey} />
 
         {/* Hero */}
@@ -225,7 +225,7 @@ export default function Home() {
               <div>One free API.</div>
             </h1>
             <p
-              className={cn("mb-[34px] max-w-[460px] text-[18px] leading-[1.6] text-[#57534a]", RISE_IN)}
+              className={cn("mb-[34px] max-w-[460px] text-[18px] leading-[1.6] text-ink-2", RISE_IN)}
               style={{ animationDelay: "120ms" }}
             >
               Access comprehensive attributes, ratings, and team rosters for the complete current,
@@ -251,45 +251,45 @@ export default function Home() {
                     .then(() => toast.success("curl command copied"))
                 }
                 title="Copy this command"
-                className="cursor-pointer rounded-full border border-[#e5e2da] bg-[#f1efe8] px-[18px] py-3 font-plex text-[13px] text-[#57534a] transition-[border-color,transform] duration-150 hover:border-[#1a1918] active:scale-[0.98] motion-reduce:transition-none"
+                className="cursor-pointer rounded-full border border-line bg-soft px-[18px] py-3 font-plex text-[13px] text-ink-2 transition-[border-color,transform] duration-150 hover:border-ink active:scale-[0.98] motion-reduce:transition-none"
               >
                 $ curl api.nba2kapi.com/api/public/players
-                <span className="ml-1 inline-block h-3.5 w-[7px] translate-y-[2px] animate-[caret-blink_1.1s_step-end_infinite] bg-[#1a1918] motion-reduce:animate-none" />
+                <span className="ml-1 inline-block h-3.5 w-[7px] translate-y-[2px] animate-[caret-blink_1.1s_step-end_infinite] bg-ink motion-reduce:animate-none" />
               </button>
             </div>
             <div
-              className={cn("flex flex-wrap gap-x-8 gap-y-[18px] font-plex text-[12px] text-[#8a8577]", RISE_IN)}
+              className={cn("flex flex-wrap gap-x-8 gap-y-[18px] font-plex text-[12px] text-ink-3", RISE_IN)}
               style={{ animationDelay: "240ms" }}
             >
               <div>
-                <span className="font-semibold text-[#1a1918]">
+                <span className="font-semibold text-ink">
                   {stats?.totalPlayers ? stats.totalPlayers.toLocaleString() : "1,900+"}
                 </span>{" "}
                 players
               </div>
               <div>
-                <span className="font-semibold text-[#1a1918]">{stats?.uniqueTeams ?? "100+"}</span>{" "}
+                <span className="font-semibold text-ink">{stats?.uniqueTeams ?? "100+"}</span>{" "}
                 teams
               </div>
               <div>
-                <span className="font-semibold text-[#1a1918]">40+</span> attributes
+                <span className="font-semibold text-ink">40+</span> attributes
               </div>
               <div>
-                <span className="font-semibold text-[#1a1918]">&lt;150ms</span> responses
+                <span className="font-semibold text-ink">&lt;150ms</span> responses
               </div>
             </div>
           </div>
 
           {/* Live leaderboard card */}
           <div
-            className="overflow-hidden rounded-2xl border border-[#e5e2da] bg-white shadow-[0_24px_48px_-24px_rgba(26,25,24,0.18)] animate-[rise-in_500ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
+            className="overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_24px_48px_-24px_rgba(26,25,24,0.18)] animate-[rise-in_500ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
             style={{ animationDelay: "150ms" }}
           >
-            <div className="flex items-center justify-between border-b border-[#efece4] px-5 py-3.5">
-              <span className="font-plex text-[11px] tracking-[0.12em] text-[#8a8577]">
+            <div className="flex items-center justify-between border-b border-line-soft px-5 py-3.5">
+              <span className="font-plex text-[11px] tracking-[0.12em] text-ink-3">
                 TOP OVERALL · NBA {CURRENT_GAME_VERSION}
               </span>
-              <span className="font-plex text-[11px] text-[#b5b0a1]">LIVE</span>
+              <span className="font-plex text-[11px] text-ink-4">LIVE</span>
             </div>
             {topPlayers
               ? topPlayers.players.map((p, i) => (
@@ -297,15 +297,15 @@ export default function Home() {
                     key={p.slug}
                     href={`/players/${p.slug}`}
                     className={cn(
-                      "flex items-center gap-3.5 border-b border-[#f4f1ea] px-5 py-[9px] text-[#1a1918] no-underline transition-colors duration-100 hover:bg-[#faf8f2]",
+                      "flex items-center gap-3.5 border-b border-line-soft px-5 py-[9px] text-ink no-underline transition-colors duration-100 hover:bg-sunken",
                       RISE_IN
                     )}
                     style={{ animationDelay: `${250 + i * 35}ms` }}
                   >
-                    <span className="w-[18px] font-plex text-[12px] text-[#b5b0a1]">
+                    <span className="w-[18px] font-plex text-[12px] text-ink-4">
                       {String(i + 1).padStart(2, "0")}
                     </span>
-                    <div className="relative h-[30px] w-[30px] shrink-0 overflow-hidden rounded-full bg-[#f1efe8]">
+                    <div className="relative h-[30px] w-[30px] shrink-0 overflow-hidden rounded-full bg-soft">
                       {p.playerImage && (
                         // 2kratings blocks hotlinking, so serve through the
                         // Next image optimizer (same fix as the badge icons).
@@ -319,10 +319,10 @@ export default function Home() {
                       )}
                     </div>
                     <span className="flex-1 text-[14px] font-semibold">{p.name}</span>
-                    <span className="font-plex text-[11px] text-[#b5b0a1]">
+                    <span className="font-plex text-[11px] text-ink-4">
                       {getTeamAbbreviation(p.team)}
                     </span>
-                    <span className="w-[84px] text-right text-[11px] text-[#8a8577]">
+                    <span className="w-[84px] text-right text-[11px] text-ink-3">
                       {getRatingTier(p.overall)}
                     </span>
                     <OvrChip ovr={p.overall} />
@@ -331,15 +331,15 @@ export default function Home() {
               : Array.from({ length: 9 }, (_, i) => (
                   <div
                     key={i}
-                    className="flex animate-pulse items-center gap-3.5 border-b border-[#f4f1ea] px-5 py-[9px]"
+                    className="flex animate-pulse items-center gap-3.5 border-b border-line-soft px-5 py-[9px]"
                   >
-                    <span className="h-3 w-[18px] rounded bg-[#f1efe8]" />
-                    <div className="h-[30px] w-[30px] shrink-0 rounded-full bg-[#f1efe8]" />
-                    <span className="h-3.5 flex-1 rounded bg-[#f1efe8]" />
-                    <span className="h-[26px] w-[38px] rounded-[6px] bg-[#f1efe8]" />
+                    <span className="h-3 w-[18px] rounded bg-soft" />
+                    <div className="h-[30px] w-[30px] shrink-0 rounded-full bg-soft" />
+                    <span className="h-3.5 flex-1 rounded bg-soft" />
+                    <span className="h-[26px] w-[38px] rounded-[6px] bg-soft" />
                   </div>
                 ))}
-            <div className="px-5 py-3 font-plex text-[11px] text-[#b5b0a1]">
+            <div className="px-5 py-3 font-plex text-[11px] text-ink-4">
               from GET /api/players?sort=overall:desc
               {stats?.lastUpdated ? ` · updated ${timeAgo(stats.lastUpdated)}` : ""}
             </div>
@@ -349,31 +349,31 @@ export default function Home() {
         {/* Playground teaser */}
         <div
           id="playground"
-          className="mx-auto max-w-[1360px] border-t border-[#e5e2da] px-[clamp(20px,4vw,48px)] py-[clamp(48px,6vw,80px)]"
+          className="mx-auto max-w-[1360px] border-t border-line px-[clamp(20px,4vw,48px)] py-[clamp(48px,6vw,80px)]"
         >
           <div className="mb-9 flex flex-wrap items-end justify-between gap-4">
             <SectionHeading eyebrow="THE PLAYGROUND" title="Explore NBA 2K player data" />
             <Link
               href="/playground"
-              className="border-b border-[#1a1918] pb-0.5 font-plex text-[13px] font-medium text-[#1a1918] no-underline transition-colors duration-150 hover:text-[#57534a]"
+              className="border-b border-ink pb-0.5 font-plex text-[13px] font-medium text-ink no-underline transition-colors duration-150 hover:text-ink-2"
             >
               Open the full playground →
             </Link>
           </div>
 
-          <div className="mb-3.5 rounded-2xl border border-[#e5e2da] bg-white p-[clamp(16px,2.5vw,24px)]">
+          <div className="mb-3.5 rounded-2xl border border-line bg-surface p-[clamp(16px,2.5vw,24px)]">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <span className="font-plex text-[9.5px] tracking-[0.12em] text-[#8a8577]">
+              <span className="font-plex text-[9.5px] tracking-[0.12em] text-ink-3">
                 QUERY — READS LIKE A SENTENCE, RUNS LIKE AN API
               </span>
               <Link
                 href="/playground"
-                className="border-b border-[#1a1918] pb-px font-plex text-[9.5px] tracking-[0.06em] text-[#1a1918] no-underline transition-colors duration-150 hover:text-[#57534a]"
+                className="border-b border-ink pb-px font-plex text-[9.5px] tracking-[0.06em] text-ink no-underline transition-colors duration-150 hover:text-ink-2"
               >
                 TRY IT LIVE →
               </Link>
             </div>
-            <div className="font-display text-[clamp(19px,2.2vw,25px)] leading-[1.7] font-semibold tracking-[-0.02em] text-[#57534a]">
+            <div className="font-display text-[clamp(19px,2.2vw,25px)] leading-[1.7] font-semibold tracking-[-0.02em] text-ink-2">
               Show me{" "}
               <QuerySlot onClick={() => setDemoPosition((v) => (v + 1) % DEMO_POSITIONS.length)}>
                 {DEMO_POSITIONS[demoPosition].label}
@@ -391,11 +391,11 @@ export default function Home() {
                 {DEMO_SORTS[demoSort].label}
               </QuerySlot>
             </div>
-            <div className="mt-3.5 flex items-center overflow-hidden rounded-[10px] bg-[#1a1918]">
-              <span className="shrink-0 bg-white/12 px-[13px] py-[9px] font-plex text-[9.5px] text-[#faf9f5]">
+            <div className="mt-3.5 flex items-center overflow-hidden rounded-[10px] tone-fixed bg-panel">
+              <span className="shrink-0 bg-surface/12 px-[13px] py-[9px] font-plex text-[9.5px] text-on-ink">
                 GET
               </span>
-              <span className="flex-1 overflow-hidden px-3.5 font-plex text-[11px] text-ellipsis whitespace-nowrap text-[#faf9f5]">
+              <span className="flex-1 overflow-hidden px-3.5 font-plex text-[11px] text-ellipsis whitespace-nowrap text-on-ink">
                 {teaserUrl}
               </span>
               <button
@@ -408,20 +408,20 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-[#e5e2da] bg-white">
+          <div className="overflow-hidden rounded-2xl border border-line bg-surface">
             <div className="overflow-x-auto">
               <div className="min-w-[620px]">
-                <div className="grid grid-cols-[34px_30px_minmax(150px,1fr)_90px_54px_56px] items-center gap-3 border-b border-[#e5e2da] bg-[#faf9f5] px-5 py-2.5">
-                  <span className="font-plex text-[8.5px] tracking-[0.08em] text-[#b5b0a1]">#</span>
+                <div className="grid grid-cols-[34px_30px_minmax(150px,1fr)_90px_54px_56px] items-center gap-3 border-b border-line bg-paper px-5 py-2.5">
+                  <span className="font-plex text-[8.5px] tracking-[0.08em] text-ink-4">#</span>
                   <span />
-                  <span className="font-plex text-[8.5px] tracking-[0.08em] text-[#b5b0a1]">
+                  <span className="font-plex text-[8.5px] tracking-[0.08em] text-ink-4">
                     PLAYER
                   </span>
-                  <span className="font-plex text-[8.5px] tracking-[0.08em] text-[#b5b0a1]">ERA</span>
-                  <span className="font-plex text-[8.5px] font-bold tracking-[0.08em] text-[#1a1918]">
+                  <span className="font-plex text-[8.5px] tracking-[0.08em] text-ink-4">ERA</span>
+                  <span className="font-plex text-[8.5px] font-bold tracking-[0.08em] text-ink">
                     OVR ↓
                   </span>
-                  <span className="rounded-[5px] bg-[#f6f2e6] py-0.5 text-center font-plex text-[8.5px] font-bold tracking-[0.08em] text-[#1a1918]">
+                  <span className="rounded-[5px] bg-wash py-0.5 text-center font-plex text-[8.5px] font-bold tracking-[0.08em] text-ink">
                     3PT ●
                   </span>
                 </div>
@@ -429,11 +429,11 @@ export default function Home() {
                   <Link
                     key={`${r.slug}:${r.teamType}:${r.team}`}
                     href={`/players/${r.slug}?type=${r.teamType}&team=${encodeURIComponent(r.team)}`}
-                    className="grid grid-cols-[34px_30px_minmax(150px,1fr)_90px_54px_56px] items-center gap-3 border-b border-[#faf8f2] px-5 py-2 text-[#1a1918] no-underline transition-colors duration-100 hover:bg-[#faf8f2]"
+                    className="grid grid-cols-[34px_30px_minmax(150px,1fr)_90px_54px_56px] items-center gap-3 border-b border-sunken px-5 py-2 text-ink no-underline transition-colors duration-100 hover:bg-sunken"
                   >
-                    <span className="font-plex text-[10px] text-[#b5b0a1]">{i + 1}</span>
+                    <span className="font-plex text-[10px] text-ink-4">{i + 1}</span>
                     <div
-                      className="relative flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-[#f1efe8] font-display text-[10px] font-extrabold text-[#57534a]"
+                      className="relative flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-soft font-display text-[10px] font-extrabold text-ink-2"
                     >
                       {r.playerImage ? (
                         <Image src={r.playerImage} alt="" fill sizes="28px" className="object-cover object-top" />
@@ -443,19 +443,19 @@ export default function Home() {
                       <span className="overflow-hidden text-[13.5px] font-semibold text-ellipsis whitespace-nowrap">
                         {r.name}
                       </span>
-                      <span className="whitespace-nowrap font-plex text-[8.5px] text-[#8a8577]">
+                      <span className="whitespace-nowrap font-plex text-[8.5px] text-ink-3">
                         {r.positions.join("/")} · {getTeamAbbreviation(r.team)}
                       </span>
                     </div>
                     <span
                       className="font-plex text-[8px] font-bold tracking-[0.08em]"
-                      style={{ color: r.teamType === "curr" ? "#8a8577" : "#9a6700" }}
+                      style={{ color: r.teamType === "curr" ? "var(--ink-3)" : "var(--warn)" }}
                     >
                       {r.teamType === "curr" ? "CURRENT" : r.teamType === "class" ? "CLASSIC" : "ALL-TIME"}
                     </span>
                     <OvrChip ovr={r.overall} size="sm" />
                     <span
-                      className="rounded-[5px] bg-[#faf7ee] py-[3px] text-center text-[12.5px] font-bold tabular-nums"
+                      className="rounded-[5px] bg-sunken py-[3px] text-center text-[12.5px] font-bold tabular-nums"
                       style={{ color: getAttributeColor(r.threePointShot ?? 0) }}
                     >
                       {r.threePointShot ?? "—"}
@@ -464,33 +464,33 @@ export default function Home() {
                 ))}
               </div>
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-2 bg-[#faf9f5] px-5 py-[9px]">
-              <span className="font-plex text-[8.5px] text-[#b5b0a1]">
-                <b className="text-[#1a1918]">{demoResults.length} MATCH</b> · SHOWING {Math.min(6, demoResults.length)} · LIVE {CURRENT_GAME_VERSION} DATA
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-paper px-5 py-[9px]">
+              <span className="font-plex text-[8.5px] text-ink-4">
+                <b className="text-ink">{demoResults.length} MATCH</b> · SHOWING {Math.min(6, demoResults.length)} · LIVE {CURRENT_GAME_VERSION} DATA
               </span>
-              <span className="font-plex text-[8.5px] text-[#b5b0a1]">● = QUERIED COLUMN</span>
+              <span className="font-plex text-[8.5px] text-ink-4">● = QUERIED COLUMN</span>
             </div>
           </div>
         </div>
 
         {/* Triptych */}
-        <div className="mx-auto max-w-[1360px] border-t border-[#e5e2da] px-[clamp(20px,4vw,48px)] py-[clamp(48px,6vw,80px)]">
+        <div className="mx-auto max-w-[1360px] border-t border-line px-[clamp(20px,4vw,48px)] py-[clamp(48px,6vw,80px)]">
           <div className="mb-8">
             <SectionHeading eyebrow="EXPLORE THE DATA" title="One dataset. Three tools." />
           </div>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-4">
             <Link
               href="/playground"
-              className="flex flex-col overflow-hidden rounded-2xl border border-[#e5e2da] bg-white text-[#1a1918] no-underline transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-[3px] hover:border-[#1a1918] hover:shadow-[0_18px_34px_-20px_rgba(26,25,24,0.32)] active:scale-[0.99] motion-reduce:transition-none"
+              className="flex flex-col overflow-hidden rounded-2xl border border-line bg-surface text-ink no-underline transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-[3px] hover:border-ink hover:shadow-[0_18px_34px_-20px_rgba(26,25,24,0.32)] active:scale-[0.99] motion-reduce:transition-none"
             >
-              <div className="flex h-[132px] flex-col justify-center gap-[7px] border-b border-[#efece4] bg-[#faf9f5] px-[18px] py-4">
-                <div className="h-[9px] w-[70%] rounded-full bg-[#e5e2da]" />
+              <div className="flex h-[132px] flex-col justify-center gap-[7px] border-b border-line-soft bg-paper px-[18px] py-4">
+                <div className="h-[9px] w-[70%] rounded-full bg-line" />
                 <div className="flex items-center gap-1.5">
-                  <span className="h-3 w-11 rounded bg-[#1a1918]" />
-                  <span className="h-3 w-[60px] rounded bg-[#d9d4c7]" />
-                  <span className="h-3 w-[38px] rounded bg-[#d9d4c7]" />
+                  <span className="h-3 w-11 rounded bg-ink" />
+                  <span className="h-3 w-[60px] rounded bg-line-strong" />
+                  <span className="h-3 w-[38px] rounded bg-line-strong" />
                 </div>
-                <div className="flex h-[26px] items-center rounded-[7px] bg-[#1a1918] px-2.5">
+                <div className="flex h-[26px] items-center rounded-[7px] tone-fixed bg-panel px-2.5">
                   <span className="font-plex text-[8px] text-[#6ee7a0]">
                     GET /api/players?era=all
                   </span>
@@ -500,7 +500,7 @@ export default function Home() {
                 <h3 className="m-0 font-display text-[19px] font-bold tracking-[-0.02em]">
                   Playground
                 </h3>
-                <p className="mt-1.5 mb-0 text-[13px] leading-[1.5] text-[#57534a]">
+                <p className="mt-1.5 mb-0 text-[13px] leading-[1.5] text-ink-2">
                   Filter players by any attribute or era, then copy the exact API request.
                 </p>
               </div>
@@ -508,18 +508,18 @@ export default function Home() {
 
             <Link
               href="/teams"
-              className="flex flex-col overflow-hidden rounded-2xl border border-[#e5e2da] bg-white text-[#1a1918] no-underline transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-[3px] hover:border-[#1a1918] hover:shadow-[0_18px_34px_-20px_rgba(26,25,24,0.32)] active:scale-[0.99] motion-reduce:transition-none"
+              className="flex flex-col overflow-hidden rounded-2xl border border-line bg-surface text-ink no-underline transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-[3px] hover:border-ink hover:shadow-[0_18px_34px_-20px_rgba(26,25,24,0.32)] active:scale-[0.99] motion-reduce:transition-none"
             >
-              <div className="flex h-[132px] flex-col justify-center gap-[9px] border-b border-[#efece4] bg-[#faf9f5] px-[18px] py-4">
+              <div className="flex h-[132px] flex-col justify-center gap-[9px] border-b border-line-soft bg-paper px-[18px] py-4">
                 {BOARD_MINI.map((b) => (
                   <div key={b.rank} className="flex items-center gap-2">
-                    <span className="w-3 font-display text-[12px] font-extrabold text-[#b5b0a1]">
+                    <span className="w-3 font-display text-[12px] font-extrabold text-ink-4">
                       {b.rank}
                     </span>
                     <span className="w-[62px] text-[11px] font-semibold">{b.name}</span>
-                    <div className="h-[5px] flex-1 rounded-full bg-[#e5e2da]">
+                    <div className="h-[5px] flex-1 rounded-full bg-line">
                       <div
-                        className="h-full rounded-full bg-[linear-gradient(to_right,#8a8577,#1a1918)]"
+                        className="h-full rounded-full bg-[linear-gradient(to_right,var(--ink-3),var(--ink))]"
                         style={{ width: b.w }}
                       />
                     </div>
@@ -531,7 +531,7 @@ export default function Home() {
                 <h3 className="m-0 font-display text-[19px] font-bold tracking-[-0.02em]">
                   Rosters
                 </h3>
-                <p className="mt-1.5 mb-0 text-[13px] leading-[1.5] text-[#57534a]">
+                <p className="mt-1.5 mb-0 text-[13px] leading-[1.5] text-ink-2">
                   Browse every current, classic, and all-time roster. Open a team for ratings and
                   its depth chart.
                 </p>
@@ -540,26 +540,26 @@ export default function Home() {
 
             <Link
               href="/lineups"
-              className="flex flex-col overflow-hidden rounded-2xl border border-[#e5e2da] bg-white text-[#1a1918] no-underline transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-[3px] hover:border-[#1a1918] hover:shadow-[0_18px_34px_-20px_rgba(26,25,24,0.32)] active:scale-[0.99] motion-reduce:transition-none"
+              className="flex flex-col overflow-hidden rounded-2xl border border-line bg-surface text-ink no-underline transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-[3px] hover:border-ink hover:shadow-[0_18px_34px_-20px_rgba(26,25,24,0.32)] active:scale-[0.99] motion-reduce:transition-none"
             >
-              <div className="relative h-[132px] overflow-hidden border-b border-[#efece4] bg-[#f6f4ee]">
+              <div className="relative h-[132px] overflow-hidden border-b border-line-soft bg-wash">
                 <svg
                   viewBox="0 0 100 40"
                   preserveAspectRatio="none"
                   className="absolute inset-0 h-full w-full"
                 >
-                  <line x1="50" y1="0" x2="50" y2="40" stroke="#d9d4c7" strokeWidth="0.4" />
-                  <circle cx="50" cy="20" r="6" fill="none" stroke="#d9d4c7" strokeWidth="0.4" />
-                  <path d="M 0 6 Q 22 20 0 34" fill="none" stroke="#d9d4c7" strokeWidth="0.4" />
-                  <path d="M 100 6 Q 78 20 100 34" fill="none" stroke="#d9d4c7" strokeWidth="0.4" />
-                  <line x1="30" y1="20" x2="70" y2="20" stroke="#b5b0a1" strokeWidth="0.4" strokeDasharray="1.5 2" />
-                  <line x1="22" y1="11" x2="78" y2="11" stroke="#b5b0a1" strokeWidth="0.4" strokeDasharray="1.5 2" />
-                  <line x1="22" y1="29" x2="78" y2="29" stroke="#b5b0a1" strokeWidth="0.4" strokeDasharray="1.5 2" />
+                  <line x1="50" y1="0" x2="50" y2="40" stroke="var(--line-strong)" strokeWidth="0.4" />
+                  <circle cx="50" cy="20" r="6" fill="none" stroke="var(--line-strong)" strokeWidth="0.4" />
+                  <path d="M 0 6 Q 22 20 0 34" fill="none" stroke="var(--line-strong)" strokeWidth="0.4" />
+                  <path d="M 100 6 Q 78 20 100 34" fill="none" stroke="var(--line-strong)" strokeWidth="0.4" />
+                  <line x1="30" y1="20" x2="70" y2="20" stroke="var(--ink-4)" strokeWidth="0.4" strokeDasharray="1.5 2" />
+                  <line x1="22" y1="11" x2="78" y2="11" stroke="var(--ink-4)" strokeWidth="0.4" strokeDasharray="1.5 2" />
+                  <line x1="22" y1="29" x2="78" y2="29" stroke="var(--ink-4)" strokeWidth="0.4" strokeDasharray="1.5 2" />
                 </svg>
                 {COURT_MINI.map((c, i) => (
                   <span
                     key={i}
-                    className="absolute flex h-[22px] w-[22px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-[1.5px] border-[#1a1918] bg-white font-plex text-[8px] font-bold text-[#1a1918] shadow-[0_2px_5px_-2px_rgba(26,25,24,0.4)]"
+                    className="absolute flex h-[22px] w-[22px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-[1.5px] border-ink bg-surface font-plex text-[8px] font-bold text-ink shadow-[0_2px_5px_-2px_rgba(26,25,24,0.4)]"
                     style={{ left: c.x, top: c.y }}
                   >
                     {c.ovr}
@@ -570,7 +570,7 @@ export default function Home() {
                 <h3 className="m-0 font-display text-[19px] font-bold tracking-[-0.02em]">
                   Lineup Builder
                 </h3>
-                <p className="mt-1.5 mb-0 text-[13px] leading-[1.5] text-[#57534a]">
+                <p className="mt-1.5 mb-0 text-[13px] leading-[1.5] text-ink-2">
                   Build one lineup and analyze its fit, or add an opponent to compare two lineups.
                 </p>
               </div>
@@ -581,17 +581,17 @@ export default function Home() {
         {/* API section */}
         <div
           id="api"
-          className="mx-auto max-w-[1360px] border-t border-[#e5e2da] px-[clamp(20px,4vw,48px)] py-[clamp(48px,6vw,80px)]"
+          className="mx-auto max-w-[1360px] border-t border-line px-[clamp(20px,4vw,48px)] py-[clamp(48px,6vw,80px)]"
         >
           <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,420px),1fr))] items-start gap-[clamp(32px,5vw,64px)]">
             <div>
               <div className={cn(MONO_LABEL, "mb-3.5")}>THE API</div>
-              <h2 className="mt-0 mb-[18px] font-display text-[clamp(30px,3.2vw,40px)] font-bold tracking-[-0.03em] text-[#1a1918]">
+              <h2 className="mt-0 mb-[18px] font-display text-[clamp(30px,3.2vw,40px)] font-bold tracking-[-0.03em] text-ink">
                 One key.
                 <br />
                 Every endpoint.
               </h2>
-              <p className="mt-0 mb-8 max-w-[400px] text-[16px] leading-[1.6] text-[#57534a]">
+              <p className="mt-0 mb-8 max-w-[400px] text-[16px] leading-[1.6] text-ink-2">
                 Authenticated with a single header. ETag caching, rate-limit headers, and a public
                 no-key endpoint for browser apps.
               </p>
@@ -600,26 +600,26 @@ export default function Home() {
                   <Link
                     key={e.path}
                     href={e.href}
-                    className="flex items-center gap-3 rounded-[10px] border border-[#e5e2da] bg-white px-4 py-3 no-underline transition-[border-color] duration-150 hover:border-[#1a1918]"
+                    className="flex items-center gap-3 rounded-[10px] border border-line bg-surface px-4 py-3 no-underline transition-[border-color] duration-150 hover:border-ink"
                   >
-                    <span className="font-plex text-[12px] font-semibold text-[#1a1918]">
+                    <span className="font-plex text-[12px] font-semibold text-ink">
                       {e.path}
                     </span>
-                    <span className="ml-auto text-[12.5px] text-[#8a8577]">{e.note}</span>
+                    <span className="ml-auto text-[12.5px] text-ink-3">{e.note}</span>
                   </Link>
                 ))}
               </div>
             </div>
-            <div className="overflow-hidden rounded-2xl bg-[#1a1918] shadow-[0_32px_56px_-28px_rgba(26,25,24,0.5)]">
-              <div className="flex items-center justify-between border-b border-[#faf9f5]/10 px-5 py-3.5">
-                <span className="font-plex text-[11px] tracking-[0.12em] text-[#8a8577]">
+            <div className="overflow-hidden rounded-2xl tone-fixed bg-panel shadow-[0_32px_56px_-28px_rgba(26,25,24,0.5)]">
+              <div className="flex items-center justify-between border-b border-paper/10 px-5 py-3.5">
+                <span className="font-plex text-[11px] tracking-[0.12em] text-ink-3">
                   GET /api/players/slug/lebron-james
                 </span>
-                <span className="font-plex text-[11px] text-[#8a8577]">200 · 142ms</span>
+                <span className="font-plex text-[11px] text-ink-3">200 · 142ms</span>
               </div>
-              <div className="overflow-x-auto px-[22px] pt-5 pb-[26px] font-plex text-[13px] leading-[1.8] text-[#f1efe8]">
+              <div className="overflow-x-auto px-[22px] pt-5 pb-[26px] font-plex text-[13px] leading-[1.8] text-soft">
                 <div>
-                  <span className="text-[#8a8577]">$</span> curl
+                  <span className="text-ink-3">$</span> curl
                   api.nba2kapi.com/api/players/slug/lebron-james \
                 </div>
                 <div className="pl-8">
@@ -647,12 +647,12 @@ export default function Home() {
                 <div className="pl-4">
                   &quot;attributes&quot;: {"{"} &quot;passIQ&quot;:{" "}
                   <span className="text-[#b79ce0]">95</span>,{" "}
-                  <span className="text-[#8a8577]">…40 more</span> {"}"},
+                  <span className="text-ink-3">…40 more</span> {"}"},
                 </div>
                 <div className="pl-4">
                   &quot;badges&quot;: {"{"} &quot;total&quot;:{" "}
                   <span className="text-[#b79ce0]">14</span>,{" "}
-                  <span className="text-[#8a8577]">…</span> {"}"}
+                  <span className="text-ink-3">…</span> {"}"}
                 </div>
                 <div>{"}"}</div>
               </div>
@@ -666,12 +666,12 @@ export default function Home() {
         {/* CTA */}
         <div
           id="cta"
-          className="border-t border-[#e5e2da] px-[clamp(20px,4vw,48px)] py-[clamp(56px,7vw,96px)] text-center"
+          className="border-t border-line px-[clamp(20px,4vw,48px)] py-[clamp(56px,7vw,96px)] text-center"
         >
-          <h2 className="mt-0 mb-4 font-display text-[clamp(32px,3.6vw,46px)] font-bold tracking-[-0.03em] text-[#1a1918]">
+          <h2 className="mt-0 mb-4 font-display text-[clamp(32px,3.6vw,46px)] font-bold tracking-[-0.03em] text-ink">
             Ready to build?
           </h2>
-          <p className="mx-auto mt-0 mb-9 max-w-[440px] text-[17px] leading-[1.6] text-[#57534a]">
+          <p className="mx-auto mt-0 mb-9 max-w-[440px] text-[17px] leading-[1.6] text-ink-2">
             Get your free API key and start integrating NBA 2K data into your application today.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-[18px]">
@@ -684,7 +684,7 @@ export default function Home() {
             </button>
             <Link
               href="/docs"
-              className="rounded-full border border-[#d9d4c7] bg-white px-7 py-3.5 text-[15px] font-semibold text-[#1a1918] no-underline transition-[background,transform] duration-150 ease-out hover:bg-[#f1efe8] active:scale-[0.97] motion-reduce:transition-none"
+              className="rounded-full border border-line-strong bg-surface px-7 py-3.5 text-[15px] font-semibold text-ink no-underline transition-[background,transform] duration-150 ease-out hover:bg-soft active:scale-[0.97] motion-reduce:transition-none"
             >
               Read the docs
             </Link>

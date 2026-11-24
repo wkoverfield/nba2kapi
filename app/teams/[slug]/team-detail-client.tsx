@@ -53,7 +53,7 @@ function teamReads(roster: RosterPlayer[]) {
   if (a && b) {
     const topAvg = (a.overall + b.overall) / 2;
     const drop = c ? b.overall - c.overall : 0;
-    const color = topAvg >= 93 ? "#0a7f3f" : topAvg >= 88 ? "#9a6700" : "#c03a2b";
+    const color = topAvg >= 93 ? "var(--pos)" : topAvg >= 88 ? "var(--warn)" : "var(--neg)";
     const title = topAvg >= 93 ? "ELITE TOP END" : topAvg >= 88 ? "SOLID TOP END" : "NO STAR POWER";
     reads.push({
       title,
@@ -72,7 +72,7 @@ function teamReads(roster: RosterPlayer[]) {
   if (shooters.length) {
     const best = shooters[0];
     const over85 = shooters.filter((s) => s.tpt >= 85).length;
-    const color = over85 >= 3 ? "#0a7f3f" : over85 >= 1 ? "#9a6700" : "#c03a2b";
+    const color = over85 >= 3 ? "var(--pos)" : over85 >= 1 ? "var(--warn)" : "var(--neg)";
     const title = over85 >= 3 ? "REAL SHOOTING" : over85 >= 1 ? "AVERAGE SHOOTING" : "CRAMPED SPACING";
     reads.push({
       title,
@@ -90,7 +90,7 @@ function teamReads(roster: RosterPlayer[]) {
   const centers = roster.filter((p) => p.positions?.includes("C")).length;
   if (anchors.length) {
     const best = anchors[0];
-    const color = best.int >= 90 ? "#0a7f3f" : best.int >= 80 ? "#9a6700" : "#c03a2b";
+    const color = best.int >= 90 ? "var(--pos)" : best.int >= 80 ? "var(--warn)" : "var(--neg)";
     const title = best.int >= 90 ? "PAINT PROTECTED" : best.int >= 80 ? "SERVICEABLE RIM PROTECTION" : "THIN RIM PROTECTION";
     reads.push({
       title,
@@ -264,13 +264,13 @@ function TeamPage({
   const notFoundState = teamInfo === null;
 
   const pillClass =
-    "inline-flex items-center gap-2 rounded-full border border-[#e5e2da] bg-white no-underline transition-[border-color,transform] duration-150 hover:border-[#1a1918] active:scale-[0.97] motion-reduce:transition-none";
+    "inline-flex items-center gap-2 rounded-full border border-line bg-surface no-underline transition-[border-color,transform] duration-150 hover:border-ink active:scale-[0.97] motion-reduce:transition-none";
 
   const tableGrid =
     "grid grid-cols-[40px_30px_minmax(160px,1.4fr)_56px_56px_66px_repeat(4,50px)_70px] items-center gap-2.5 px-[18px]";
 
   return (
-    <div className="min-h-screen bg-[#faf9f5] font-body text-[#1a1918]">
+    <div className="min-h-screen bg-paper font-body text-ink">
       <TopNav hasApiKey={hasApiKey} />
 
       <div className="mx-auto min-h-screen max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2">
@@ -278,7 +278,7 @@ function TeamPage({
         <div className="flex flex-wrap items-center justify-between gap-3 animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
           <Link
             href={era === "curr" ? "/teams" : `/teams?era=${era}`}
-            className="inline-flex items-center gap-2 font-plex text-[10.5px] tracking-[0.1em] text-[#8a8577] no-underline transition-colors duration-150 hover:text-[#1a1918]"
+            className="inline-flex items-center gap-2 font-plex text-[10.5px] tracking-[0.1em] text-ink-3 no-underline transition-colors duration-150 hover:text-ink"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="m12 19-7-7 7-7" />
@@ -289,10 +289,10 @@ function TeamPage({
           <div className="flex flex-wrap items-center gap-2">
             {prevTeam && (
               <Link href={`/teams/${prevTeam.slug}?type=${era}`} className={cn(pillClass, "py-1.5 pr-3.5 pl-2")}>
-                <span className="flex h-[18px] w-[18px] items-center justify-center rounded-[4px] border border-[#d9d4c7] bg-[#faf9f5] font-plex text-[9px] leading-none text-[#57534a]">←</span>
+                <span className="flex h-[18px] w-[18px] items-center justify-center rounded-[4px] border border-line-strong bg-paper font-plex text-[9px] leading-none text-ink-2">←</span>
                 <TeamLogo src={prevTeam.logo} team={prevTeam.team} size={20} />
-                <span className="font-plex text-[10px] tracking-[0.06em] text-[#57534a]">
-                  <b className="text-[#1a1918]">
+                <span className="font-plex text-[10px] tracking-[0.06em] text-ink-2">
+                  <b className="text-ink">
                     #{((boardIndex - 1 + (board?.length ?? 1)) % (board?.length ?? 1)) + 1}
                   </b>{" "}
                   {formatTeamNickname(prevTeam.team, era).toUpperCase()}
@@ -301,12 +301,12 @@ function TeamPage({
             )}
             {nextTeam && (
               <Link href={`/teams/${nextTeam.slug}?type=${era}`} className={cn(pillClass, "py-1.5 pr-2.5 pl-3.5")}>
-                <span className="font-plex text-[10px] tracking-[0.06em] text-[#57534a]">
-                  <b className="text-[#1a1918]">#{((boardIndex + 1) % (board?.length ?? 1)) + 1}</b>{" "}
+                <span className="font-plex text-[10px] tracking-[0.06em] text-ink-2">
+                  <b className="text-ink">#{((boardIndex + 1) % (board?.length ?? 1)) + 1}</b>{" "}
                   {formatTeamNickname(nextTeam.team, era).toUpperCase()}
                 </span>
                 <TeamLogo src={nextTeam.logo} team={nextTeam.team} size={20} />
-                <span className="flex h-[18px] w-[18px] items-center justify-center rounded-[4px] border border-[#d9d4c7] bg-[#faf9f5] font-plex text-[9px] leading-none text-[#57534a]">→</span>
+                <span className="flex h-[18px] w-[18px] items-center justify-center rounded-[4px] border border-line-strong bg-paper font-plex text-[9px] leading-none text-ink-2">→</span>
               </Link>
             )}
           </div>
@@ -315,7 +315,7 @@ function TeamPage({
         {notFoundState ? (
           <div className="py-24 text-center">
             <h1 className="m-0 font-display text-[28px] font-extrabold">Team not found</h1>
-            <p className="mt-2 text-[14px] text-[#8a8577]">
+            <p className="mt-2 text-[14px] text-ink-3">
               No {era === "curr" ? "current" : era === "class" ? "classic" : "all-time"} team matches
               &quot;{slug}&quot;.
             </p>
@@ -333,39 +333,39 @@ function TeamPage({
                   <h1 className="m-0 font-display text-[clamp(26px,3vw,36px)] leading-none font-extrabold tracking-[-0.03em]">
                     {teamInfo?.name ?? "…"}
                   </h1>
-                  <p className="mt-1.5 mb-0 font-plex text-[9.5px] tracking-[0.1em] text-[#8a8577]">
+                  <p className="mt-1.5 mb-0 font-plex text-[9.5px] tracking-[0.1em] text-ink-3">
                     {era === "curr" ? "CURRENT" : era === "class" ? "CLASSIC" : "ALL-TIME"} ·{" "}
                     {teamInfo?.name ? (getTeamConference(teamInfo.name) ?? "—") : "—"} ·{" "}
-                    <b className="text-[#1a1918]">
+                    <b className="text-ink">
                       {boardIndex >= 0 ? `#${boardIndex + 1} ROSTER RANKING` : "ROSTER RANKING"}
                     </b>
                   </p>
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2.5">
-                <div className="rounded-xl border border-[#e5e2da] bg-white px-4 py-2.5">
+                <div className="rounded-xl border border-line bg-surface px-4 py-2.5">
                   <div className="font-display text-[22px] leading-none font-extrabold">
                     {avg ?? "—"}
                   </div>
-                  <div className="mt-[3px] font-plex text-[7.5px] tracking-[0.08em] text-[#8a8577]">
+                  <div className="mt-[3px] font-plex text-[7.5px] tracking-[0.08em] text-ink-3">
                     ROSTER AVG
                   </div>
                 </div>
-                <div className="rounded-xl border border-[#e5e2da] bg-white px-4 py-2.5">
+                <div className="rounded-xl border border-line bg-surface px-4 py-2.5">
                   <div className="font-display text-[22px] leading-none font-extrabold">
                     {roster?.length ?? "—"}
                   </div>
-                  <div className="mt-[3px] font-plex text-[7.5px] tracking-[0.08em] text-[#8a8577]">
+                  <div className="mt-[3px] font-plex text-[7.5px] tracking-[0.08em] text-ink-3">
                     PLAYERS
                   </div>
                 </div>
-                <div className="rounded-xl border border-[#e5e2da] bg-white px-4 py-2.5">
+                <div className="rounded-xl border border-line bg-surface px-4 py-2.5">
                   <div className="font-display text-[22px] leading-none font-extrabold">{rated90}</div>
-                  <div className="mt-[3px] font-plex text-[7.5px] tracking-[0.08em] text-[#8a8577]">
+                  <div className="mt-[3px] font-plex text-[7.5px] tracking-[0.08em] text-ink-3">
                     RATED 90+
                   </div>
                 </div>
-                <span className="rounded-full border border-[#e5e2da] bg-white px-3.5 py-2 font-plex text-[9.5px] text-[#8a8577]">
+                <span className="rounded-full border border-line bg-surface px-3.5 py-2 font-plex text-[9.5px] text-ink-3">
                   GET /api/teams/{slug}/roster{era !== "curr" ? `?teamType=${era}` : ""}
                 </span>
               </div>
@@ -377,7 +377,7 @@ function TeamPage({
               style={{ animationDelay: "120ms" }}
             >
               <span />
-              <div className="flex gap-[3px] rounded-full border border-[#e5e2da] bg-white p-1">
+              <div className="flex gap-[3px] rounded-full border border-line bg-surface p-1">
                 {(["depth", "table"] as const).map((v) => (
                   <button
                     key={v}
@@ -385,7 +385,7 @@ function TeamPage({
                     onClick={() => setView(v)}
                     className={cn(
                       "cursor-pointer rounded-full px-4 py-[7px] text-[12.5px] font-semibold transition-[background,color,transform] duration-150 select-none active:scale-[0.97] motion-reduce:transition-none",
-                      view === v ? "bg-[#1a1918] text-[#faf9f5]" : "text-[#57534a] hover:bg-[#f1efe8]"
+                      view === v ? "bg-ink text-on-ink" : "text-ink-2 hover:bg-soft"
                     )}
                   >
                     {v === "depth" ? "Depth chart" : "Table"}
@@ -406,15 +406,15 @@ function TeamPage({
                         className="animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
                         style={{ animationDelay: `${140 + ci * 45}ms` }}
                       >
-                        <div className="mb-2.5 rounded-full bg-[#f1efe8] py-[5px] text-center font-plex text-[9.5px] tracking-[0.12em] text-[#8a8577]">
+                        <div className="mb-2.5 rounded-full bg-soft py-[5px] text-center font-plex text-[9.5px] tracking-[0.12em] text-ink-3">
                           {POSITION_LABELS[pos]}
                         </div>
                         {starter ? (
                           <Link
                             href={`/players/${starter.slug}?type=${era}&team=${encodeURIComponent(teamInfo?.name ?? "")}`}
-                            className="relative block overflow-hidden rounded-[14px] border border-[#e5e2da] bg-white text-[#1a1918] no-underline transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-[#1a1918] hover:shadow-[0_14px_28px_-18px_rgba(26,25,24,0.3)] active:scale-[0.98] motion-reduce:transition-none"
+                            className="relative block overflow-hidden rounded-[14px] border border-line bg-surface text-ink no-underline transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-ink hover:shadow-[0_14px_28px_-18px_rgba(26,25,24,0.3)] active:scale-[0.98] motion-reduce:transition-none"
                           >
-                            <div className="relative h-[118px] bg-[#f1efe8]">
+                            <div className="relative h-[118px] bg-soft">
                               {starter.playerImage && (
                                 <Image
                                   src={starter.playerImage}
@@ -442,13 +442,13 @@ function TeamPage({
                               <p className="m-0 overflow-hidden text-[13.5px] font-bold text-ellipsis whitespace-nowrap">
                                 {starter.name}
                               </p>
-                              <p className="mt-[3px] mb-0 font-plex text-[8px] tracking-[0.08em] text-[#8a8577]">
+                              <p className="mt-[3px] mb-0 font-plex text-[8px] tracking-[0.08em] text-ink-3">
                                 STARTER{starter.height ? ` · ${starter.height}` : ""}
                               </p>
                             </div>
                           </Link>
                         ) : (
-                          <div className="rounded-[14px] border border-dashed border-[#e5e2da] py-10 text-center font-plex text-[9px] text-[#b5b0a1]">
+                          <div className="rounded-[14px] border border-dashed border-line py-10 text-center font-plex text-[9px] text-ink-4">
                             {roster ? "NO PLAYER" : "…"}
                           </div>
                         )}
@@ -462,7 +462,7 @@ function TeamPage({
                     className="mt-4 animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none"
                     style={{ animationDelay: "260ms" }}
                   >
-                    <div className="mb-2.5 font-plex text-[9px] tracking-[0.12em] text-[#8a8577]">
+                    <div className="mb-2.5 font-plex text-[9px] tracking-[0.12em] text-ink-3">
                       THE BENCH
                     </div>
                     <div className="grid grid-cols-[repeat(auto-fill,minmax(225px,1fr))] gap-1.5">
@@ -470,7 +470,7 @@ function TeamPage({
                         <Link
                           key={`${p.slug}-${i}`}
                           href={`/players/${p.slug}?type=${era}&team=${encodeURIComponent(teamInfo?.name ?? "")}`}
-                          className="flex items-center gap-[9px] rounded-[11px] border border-[#e5e2da] bg-white px-2.5 py-2 text-[#1a1918] no-underline transition-[border-color,transform] duration-150 hover:border-[#1a1918] active:scale-[0.98] motion-reduce:transition-none"
+                          className="flex items-center gap-[9px] rounded-[11px] border border-line bg-surface px-2.5 py-2 text-ink no-underline transition-[border-color,transform] duration-150 hover:border-ink active:scale-[0.98] motion-reduce:transition-none"
                         >
                           <Headshot src={p.playerImage} name={p.name} size={30} />
                           <div className="min-w-0 flex-1">
@@ -479,7 +479,7 @@ function TeamPage({
                             </p>
                             <p
                               className="mt-px mb-0 font-plex text-[7.5px] tracking-[0.06em]"
-                              style={{ color: i === 0 ? "#9a6700" : "#8a8577" }}
+                              style={{ color: i === 0 ? "var(--warn)" : "var(--ink-3)" }}
                             >
                               {i === 0
                                 ? `6TH MAN · ${(p.positions ?? []).join("/")}`
@@ -497,7 +497,7 @@ function TeamPage({
 
             {/* Table: every attribute, sticky player column */}
             {view === "table" && (
-              <div className="mt-3.5 overflow-hidden rounded-[14px] border border-[#e5e2da] bg-white animate-[rise-in_300ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
+              <div className="mt-3.5 overflow-hidden rounded-[14px] border border-line bg-surface animate-[rise-in_300ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
                 <PlayerTable
                   players={tableRows.map((p) => ({ ...p, team: teamInfo?.name ?? "", teamType: era })) as TablePlayer[]}
                   sortKey={tableSort.key}
@@ -513,14 +513,14 @@ function TeamPage({
                   }
                   loading={!roster}
                 />
-                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#f1efe8] bg-[#faf9f5] px-[18px] py-[9px]">
-                  <span className="font-plex text-[8.5px] text-[#b5b0a1]">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-soft bg-paper px-[18px] py-[9px]">
+                  <span className="font-plex text-[8.5px] text-ink-4">
                     CLICK ANY COLUMN TO SORT · CLICK A PLAYER → DOSSIER
                   </span>
                   <button
                     type="button"
                     onClick={exportCsv}
-                    className="cursor-pointer font-plex text-[8.5px] text-[#b5b0a1] transition-colors duration-150 hover:text-[#1a1918]"
+                    className="cursor-pointer font-plex text-[8.5px] text-ink-4 transition-colors duration-150 hover:text-ink"
                   >
                     EXPORT CSV
                   </button>
@@ -535,14 +535,14 @@ function TeamPage({
                 style={{ animationDelay: "200ms" }}
               >
                 {reads.map((r) => (
-                  <div key={r.title} className="rounded-[14px] border border-[#e5e2da] bg-white px-[18px] py-3.5">
+                  <div key={r.title} className="rounded-[14px] border border-line bg-surface px-[18px] py-3.5">
                     <div
                       className="mb-1.5 font-plex text-[8.5px] font-bold tracking-[0.12em]"
                       style={{ color: r.color }}
                     >
                       {r.title}
                     </div>
-                    <p className="m-0 text-[12.5px] leading-[1.55] text-[#57534a]">{r.body}</p>
+                    <p className="m-0 text-[12.5px] leading-[1.55] text-ink-2">{r.body}</p>
                   </div>
                 ))}
               </div>

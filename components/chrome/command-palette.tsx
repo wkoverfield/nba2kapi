@@ -56,7 +56,7 @@ function TeamIcon({ logo, abbr, name }: { logo: string | null; abbr: string; nam
   const [errored, setErrored] = useState(false);
   if (!logo || errored) {
     return (
-      <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-[#f1efe8] font-display text-[10px] font-extrabold text-[#57534a]">
+      <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-soft font-display text-[10px] font-extrabold text-ink-2">
         {abbr}
       </span>
     );
@@ -78,7 +78,7 @@ function BadgeIcon({ badge }: { badge: DirectoryBadge }) {
   }
 
   return (
-    <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-[#f6e9c8] font-display text-[9px] font-extrabold text-[#8a6200]">
+    <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-[#f6e9c8] dark:bg-[#33290f] font-display text-[9px] font-extrabold text-warn">
       {badge.name.split(" ").map((part) => part[0]).join("").slice(0, 2)}
     </span>
   );
@@ -262,25 +262,25 @@ export function CommandPalette({
         <Dialog.Overlay className="fixed inset-0 z-50 bg-[rgba(26,25,24,0.35)] backdrop-blur-[2px]" />
         <Dialog.Content
           onKeyDown={onKeyDown}
-          className="fixed top-[12%] left-1/2 z-50 w-[min(640px,calc(100vw-32px))] -translate-x-1/2 overflow-hidden rounded-[18px] border border-[#e5e2da] bg-white font-body shadow-[0_40px_80px_-24px_rgba(26,25,24,0.5)] animate-[pop-in_220ms_cubic-bezier(0.23,1,0.32,1)_both] focus:outline-none motion-reduce:animate-none"
+          className="fixed top-[12%] left-1/2 z-50 w-[min(640px,calc(100vw-32px))] -translate-x-1/2 overflow-hidden rounded-[18px] border border-line bg-surface font-body shadow-[0_40px_80px_-24px_rgba(26,25,24,0.5)] animate-[pop-in_220ms_cubic-bezier(0.23,1,0.32,1)_both] focus:outline-none motion-reduce:animate-none"
         >
           <Dialog.Title className="sr-only">Search players, teams, badges, and queries</Dialog.Title>
-          <div className="flex items-center gap-3 border-b border-[#f1efe8] px-5 py-[15px]">
-            <Search className="h-4 w-4 text-[#8a8577]" strokeWidth={2} />
+          <div className="flex items-center gap-3 border-b border-soft px-5 py-[15px]">
+            <Search className="h-4 w-4 text-ink-3" strokeWidth={2} />
             <input
               autoFocus
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search players, teams, badges…"
-              className="flex-1 border-none bg-transparent font-body text-[16px] text-[#1a1918] outline-none placeholder:text-[#b5b0a1]"
+              className="flex-1 border-none bg-transparent font-body text-[16px] text-ink outline-none placeholder:text-ink-4"
             />
-            <span className="font-plex text-[9px] text-[#b5b0a1]">ESC TO CLOSE</span>
+            <span className="font-plex text-[9px] text-ink-4">ESC TO CLOSE</span>
           </div>
 
           <div ref={listRef} className="max-h-[56vh] overflow-y-auto px-2 pt-2 pb-1.5">
             {groups.map((g) => (
               <div key={g.label}>
-                <div className="px-3.5 pt-2 pb-1 font-plex text-[8.5px] tracking-[0.12em] text-[#b5b0a1]">
+                <div className="px-3.5 pt-2 pb-1 font-plex text-[8.5px] tracking-[0.12em] text-ink-4">
                   {g.label}
                 </div>
                 {g.items.map((item) => {
@@ -295,7 +295,7 @@ export function CommandPalette({
                       onClick={() => activate(index)}
                       className={cn(
                         "flex cursor-pointer items-center gap-3 rounded-[10px] px-3.5 py-[9px]",
-                        active && "bg-[#f1efe8]"
+                        active && "bg-soft"
                       )}
                     >
                       {item.kind === "player" ? (
@@ -305,7 +305,7 @@ export function CommandPalette({
                       ) : item.kind === "badge" ? (
                         <BadgeIcon badge={item.badge} />
                       ) : (
-                        <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg bg-[#1a1918]">
+                        <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg tone-fixed bg-panel">
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#faf9f5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                             <polyline points="4 17 10 11 4 5" />
                             <line x1="12" x2="20" y1="19" y2="19" />
@@ -313,17 +313,17 @@ export function CommandPalette({
                         </span>
                       )}
                       <div className="min-w-0 flex-1">
-                        <p className="m-0 overflow-hidden text-[13.5px] font-semibold text-ellipsis whitespace-nowrap text-[#1a1918]">
+                        <p className="m-0 overflow-hidden text-[13.5px] font-semibold text-ellipsis whitespace-nowrap text-ink">
                           {item.name}
                         </p>
-                        <p className="mt-px mb-0 overflow-hidden font-plex text-[8.5px] text-ellipsis whitespace-nowrap text-[#8a8577]">
+                        <p className="mt-px mb-0 overflow-hidden font-plex text-[8.5px] text-ellipsis whitespace-nowrap text-ink-3">
                           {item.meta}
                         </p>
                       </div>
                       {item.kind === "query" ? (
-                        <span className="font-plex text-[8px] text-[#b5b0a1]">→ PLAYGROUND</span>
+                        <span className="font-plex text-[8px] text-ink-4">→ PLAYGROUND</span>
                       ) : (
-                        active && <span className="font-plex text-[9px] text-[#b5b0a1]">↵</span>
+                        active && <span className="font-plex text-[9px] text-ink-4">↵</span>
                       )}
                     </div>
                   );
@@ -331,13 +331,13 @@ export function CommandPalette({
               </div>
             ))}
             {everOpened && !players && (
-              <div className="px-3.5 py-6 text-center font-plex text-[9px] tracking-[0.08em] text-[#b5b0a1]">
+              <div className="px-3.5 py-6 text-center font-plex text-[9px] tracking-[0.08em] text-ink-4">
                 LOADING THE DATASET…
               </div>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-3.5 border-t border-[#f1efe8] bg-[#faf9f5] px-5 py-2.5 font-plex text-[8.5px] text-[#b5b0a1]">
+          <div className="flex flex-wrap items-center gap-3.5 border-t border-soft bg-paper px-5 py-2.5 font-plex text-[8.5px] text-ink-4">
             <span>↑↓ NAVIGATE</span>
             <span>↵ OPEN</span>
             <span className="ml-auto">SEARCHES ALL 3 ERAS</span>

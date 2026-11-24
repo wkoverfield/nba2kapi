@@ -105,7 +105,7 @@ function FilledSlot({
         className={cn(
           "absolute -top-1.5 -right-1.5 rounded-full z-30 shadow-md",
           "bg-black/70 text-white hover:bg-black/90 hover:text-white",
-          "dark:bg-white/80 dark:text-black dark:hover:bg-white dark:hover:text-black",
+          "dark:bg-surface/80 dark:text-black dark:hover:bg-surface dark:hover:text-black",
           compact ? "h-5 w-5" : "h-6 w-6"
         )}
         onClick={(e) => {
@@ -195,7 +195,7 @@ function FilledSlot({
                     <Badge
                       key={`${pos}-${idx}`}
                       variant="secondary"
-                      className="text-[8px] px-1 py-0 h-4 bg-white/20 text-white border-0"
+                      className="text-[8px] px-1 py-0 h-4 bg-surface/20 text-white border-0"
                     >
                       {pos}
                     </Badge>

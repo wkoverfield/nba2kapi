@@ -95,11 +95,11 @@ export function getRatingTierKey(rating: number): RatingTier {
  * Keeps original green-to-red scale for attribute bars
  */
 export const ATTRIBUTE_COLORS = {
-  HIGHEST: "#0a0", // 90-99 - Elite (bright green)
-  HIGH: "#070", // 80-89 - Very Good (green)
-  MEDIUM: "#c90", // 70-79 - Average (orange)
-  LOW: "#d40", // 60-69 - Below Average (dark orange)
-  LOWEST: "#900", // 0-59 - Poor (dark red)
+  HIGHEST: "var(--attr-highest)", // 90-99 - Elite (bright green)
+  HIGH: "var(--attr-high)", // 80-89 - Very Good (green)
+  MEDIUM: "var(--attr-medium)", // 70-79 - Average (orange)
+  LOW: "var(--attr-low)", // 60-69 - Below Average (dark orange)
+  LOWEST: "var(--attr-lowest)", // 0-59 - Poor (dark red)
 } as const;
 
 /**

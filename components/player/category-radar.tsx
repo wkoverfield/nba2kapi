@@ -96,7 +96,7 @@ export function CategoryRadar({ axes, position, className }: CategoryRadarProps)
         width={VIEW_W}
         height={VIEW_H}
         viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-        className="overflow-visible focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1a1918]"
+        className="overflow-visible focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"
         role="group"
         tabIndex={0}
         aria-label={`Category radar, player against the ${position} average. Use arrow keys to step through each category.`}
@@ -107,7 +107,7 @@ export function CategoryRadar({ axes, position, className }: CategoryRadarProps)
         }}
       >
         {geom.rings.map((ring) => (
-          <polygon key={ring} points={ring} fill="none" stroke="#e5e2da" strokeWidth="1" />
+          <polygon key={ring} points={ring} fill="none" stroke="var(--line)" strokeWidth="1" />
         ))}
 
         {active !== null && (
@@ -116,7 +116,7 @@ export function CategoryRadar({ axes, position, className }: CategoryRadarProps)
             y1={CY}
             x2={geom.spokes[active].x}
             y2={geom.spokes[active].y}
-            stroke="#1a1918"
+            stroke="var(--ink)"
             strokeWidth="1"
             strokeDasharray="2 3"
             opacity="0.35"
@@ -131,14 +131,14 @@ export function CategoryRadar({ axes, position, className }: CategoryRadarProps)
           strokeWidth="1.5"
           strokeDasharray="4 4"
         />
-        <path d={geom.path} fill="#1a1918" fillOpacity="0.08" stroke="#1a1918" strokeWidth="2" />
+        <path d={geom.path} fill="var(--ink)" fillOpacity="0.08" stroke="var(--ink)" strokeWidth="2" />
 
         {active !== null && (
           <circle
             cx={geom.avgDots[active].x}
             cy={geom.avgDots[active].y}
             r="3"
-            fill="#faf9f5"
+            fill="var(--paper)"
             stroke="#b98404"
             strokeWidth="1.5"
           />
@@ -150,8 +150,8 @@ export function CategoryRadar({ axes, position, className }: CategoryRadarProps)
             cx={d.x}
             cy={d.y}
             r={i === active ? 4 : 2.5}
-            fill={i === active ? "#faf9f5" : "#1a1918"}
-            stroke="#1a1918"
+            fill={i === active ? "var(--paper)" : "var(--ink)"}
+            stroke="var(--ink)"
             strokeWidth={i === active ? 2 : 0}
           />
         ))}
@@ -164,10 +164,10 @@ export function CategoryRadar({ axes, position, className }: CategoryRadarProps)
             textAnchor={geom.ticks[i].anchor}
             className={cn(
               "font-plex text-[8.5px]",
-              i === active ? "fill-[#1a1918]" : "fill-[#8a8577]"
+              i === active ? "fill-ink" : "fill-ink-3"
             )}
           >
-            {a.label} <tspan className="fill-[#1a1918] font-bold">{a.value ?? "—"}</tspan>
+            {a.label} <tspan className="fill-ink font-bold">{a.value ?? "—"}</tspan>
           </text>
         ))}
 
@@ -187,16 +187,16 @@ export function CategoryRadar({ axes, position, className }: CategoryRadarProps)
       </svg>
 
       <div
-        className="mt-1 text-center font-plex text-[8px] text-[#b5b0a1]"
+        className="mt-1 text-center font-plex text-[8px] text-ink-4"
         aria-live="polite"
       >
         {activeAxis ? (
           <>
             {activeAxis.fullLabel.toUpperCase()} ·{" "}
-            <span className="font-bold text-[#1a1918]">{activeAxis.value ?? "—"}</span> ·{" "}
+            <span className="font-bold text-ink">{activeAxis.value ?? "—"}</span> ·{" "}
             {position} AVG {activeAxis.average !== null ? Math.round(activeAxis.average) : "—"}
             {gap !== null && (
-              <span className={gap >= 0 ? " text-[#1a1918]" : " text-[#b98404]"}>
+              <span className={gap >= 0 ? " text-ink" : " text-[#b98404]"}>
                 {" "}
                 ({gap >= 0 ? "+" : ""}
                 {gap})

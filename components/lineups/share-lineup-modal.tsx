@@ -249,7 +249,7 @@ function PlayerCardPreview({ player }: { player: Player | undefined }) {
               <Badge
                 key={`${pos}-${idx}`}
                 variant="secondary"
-                className="text-[6px] px-0.5 py-0 h-3 bg-white/20 text-white border-0"
+                className="text-[6px] px-0.5 py-0 h-3 bg-surface/20 text-white border-0"
               >
                 {pos}
               </Badge>
