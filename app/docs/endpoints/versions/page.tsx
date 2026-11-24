@@ -1,5 +1,4 @@
-"use client";
-
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   AuthPill,
@@ -78,6 +77,13 @@ const RESPONSE = `{
     "limit": 5
   }
 }`;
+
+export const metadata: Metadata = {
+  title: "Versions endpoint",
+  description:
+    "Reference for the NBA 2K API versions endpoints: the game versions the API covers and how to request ratings from a specific one.",
+  alternates: { canonical: "/docs/endpoints/versions" },
+};
 
 export default function VersionsEndpointPage() {
   return (

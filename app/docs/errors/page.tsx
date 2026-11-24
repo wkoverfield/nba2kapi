@@ -1,5 +1,4 @@
-"use client";
-
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   DarkCode,
@@ -39,6 +38,13 @@ const RETRY_SNIPPET = `async function fetchWithRetry(url, options, maxRetries = 
   }
   throw new Error('Max retries exceeded');
 }`;
+
+export const metadata: Metadata = {
+  title: "Error handling",
+  description:
+    "NBA 2K API error responses: status codes, the error body format, and how to handle each case.",
+  alternates: { canonical: "/docs/errors" },
+};
 
 export default function ErrorsPage() {
   return (

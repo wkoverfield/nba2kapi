@@ -1,5 +1,4 @@
-"use client";
-
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   CodeRail,
@@ -52,6 +51,13 @@ const ERRORS_401 = `// Missing key → 401
     "code": "INVALID_API_KEY"
   }
 }`;
+
+export const metadata: Metadata = {
+  title: "Authentication",
+  description:
+    "How NBA 2K API keys work: getting a key, sending it in the X-API-Key header, and what an unauthenticated request returns.",
+  alternates: { canonical: "/docs/authentication" },
+};
 
 export default function AuthenticationPage() {
   return (

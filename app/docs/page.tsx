@@ -1,7 +1,13 @@
-"use client";
-
+import type { Metadata } from "next";
 import Link from "next/link";
 import { DocColumns, DocH1, DocLabel, DocP, FinePrint, ParamsTable } from "@/components/docs/kit";
+
+export const metadata: Metadata = {
+  title: "API Documentation",
+  description:
+    "Reference and guides for the NBA 2K API: quickstart, authentication, the players, teams, versions, and search endpoints, rate limits, and error handling.",
+  alternates: { canonical: "/docs" },
+};
 
 export default function DocsIntroduction() {
   return (
