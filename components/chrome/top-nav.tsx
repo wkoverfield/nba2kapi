@@ -79,7 +79,9 @@ type TopNavProps = {
 
 /**
  * Shared chrome for reskinned (paper/editorial) pages: wordmark, pill nav,
- * search pill, GitHub star chip, and the primary API-key CTA.
+ * search pill, GitHub star chip, and the primary API-key CTA. Below `sm` it
+ * is two rows: wordmark, icon-only search, and CTA, then the nav pill at full
+ * width. The star chip and key chip are hidden there.
  *
  * The bar is the same width on every page (SHELL_WIDTH), so the wordmark and
  * nav hold their position across route changes.
@@ -127,7 +129,7 @@ export function TopNav({
   }, []);
 
   const ctaClasses =
-    "whitespace-nowrap rounded-full bg-[#1a1918] px-5 py-2.5 text-[13.5px] font-semibold text-[#faf9f5] no-underline transition-[background,transform] duration-150 ease-out hover:bg-[#333] active:scale-[0.97] motion-reduce:transition-none";
+    "whitespace-nowrap rounded-full bg-[#1a1918] px-3.5 py-[9px] text-[13px] font-semibold sm:px-5 sm:py-2.5 sm:text-[13.5px] text-[#faf9f5] no-underline transition-[background,transform] duration-150 ease-out hover:bg-[#333] active:scale-[0.97] motion-reduce:transition-none";
 
   return (
     <header
@@ -143,28 +145,28 @@ export function TopNav({
       />
       <div
         className={cn(
-          "pointer-events-auto relative mx-auto flex w-full origin-top flex-wrap items-center justify-between gap-3 px-[clamp(20px,4vw,48px)] py-5 lg:grid lg:grid-cols-[1fr_auto_1fr] transition-transform duration-200 ease-[cubic-bezier(0.77,0,0.175,1)] motion-reduce:transform-none motion-reduce:transition-none",
+          "pointer-events-auto relative mx-auto flex w-full origin-top flex-wrap items-center justify-between gap-x-3 gap-y-2.5 px-[clamp(20px,4vw,48px)] py-3 sm:gap-3 sm:py-5 lg:grid lg:grid-cols-[1fr_auto_1fr] transition-transform duration-200 ease-[cubic-bezier(0.77,0,0.175,1)] motion-reduce:transform-none motion-reduce:transition-none",
           isCompact && "md:-translate-y-[7px] md:scale-[0.96]",
           SHELL_WIDTH
         )}
       >
         <Link
           href="/"
-          className="justify-self-start font-display text-[22px] font-extrabold tracking-[-0.02em] text-[#1a1918] no-underline"
+          className="justify-self-start font-display text-[20px] font-extrabold sm:text-[22px] tracking-[-0.02em] text-[#1a1918] no-underline"
         >
           nba2kapi
         </Link>
 
         <nav
           aria-label="Main navigation"
-          className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-[#e5e2da] bg-white p-[5px] sm:gap-1"
+          className="order-last flex w-full max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-[#e5e2da] bg-white p-1 sm:order-none sm:w-auto sm:gap-1 sm:p-[5px]"
         >
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               className={cn(
-                "shrink-0 rounded-full px-2.5 py-[7px] text-[12px] font-medium text-[#1a1918] no-underline transition-[background,transform] duration-150 ease-out hover:bg-[#f1efe8] active:scale-[0.97] sm:px-4 sm:text-[13.5px] motion-reduce:transition-none",
+                "flex-1 shrink-0 rounded-full px-1.5 py-[7px] text-center text-[13px] font-medium text-[#1a1918] no-underline transition-[background,transform] duration-150 ease-out hover:bg-[#f1efe8] active:scale-[0.97] sm:flex-none sm:px-4 sm:text-[13.5px] motion-reduce:transition-none",
                 pathname.startsWith(link.href) && "bg-[#f1efe8]"
               )}
             >
@@ -173,16 +175,17 @@ export function TopNav({
           ))}
         </nav>
 
-        <div className="flex items-center gap-2.5 justify-self-end">
+        <div className="flex items-center gap-2 justify-self-end sm:gap-2.5">
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
+            aria-label="Search"
             title="Search everything — players, teams, badges, and queries"
-            className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#e5e2da] bg-white px-3.5 py-[9px] transition-[border-color,transform] duration-150 ease-out hover:border-[#1a1918] active:scale-[0.97] motion-reduce:transition-none"
+            className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#e5e2da] bg-white px-[11px] py-[11px] sm:px-3.5 sm:py-[9px] transition-[border-color,transform] duration-150 ease-out hover:border-[#1a1918] active:scale-[0.97] motion-reduce:transition-none"
           >
             <Search className="h-[13px] w-[13px] text-[#57534a]" strokeWidth={2} />
-            <span className="text-[12.5px] text-[#8a8577]">Search</span>
-            <span className="rounded-[5px] border border-[#e5e2da] bg-[#faf9f5] px-[5px] py-[2px] font-plex text-[9px] text-[#b5b0a1]">
+            <span className="hidden text-[12.5px] text-[#8a8577] sm:inline">Search</span>
+            <span className="hidden rounded-[5px] border border-[#e5e2da] bg-[#faf9f5] px-[5px] py-[2px] font-plex text-[9px] text-[#b5b0a1] sm:inline">
               ⌘K
             </span>
           </button>
@@ -192,14 +195,14 @@ export function TopNav({
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Star on GitHub"
-            className="inline-flex items-center gap-2 rounded-full border border-[#e5e2da] bg-white px-4 py-[9px] text-[13px] font-semibold text-[#1a1918] no-underline transition-[border-color,transform] duration-150 ease-out hover:border-[#1a1918] active:scale-[0.97] motion-reduce:transition-none"
+            className="hidden items-center gap-2 rounded-full border border-[#e5e2da] bg-white px-4 py-[9px] text-[13px] font-semibold text-[#1a1918] no-underline transition-[border-color,transform] duration-150 ease-out hover:border-[#1a1918] active:scale-[0.97] sm:inline-flex motion-reduce:transition-none"
           >
             <OctocatIcon />
             <span className="tabular-nums">{stars ?? "★"}</span>
           </a>
 
           {maskedKey && (
-            <span className="inline-flex items-center gap-[7px] rounded-full border border-[#e5e2da] bg-white px-3.5 py-2 font-plex text-[10px] text-[#57534a]">
+            <span className="hidden items-center gap-[7px] rounded-full border border-[#e5e2da] bg-white px-3.5 py-2 font-plex text-[10px] text-[#57534a] sm:inline-flex">
               <span className="h-[7px] w-[7px] rounded-full bg-[#0a7f3f]" />
               {maskedKey}
             </span>
