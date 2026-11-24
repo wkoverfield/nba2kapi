@@ -1,5 +1,4 @@
-"use client";
-
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   AuthPill,
@@ -58,6 +57,13 @@ const RESPONSE = `{
   ],
   "meta": { "pagination": { "total": 231, "nextCursor": "50" } }
 }`;
+
+export const metadata: Metadata = {
+  title: "Players endpoint",
+  description:
+    "Reference for the NBA 2K API players endpoints: list, filter, and sort players, and fetch a single player by slug.",
+  alternates: { canonical: "/docs/endpoints/players" },
+};
 
 export default function PlayersEndpointPage() {
   return (

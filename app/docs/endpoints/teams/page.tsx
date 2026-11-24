@@ -1,5 +1,4 @@
-"use client";
-
+import type { Metadata } from "next";
 import {
   AuthPill,
   CodeRail,
@@ -71,6 +70,13 @@ const RESPONSE = `{
     …
   ]
 }`;
+
+export const metadata: Metadata = {
+  title: "Teams endpoint",
+  description:
+    "Reference for the NBA 2K API teams endpoints: list current, classic, and all-time teams and fetch a team roster.",
+  alternates: { canonical: "/docs/endpoints/teams" },
+};
 
 export default function TeamsEndpointPage() {
   return (

@@ -1,5 +1,4 @@
-"use client";
-
+import type { Metadata } from "next";
 import {
   AuthPill,
   CodeRail,
@@ -60,6 +59,13 @@ const RESPONSE = `{
     "timestamp": "2025-01-15T00:00:00.000Z"
   }
 }`;
+
+export const metadata: Metadata = {
+  title: "Search endpoint",
+  description:
+    "Reference for the NBA 2K API search endpoint: find players by name with a single query parameter.",
+  alternates: { canonical: "/docs/endpoints/search" },
+};
 
 export default function SearchEndpointPage() {
   return (

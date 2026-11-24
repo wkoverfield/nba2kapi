@@ -1,5 +1,4 @@
-"use client";
-
+import type { Metadata } from "next";
 import Link from "next/link";
 import { CodeRail, DocColumns, DocH1, DocLabel, DocP, FinePrint } from "@/components/docs/kit";
 
@@ -63,6 +62,13 @@ const RESPONSE = `{
     "lastUpdated": "2025-01-15T00:00:00.000Z"
   }
 }`;
+
+export const metadata: Metadata = {
+  title: "Quickstart",
+  description:
+    "Make a first request to the NBA 2K API with cURL or your language of choice, using an API key in the X-API-Key header.",
+  alternates: { canonical: "/docs/quickstart" },
+};
 
 export default function QuickstartPage() {
   return (

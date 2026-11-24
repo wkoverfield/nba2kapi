@@ -1,5 +1,4 @@
-"use client";
-
+import type { Metadata } from "next";
 import {
   DarkCode,
   DocColumns,
@@ -44,6 +43,13 @@ const RETRY_SNIPPET = `async function fetchWithRetry(url, options, maxRetries = 
 
   throw new Error('Max retries exceeded');
 }`;
+
+export const metadata: Metadata = {
+  title: "Rate limits",
+  description:
+    "NBA 2K API rate limits: the hourly request allowance, the headers that report it, and what happens when it runs out.",
+  alternates: { canonical: "/docs/rate-limits" },
+};
 
 export default function RateLimitsPage() {
   return (
