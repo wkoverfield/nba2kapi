@@ -35,8 +35,8 @@ export default async function BadgeDetailPage({ params }: Props) {
   return (
     <div className="min-h-screen bg-[#faf9f5] font-body text-[#1a1918]">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />
-      <TopNav width="wide" />
-      <main className="mx-auto max-w-[1320px] px-[clamp(20px,4vw,48px)] pb-14">
+      <TopNav />
+      <main className="mx-auto max-w-[1360px] px-[clamp(20px,4vw,48px)] pb-14">
         <Link href="/badges" className="font-plex text-[9px] tracking-[.1em] text-[#8a8577] no-underline">← ALL BADGES</Link>
         <header className="mt-4 grid overflow-hidden rounded-[18px] border border-[#d9d4c7] bg-white md:grid-cols-[260px_1fr]">
           <div className="flex min-h-[260px] items-center justify-center bg-[#1a1918] p-10">{badge.imageUrl ? <div className="relative h-40 w-40"><Image src={badge.imageUrl} alt={badge.name} fill sizes="160px" className="object-contain" /></div> : <span className="font-display text-[72px] font-bold text-white">{badge.name.split(" ").map((part) => part[0]).join("").slice(0, 2)}</span>}</div>
@@ -50,7 +50,7 @@ export default async function BadgeDetailPage({ params }: Props) {
           </div>
         </section>
       </main>
-      <SiteFooter width="wide" />
+      <SiteFooter />
     </div>
   );
 }

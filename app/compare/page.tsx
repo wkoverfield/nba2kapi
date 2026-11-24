@@ -275,7 +275,7 @@ function Comparison() {
           </div>
         )}
       </main>
-      <SiteFooter width="wide" />
+      <SiteFooter />
       <PlayerPicker open={pickerSide !== null} onOpenChange={(open) => !open && setPickerSide(null)} onPick={choose} />
     </div>
   );
