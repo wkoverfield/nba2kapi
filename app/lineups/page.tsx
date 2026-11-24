@@ -747,7 +747,7 @@ function Whiteboard() {
 
   return (
     <div className="min-h-screen bg-[#faf9f5] font-body text-[#1a1918]">
-      <TopNav hasApiKey={hasApiKey} width="wide" />
+      <TopNav hasApiKey={hasApiKey} />
 
       <div className="mx-auto max-w-[1440px] px-[clamp(20px,4vw,48px)] pt-2 pb-12">
         <div className="flex flex-wrap items-center justify-between gap-3 animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">

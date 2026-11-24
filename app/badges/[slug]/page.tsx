@@ -35,7 +35,7 @@ export default async function BadgeDetailPage({ params }: Props) {
   return (
     <div className="min-h-screen bg-[#faf9f5] font-body text-[#1a1918]">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />
-      <TopNav width="wide" />
+      <TopNav />
       <main className="mx-auto max-w-[1320px] px-[clamp(20px,4vw,48px)] pb-14">
         <Link href="/badges" className="font-plex text-[9px] tracking-[.1em] text-[#8a8577] no-underline">← ALL BADGES</Link>
         <header className="mt-4 grid overflow-hidden rounded-[18px] border border-[#d9d4c7] bg-white md:grid-cols-[260px_1fr]">

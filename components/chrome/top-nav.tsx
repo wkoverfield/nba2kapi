@@ -7,6 +7,7 @@ import { Search } from "lucide-react";
 import { CommandPalette } from "@/components/chrome/command-palette";
 import { cn } from "@/lib/utils";
 import { SHELL_WIDTHS } from "@/components/chrome/shell-widths";
+import { useStoredApiKey } from "@/lib/stored-api-key";
 
 const NAV_LINKS = [
   { label: "Playground", href: "/playground" },
@@ -17,17 +18,24 @@ const NAV_LINKS = [
 
 const GITHUB_REPO = "wkoverfield/nba2kapi";
 
+// TopNav remounts on every route change. Remembering the count at module
+// scope lets the next mount render it on its first frame instead of showing
+// the placeholder again. Empty on a hard load, so hydration still matches.
+let lastKnownStars: number | null = null;
+
 function useGitHubStars(repo: string) {
-  const [stars, setStars] = useState<number | null>(null);
+  const [stars, setStarsState] = useState<number | null>(lastKnownStars);
 
   useEffect(() => {
+    const setStars = (count: number) => {
+      lastKnownStars = count;
+      setStarsState(count);
+    };
     // Shares the sessionStorage cache with components/github-stars.tsx
     const cached = sessionStorage.getItem(`github-stars-${repo}`);
     if (cached) {
       const { count, timestamp } = JSON.parse(cached);
       if (Date.now() - timestamp < 3600000) {
-        // Cached external state is intentionally synchronized on mount.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setStars(count);
         return;
       }
@@ -60,10 +68,11 @@ function OctocatIcon() {
 type TopNavProps = {
   /** Override the primary CTA's default link-to-dashboard behavior. */
   onCtaClick?: () => void;
-  /** Swaps the CTA label for returning users who already hold a key. */
+  /**
+   * Forces the returning-user CTA label. The nav already detects a key saved
+   * in this browser; pass this only for a key the page knows about sooner.
+   */
   hasApiKey?: boolean;
-  /** Page shell width: narrow 1280 (Board), default 1360, wide 1440 (Playground). */
-  width?: "narrow" | "default" | "wide";
   /** Signed-in chip: masked key ("2k_••••xB7q") shown next to the CTA. */
   maskedKey?: string | null;
 };
@@ -71,13 +80,17 @@ type TopNavProps = {
 /**
  * Shared chrome for reskinned (paper/editorial) pages: wordmark, pill nav,
  * search pill, GitHub star chip, and the primary API-key CTA.
+ *
+ * The bar is the same width on every page, whatever width the page body
+ * uses, so the wordmark and nav hold their position across route changes.
  */
 export function TopNav({
   onCtaClick,
-  hasApiKey = false,
-  width = "default",
+  hasApiKey: hasApiKeyProp = false,
   maskedKey = null,
 }: TopNavProps) {
+  const storedKey = useStoredApiKey();
+  const hasApiKey = hasApiKeyProp || !!storedKey;
   const ctaLabel = hasApiKey ? "View dashboard" : "Get an API key";
   const pathname = usePathname();
   const stars = useGitHubStars(GITHUB_REPO);
@@ -114,7 +127,7 @@ export function TopNav({
   }, []);
 
   const ctaClasses =
-    "rounded-full bg-[#1a1918] px-5 py-2.5 text-[13.5px] font-semibold text-[#faf9f5] no-underline transition-[background,transform] duration-150 ease-out hover:bg-[#333] active:scale-[0.97] motion-reduce:transition-none";
+    "whitespace-nowrap rounded-full bg-[#1a1918] px-5 py-2.5 text-[13.5px] font-semibold text-[#faf9f5] no-underline transition-[background,transform] duration-150 ease-out hover:bg-[#333] active:scale-[0.97] motion-reduce:transition-none";
 
   return (
     <header
@@ -130,14 +143,14 @@ export function TopNav({
       />
       <div
         className={cn(
-          "pointer-events-auto relative mx-auto flex w-full origin-top flex-wrap items-center justify-between gap-3 px-[clamp(20px,4vw,48px)] py-5 transition-transform duration-200 ease-[cubic-bezier(0.77,0,0.175,1)] motion-reduce:transform-none motion-reduce:transition-none",
+          "pointer-events-auto relative mx-auto flex w-full origin-top flex-wrap items-center justify-between gap-3 px-[clamp(20px,4vw,48px)] py-5 lg:grid lg:grid-cols-[1fr_auto_1fr] transition-transform duration-200 ease-[cubic-bezier(0.77,0,0.175,1)] motion-reduce:transform-none motion-reduce:transition-none",
           isCompact && "md:-translate-y-[7px] md:scale-[0.96]",
-          SHELL_WIDTHS[width]
+          SHELL_WIDTHS.default
         )}
       >
         <Link
           href="/"
-          className="font-display text-[22px] font-extrabold tracking-[-0.02em] text-[#1a1918] no-underline"
+          className="justify-self-start font-display text-[22px] font-extrabold tracking-[-0.02em] text-[#1a1918] no-underline"
         >
           nba2kapi
         </Link>
@@ -160,7 +173,7 @@ export function TopNav({
           ))}
         </nav>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 justify-self-end">
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
@@ -182,7 +195,7 @@ export function TopNav({
             className="inline-flex items-center gap-2 rounded-full border border-[#e5e2da] bg-white px-4 py-[9px] text-[13px] font-semibold text-[#1a1918] no-underline transition-[border-color,transform] duration-150 ease-out hover:border-[#1a1918] active:scale-[0.97] motion-reduce:transition-none"
           >
             <OctocatIcon />
-            {stars ?? "★"}
+            <span className="tabular-nums">{stars ?? "★"}</span>
           </a>
 
           {maskedKey && (

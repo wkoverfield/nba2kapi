@@ -138,7 +138,6 @@ export default function DashboardPage() {
       <TopNav
         hasApiKey={!!apiKey}
         maskedKey={mounted && apiKey ? maskKey(apiKey) : null}
-        width="narrow"
       />
 
       <div className="mx-auto max-w-[1280px] px-[clamp(20px,4vw,48px)] pt-2">

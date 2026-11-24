@@ -73,7 +73,7 @@ function Board() {
 
   return (
     <div className="min-h-screen bg-[#faf9f5] font-body text-[#1a1918]">
-      <TopNav hasApiKey={hasApiKey} width="narrow" />
+      <TopNav hasApiKey={hasApiKey} />
 
       <div className="mx-auto max-w-[1280px] px-[clamp(20px,4vw,48px)] pt-3.5">
         <div className="flex justify-end animate-[rise-in_400ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
