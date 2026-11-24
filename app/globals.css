@@ -102,6 +102,8 @@
 
 :root {
   --panel: #1a1918;
+  --focus: #1a1918;
+  --focus-band: #faf9f5;
   /* Lineup court (app/lineups/page.tsx) */
   --court: #f4e4c3;
   --court-plank: #ead5ad;
@@ -152,6 +154,8 @@
 }
 
 .dark {
+  --focus: #f1efe8;
+  --focus-band: #141312;
   --court: #2a2118;
   --court-plank: #33291d;
   --court-plank-light: #2f251b;
@@ -251,6 +255,31 @@ html.dark {
   
   h1, h2, h3, h4, h5, h6 {
     @apply font-rajdhani font-bold tracking-tight;
+  }
+
+  /*
+   * Keyboard focus ring for links, buttons, and other focusable controls.
+   * :where() keeps specificity at zero, so a control that styles its own
+   * focus state (outline-none plus a border change) still wins.
+   */
+  :where(a, button, summary, [role="button"], [role="tab"], [role="option"], [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  /*
+   * Inside a clipping container (scroll areas, rounded cards with
+   * overflow-hidden) an outer ring gets cut off, so draw it inside the
+   * control, with a contrasting band so it shows on any fill.
+   */
+  :where(.overflow-hidden, .overflow-auto, .overflow-x-auto, .overflow-y-auto):not(nav)
+    :where(a, button, summary, [role="button"], [role="tab"], [role="option"], [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline-offset: -2px;
+    box-shadow: inset 0 0 0 4px var(--focus-band);
+  }
+  /* Controls inside a pinned dark panel need the light ring in both themes. */
+  .tone-fixed :where(a, button, summary, [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline-color: #faf9f5;
+    --focus-band: #1a1918;
   }
 }
 
