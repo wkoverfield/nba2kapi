@@ -14,7 +14,7 @@ export default function ShowcasePage() {
     <div className="min-h-screen bg-[linear-gradient(to_bottom,#fffdf8,#faf9f5_420px)] font-body text-[#1a1918]">
       <TopNav />
 
-      <main className="mx-auto max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2 pb-16">
+      <main className="mx-auto min-h-screen max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2 pb-16">
         {/* Header */}
         <div className="pt-8 pb-9">
           <div className="mb-3 font-plex text-[11px] tracking-[0.12em] text-[#8a8577]">

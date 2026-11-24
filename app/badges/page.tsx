@@ -17,7 +17,7 @@ export default async function BadgesPage() {
   return (
     <div className="min-h-screen bg-[linear-gradient(to_bottom,#fffdf8,#faf9f5_420px)] font-body text-[#1a1918]">
       <TopNav />
-      <main className="mx-auto max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2 pb-12">
+      <main className="mx-auto min-h-screen max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2 pb-12">
         <Suspense fallback={null}><BadgeExplorerClient badges={badges} /></Suspense>
       </main>
       <SiteFooter />

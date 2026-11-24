@@ -264,7 +264,7 @@ function PlayerDossier({
     return (
       <div className="min-h-screen bg-[#faf9f5] font-body text-[#1a1918]">
         <TopNav hasApiKey={hasApiKey} />
-        <div className="py-24 text-center">
+        <div className="min-h-screen py-24 text-center">
           <p className="m-0 font-plex text-[10.5px] tracking-[0.12em] text-[#8a8577]">
             LOADING VERSION
           </p>
@@ -278,7 +278,7 @@ function PlayerDossier({
     return (
       <div className="min-h-screen bg-[#faf9f5] font-body text-[#1a1918]">
         <TopNav hasApiKey={hasApiKey} />
-        <div className="py-24 text-center">
+        <div className="min-h-screen py-24 text-center">
           <h1 className="m-0 font-display text-[28px] font-extrabold">Player not found</h1>
           <p className="mt-2 text-[14px] text-[#8a8577]">
             No player matches &quot;{slug}&quot;.{" "}
@@ -304,7 +304,7 @@ function PlayerDossier({
     <div className="min-h-screen bg-[linear-gradient(to_bottom,#fffdf8,#faf9f5_400px)] font-body text-[#1a1918]">
       <TopNav hasApiKey={hasApiKey} />
 
-      <div className="mx-auto max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2">
+      <div className="mx-auto min-h-screen max-w-[1360px] px-[clamp(20px,4vw,48px)] pt-2">
         {/* Back + roster cycling */}
         <div className="flex flex-wrap items-center justify-between gap-3 animate-[rise-in_350ms_cubic-bezier(0.23,1,0.32,1)_both] motion-reduce:animate-none">
           {player ? (
